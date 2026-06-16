@@ -1,6 +1,10 @@
 {
   "app": {
-    "title": "Arrow Maze",
-    "setupStatus": "La configuracion del proyecto esta lista."
+    "architectureNote": "NativeWind esta habilitado solo para estilos de presentacion. Las reglas del juego se mantienen en domain/application y nunca dependen de librerias de UI.",
+    "hideDetails": "Ocultar detalles",
+    "kicker": "Juego movil con Clean Architecture",
+    "setupStatus": "La configuracion esta lista para slices de features, worktrees y entregas asistidas por IA con revision.",
+    "showDetails": "Mostrar detalles",
+    "title": "Arrow Maze"
   }
 }

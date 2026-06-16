@@ -63,5 +63,25 @@ module.exports = [
         }
       ]
     }
+  },
+  {
+    files: ["src/domain/**/*.{ts,tsx}", "src/application/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          "patterns": [
+            {
+              "group": ["nativewind", "nativewind/*", "zustand", "zustand/*"],
+              "message": "UI styling/state libraries are forbidden in domain and application layers."
+            },
+            {
+              "group": ["react-native", "expo", "expo-*", "react", "react/*"],
+              "message": "Domain/application code must stay independent from React, React Native, and Expo."
+            }
+          ]
+        }
+      ]
+    }
   }
 ];

@@ -8,6 +8,8 @@ Mobile client for Arrow Maze, built with Expo, React Native, and TypeScript.
 - React Native
 - TypeScript
 - Expo Router
+- NativeWind
+- Zustand
 - i18next
 - Jest
 - ESLint
@@ -23,6 +25,8 @@ app / framework / presentation -> infrastructure -> application -> domain
 ```
 
 Business rules belong in `src/domain`. Use cases and ports belong in `src/application`. Expo, React Native, i18next, navigation, and dependency wiring belong in `app` or `src/framework`.
+
+NativeWind is approved only for presentation styling in `app`, `src/presentation`, and framework-level UI wiring. Zustand is approved only for UI/view-model state. Neither library may be used in `src/domain`, `src/application`, or game-rule logic.
 
 ## Academic Compliance
 

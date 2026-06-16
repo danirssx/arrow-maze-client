@@ -1,6 +1,10 @@
 {
   "app": {
-    "title": "Arrow Maze",
-    "setupStatus": "Project setup is ready."
+    "architectureNote": "NativeWind is enabled for presentation styling only. Game rules stay in domain/application and never depend on UI libraries.",
+    "hideDetails": "Hide details",
+    "kicker": "Clean Architecture mobile game",
+    "setupStatus": "Project setup is ready for feature slices, worktrees, and reviewed AI-assisted delivery.",
+    "showDetails": "Show details",
+    "title": "Arrow Maze"
   }
 }

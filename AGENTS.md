@@ -28,6 +28,8 @@ Ningún agente podrá generar, modificar o cerrar una tarea sin dejar trazabilid
 - `src/infrastructure` implements application ports and adapts external tools.
 - `src/presentation` uses MVVM and must not contain business rules.
 - `app` and `src/framework` wire Expo, navigation, i18next, dependency injection, and global providers.
+- NativeWind may be used only in `app`, `src/presentation`, and framework-level UI wiring. It must never be imported or referenced by domain, application, or game-rule logic.
+- Zustand may be used only for presentation/view-model/UI state. It must never own domain rules, board movement rules, scoring rules, persistence rules, or use-case orchestration.
 
 ## 2. Design Patterns
 
@@ -87,6 +89,8 @@ Agents must not:
 - Import framework code into domain or application.
 - Add infrastructure dependencies to domain.
 - Add Expo or React Native code outside `app`, `src/presentation`, or `src/framework`.
+- Add NativeWind classes/imports to `src/domain`, `src/application`, or game-rule files.
+- Add Zustand stores for domain rules or application use cases.
 - Add business rules to UI components.
 - Invent use cases, decorators, entities, services, or design patterns without approval.
 
