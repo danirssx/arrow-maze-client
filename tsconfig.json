@@ -4,10 +4,23 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     },
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true
   },
-  "include": ["app", "src", "tests", "jest.config.ts", "eslint.config.js"]
+  "include": [
+    "app",
+    "src",
+    "tests",
+    "*.d.ts",
+    "babel.config.js",
+    "eslint.config.js",
+    "jest.config.ts",
+    "metro.config.js",
+    "tailwind.config.js",
+    "nativewind-env.d.ts"
+  ]
 }
