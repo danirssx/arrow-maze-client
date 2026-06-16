@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Arrow Maze",
+    "slug": "arrow-maze-client",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "arrowmaze",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F7F2E8"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    }
+  }
+}
