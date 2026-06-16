@@ -11,7 +11,9 @@
     "build": "expo export --platform web",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
+    "test:coverage": "npm test -- --coverage",
+    "verify": "npm run lint && npm run typecheck && npm run test:coverage",
     "prepare": "husky"
   },
   "dependencies": {

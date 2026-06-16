@@ -15,7 +15,7 @@ Describe the change and the ticket it closes.
 - [ ] Tests follow AAA.
 - [ ] Test names use `should_<expected>_when_<condition>`.
 - [ ] Domain/application tests are marked for human review when applicable.
-- [ ] `npm run lint`, `npm run typecheck`, and `npm test` pass locally.
+- [ ] `npm run verify` passes locally.
 
 ## AI Usage Checklist
 
