@@ -65,12 +65,38 @@ npm run start
 npm run lint
 npm run typecheck
 npm test
+npm run test:coverage
+npm run verify
 npm run build
 ```
 
+## Architecture Guardrails
+
+Clean Architecture boundaries are enforced by ESLint through `import/no-restricted-paths`.
+
+Current guarded rules:
+
+- `src/domain` must not import `src/application`, `src/infrastructure`, `src/presentation`, or `src/framework`.
+- `src/application` must not import `src/infrastructure`, `src/presentation`, or `src/framework`.
+- `src/domain` and `src/application` must stay independent from Expo, React Native, navigation, HTTP, storage, and presentation details.
+
+If a ticket requires changing these boundaries, stop and ask the team before editing code.
+
+## Design Source
+
+The shared product design reference lives outside the client repo at `../design/`.
+
+Current assets include:
+
+- `../design/logo.svg`
+- `../design/logo.png`
+- `../design/mockup/Section 1.png`
+
+These files define the FlechaGo visual direction: mobile-first layout, blue/lavender palette, Outfit typography, soft card surfaces, and game-board neon accents. UI tickets should use this folder as the design source of truth, but domain/application code must never depend on design assets.
+
 ## CI/CD
 
-Pull requests run lint, typecheck, and tests through GitHub Actions.
+Pull requests run install, lint, typecheck, and tests with coverage through GitHub Actions.
 
 ## Contributing
 

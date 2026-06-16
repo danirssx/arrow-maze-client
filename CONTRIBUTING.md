@@ -48,7 +48,7 @@ fixing stuff
 
 1. Create a ticket-specific branch from `develop`.
 2. Implement only the approved ticket scope.
-3. Run lint, typecheck, and tests locally.
+3. Run lint, typecheck, and tests with coverage locally.
 4. Update `ai-log/` for significant AI-assisted work.
 5. Open a PR against `develop`.
 6. Require at least one reviewer and passing CI.
@@ -59,6 +59,23 @@ Release PRs from `develop` to `main` are created only by humans after the milest
 ## Code Review Guidelines
 
 Reviewers must verify Clean Architecture boundaries, SOLID risks, test quality, AI usage logs, and Conventional Commits.
+
+## Architecture Guardrails
+
+Client architecture boundaries are enforced by ESLint.
+
+- Domain cannot depend on application, infrastructure, presentation, or framework.
+- Application cannot depend on infrastructure, presentation, or framework.
+- Domain and application cannot import Expo, React Native, navigation, storage, HTTP, or UI implementation details.
+- Design assets from `../design/` are presentation references only; they must not be imported by domain or application code.
+
+Run this before opening a PR:
+
+```bash
+npm run verify
+```
+
+If `npm run lint` reports `import/no-restricted-paths`, treat it as an architecture bug, not a style warning.
 
 ## Testing Guidelines
 
