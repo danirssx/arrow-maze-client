@@ -67,7 +67,8 @@ Client architecture boundaries are enforced by ESLint.
 - Domain cannot depend on application, infrastructure, presentation, or framework.
 - Application cannot depend on infrastructure, presentation, or framework.
 - Domain and application cannot import Expo, React Native, navigation, storage, HTTP, or UI implementation details.
-- Design assets from `../design/` are presentation references only; they must not be imported by domain or application code.
+- Design assets from `design/` are presentation references only; they must not be imported by domain or application code.
+- Runtime image/font assets used by screens should live in `src/assets/`; use `public/` only for web-only static files.
 
 Run this before opening a PR:
 

@@ -5,13 +5,31 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        maze: {
-          ink: "#211A12",
-          parchment: "#F7F0DF",
-          sand: "#E8D7B8",
-          moss: "#647A4D",
-          ember: "#D46A35",
-          slate: "#2C3A3A"
+        primary: {
+          900: "#3744D9",
+          700: "#5262FB",
+          500: "#6B78FF",
+          300: "#9DA6FB",
+          100: "#DDE2FF"
+        },
+        background: {
+          DEFAULT: "#F4F5FF",
+          soft: "#E9EBFA",
+          card: "#FFFFFF"
+        },
+        text: {
+          primary: "#0F0F0F",
+          secondary: "#6B6F8A",
+          muted: "#A1A6C3",
+          inverse: "#FFFFFF"
+        },
+        border: {
+          soft: "#D6DAF5"
+        },
+        reward: {
+          gold: "#FFC83D",
+          orange: "#F6A700",
+          green: "#56D879"
         }
       }
     }
