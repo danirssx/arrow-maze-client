@@ -17,6 +17,37 @@ Raw entries live in `ai-log/` and are compiled into this section before delivery
 
 ---
 
+# AI Usage Log: MAZ-123 Expo SDK 54 Upgrade
+
+## Task / Problem
+
+Resolve the Expo Go incompatibility reported in `MAZ-123` by upgrading the mobile client from Expo SDK 53 to SDK 54.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked Codex to resolve Linear issue `MAZ-123`, where Expo Go could not run the app because the project used an incompatible SDK version.
+
+## Result Obtained
+
+Updated Expo and related native/runtime packages to SDK 54-compatible versions, including React Native 0.81.5, React 19.1.0, Expo Router 6, React Native Reanimated 4, and required peer dependencies for Expo Router and Reanimated.
+
+## Team Modifications Pending Human Review
+
+- Restart any running Expo CLI sessions before testing in Expo Go.
+- Confirm the app opens from a clean `npx expo start --clear` session on the target device.
+- Review the remaining moderate `npm audit` findings separately, because automatic force fixes may introduce unrelated dependency churn.
+
+## Lessons / Limitations
+
+Expo SDK upgrades must be validated with `expo-doctor`, not only by changing the `expo` package version. Expo Router and Reanimated require direct peer dependencies under SDK 54.
+
+
+---
+
 # AI Usage Log: Branch Workflow Setup
 
 ## Task / Problem
