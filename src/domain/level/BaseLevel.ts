@@ -3,6 +3,10 @@ import { BoardGraphBuilder } from "../board/BoardGraphBuilder";
 import { BoardGroup } from "../board/BoardGroup";
 import { CellFactory } from "../factory/CellFactory";
 import type { ICellFactory } from "../factory/ICellFactory";
+import { GameEventEmitter } from "../observer/GameEventEmitter";
+import type { IGameObserver } from "../observer/IGameObserver";
+import type { IObservable } from "../observer/IObservable";
+import { CellEscapedEvent, LevelFinishedEvent, MoveExecutedEvent } from "../observer/GameEvent";
 import { CellType } from "../value-objects/CellType";
 import type { LevelTemplate } from "../value-objects/LevelTemplate";
 import type { Position } from "../value-objects/Position";
@@ -23,14 +27,20 @@ import { IllegalMoveError, InvalidLevelStartError, InvalidMoveCountError, Missin
  * persistence, or the backend. Movement is constrained exclusively by the
  * directed `BoardGraph`, so an unconnected destination fails in a controlled
  * way (`IllegalMoveError`).
+ *
+ * It is also the Observer-pattern subject for gameplay: observers register to
+ * receive domain events (`MoveExecuted`, `CellEscaped`, `LevelFinished`) without
+ * the level depending on UI or audio.
  */
-export abstract class BaseLevel {
+export abstract class BaseLevel implements IObservable {
   protected readonly board: BoardGroup;
   protected readonly graph: BoardGraph;
   protected readonly exitPosition: Position;
 
   private currentPosition: Position;
   private moveCount = 0;
+  private readonly events = new GameEventEmitter();
+  private finishedNotified = false;
 
   protected constructor(
     protected readonly template: LevelTemplate,
@@ -60,6 +70,16 @@ export abstract class BaseLevel {
     return this.moveCount;
   }
 
+  /** Observer pattern: subscribe an observer to this level's game events. */
+  register(observer: IGameObserver): void {
+    this.events.register(observer);
+  }
+
+  /** Observer pattern: unsubscribe a previously registered observer. */
+  unregister(observer: IGameObserver): void {
+    this.events.unregister(observer);
+  }
+
   /**
    * Move the player to an adjacent cell.
    *
@@ -73,9 +93,13 @@ export abstract class BaseLevel {
         `Illegal move from ${this.currentPosition.toKey()} to ${to.toKey()}: positions are not connected.`
       );
     }
+    const from = this.currentPosition;
     this.currentPosition = to;
     this.moveCount += 1;
     this.afterMove(to);
+
+    this.events.emit(new CellEscapedEvent(from));
+    this.events.emit(new MoveExecutedEvent(from, to, this.moveCount));
   }
 
   canMoveTo(to: Position): boolean {
@@ -98,6 +122,7 @@ export abstract class BaseLevel {
     }
     this.currentPosition = position;
     this.moveCount = moves;
+    this.finishedNotified = false;
   }
 
   /**
@@ -109,6 +134,15 @@ export abstract class BaseLevel {
    * specialize the protected hooks instead.
    */
   evaluate(): LevelResult {
+    const result = this.computeResult();
+    if (!result.isPlaying() && !this.finishedNotified) {
+      this.finishedNotified = true;
+      this.events.emit(new LevelFinishedEvent(result));
+    }
+    return result;
+  }
+
+  private computeResult(): LevelResult {
     const defeat = this.evaluateDefeat();
     if (defeat !== undefined) {
       return LevelResult.lost(defeat);
