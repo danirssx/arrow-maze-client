@@ -17,6 +17,36 @@ Raw entries live in `ai-log/` and are compiled into this section before delivery
 
 ---
 
+# AI Usage Log: AM-021 Game Lifecycle State Pattern
+
+## Task / Problem
+
+Resolve MAZ-92 / AM-021 by separating the domain gameplay lifecycle from future MVVM UI state using the approved State pattern.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked Codex to implement MAZ-92 while reviewing both repository `AGENTS.md` files, `MEMORY.md`, `Linear_MCP_Guideline.md`, AI usage logging, validation, memory/agent updates, commit, push, PR, and Linear update rules.
+
+## Result Obtained
+
+Added `GameContext`, `IGameState`, `BaseGameState`, `MenuState`, `PlayingState`, `PausedState`, `GameOverState`, `VictoryState`, `GamePhase`, and lifecycle state errors. `PausedState` rejects movement and `PlayingState` transitions to `VictoryState` or `GameOverState` based on `BaseLevel.evaluate()`.
+
+## Team Modifications Pending Human Review
+
+- Confirm whether a singleton-style `GameContext` provider should be introduced later at the application/framework wiring layer. This ticket intentionally avoids a domain global singleton.
+- Confirm whether terminal states should support restarting directly or leave restart orchestration to application use cases in AM-026.
+
+## Lessons / Limitations
+
+The State pattern belongs in domain because it protects lifecycle invariants such as "paused games cannot move." It remains separate from MVVM UI state; presentation should later map `GamePhase` through a ViewModel instead of using these classes directly.
+
+
+---
+
 # AI Usage Log: AM-019 Cell Factory and Decorators
 
 ## Task / Problem
