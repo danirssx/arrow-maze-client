@@ -17,6 +17,36 @@ Raw entries live in `ai-log/` and are compiled into this section before delivery
 
 ---
 
+# AI Usage Log: AM-022 Command History and Undo
+
+## Task / Problem
+
+Resolve MAZ-93 / AM-022 by implementing the approved Command pattern for reversible gameplay moves in the mobile domain engine.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked Codex to implement MAZ-93 while reviewing both repository `AGENTS.md` files, `MEMORY.md`, `Linear_MCP_Guideline.md`, AI usage logging, validation, memory/agent updates, commit, push, PR, and Linear update rules.
+
+## Result Obtained
+
+Added pure domain command components in `src/domain/command`: `ICommand`, `MoveCommand`, `CommandHistory`, and controlled command errors. Extended `BaseLevel` with graph-backed move checks/restoration and `GameContext` with snapshot/restore support so undo can restore position, move count, lifecycle phase, and result.
+
+## Team Modifications Pending Human Review
+
+- Confirm whether AM-026 should wrap `CommandHistory` inside `GameFacade` as session state or instantiate it per active level.
+- Confirm whether future collectable effects need command-specific effect snapshots when AM-024 scoring/AM-026 gameplay orchestration expands beyond position and lifecycle state.
+
+## Lessons / Limitations
+
+Undo belongs in the domain command layer because it must protect movement invariants and replay/rollback deterministically. Presentation should trigger undo through future application use cases, not by mutating `BaseLevel` or `GameContext` directly.
+
+
+---
+
 # AI Usage Log: AM-021 Game Lifecycle State Pattern
 
 ## Task / Problem
