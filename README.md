@@ -84,15 +84,18 @@ If a ticket requires changing these boundaries, stop and ask the team before edi
 
 ## Design Source
 
-The shared product design reference lives outside the client repo at `../design/`.
+The shared product design reference lives in `design/`.
 
 Current assets include:
 
-- `../design/logo.svg`
-- `../design/logo.png`
-- `../design/mockup/Section 1.png`
+- `design/logo.svg`
+- `design/logo.png`
+- `design/mockup/Section 1.png`
+- `design/README.md`
 
 These files define the FlechaGo visual direction: mobile-first layout, blue/lavender palette, Outfit typography, soft card surfaces, and game-board neon accents. UI tickets should use this folder as the design source of truth, but domain/application code must never depend on design assets.
+
+Use `design/` for source references and mockups. Use `src/assets/` for runtime assets imported by Expo screens/components. Use `public/` only for future web-only static files that must be served by URL.
 
 ## CI/CD
 
