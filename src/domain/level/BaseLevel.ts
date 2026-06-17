@@ -8,7 +8,7 @@ import type { LevelTemplate } from "../value-objects/LevelTemplate";
 import type { Position } from "../value-objects/Position";
 import type { DefeatReason } from "./LevelResult";
 import { LevelResult } from "./LevelResult";
-import { IllegalMoveError, InvalidLevelStartError, MissingExitError } from "./errors";
+import { IllegalMoveError, InvalidLevelStartError, InvalidMoveCountError, MissingExitError } from "./errors";
 
 /**
  * Template Method pattern — abstract level lifecycle.
@@ -76,6 +76,28 @@ export abstract class BaseLevel {
     this.currentPosition = to;
     this.moveCount += 1;
     this.afterMove(to);
+  }
+
+  canMoveTo(to: Position): boolean {
+    return this.graph.canMove(this.currentPosition, to);
+  }
+
+  /**
+   * Restore movement progress after a command undo.
+   *
+   * Only valid graph nodes and non-negative integer move counts can be
+   * restored, keeping command undo deterministic without exposing mutable
+   * internals directly.
+   */
+  restoreProgress(position: Position, moves: number): void {
+    if (!this.graph.hasNode(position)) {
+      throw new InvalidLevelStartError(`Cannot restore level ${this.template.id} to ${position.toKey()}.`);
+    }
+    if (!Number.isInteger(moves) || moves < 0) {
+      throw new InvalidMoveCountError(`Cannot restore level ${this.template.id} with move count ${moves}.`);
+    }
+    this.currentPosition = position;
+    this.moveCount = moves;
   }
 
   /**

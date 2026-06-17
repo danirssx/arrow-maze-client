@@ -8,5 +8,6 @@ export {
   IllegalMoveError,
   InvalidLevelStartError,
   MissingExitError,
-  InvalidTimeLimitError
+  InvalidTimeLimitError,
+  InvalidMoveCountError
 } from "./errors";

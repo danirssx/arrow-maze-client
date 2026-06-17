@@ -30,3 +30,11 @@ export class InvalidTimeLimitError extends DomainError {
     super(message);
   }
 }
+
+export class InvalidMoveCountError extends DomainError {
+  // Public constructor required because DomainError's base constructor is protected.
+  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
+  constructor(message: string) {
+    super(message);
+  }
+}

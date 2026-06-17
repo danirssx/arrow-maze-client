@@ -1,4 +1,5 @@
 export { GameContext } from "./GameContext";
+export type { GameContextSnapshot } from "./GameContext";
 export { GamePhase } from "./GamePhase";
 export type { IGameState } from "./IGameState";
 export { MenuState } from "./MenuState";

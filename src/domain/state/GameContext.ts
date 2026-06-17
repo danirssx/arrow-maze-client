@@ -1,10 +1,19 @@
 import type { BaseLevel } from "../level/BaseLevel";
 import { LevelResult } from "../level/LevelResult";
 import type { Position } from "../value-objects/Position";
-import type { GamePhase } from "./GamePhase";
+import { GamePhase } from "./GamePhase";
 import type { IGameState } from "./IGameState";
+import { GameOverState } from "./GameOverState";
 import { MenuState } from "./MenuState";
+import { PausedState } from "./PausedState";
+import { PlayingState } from "./PlayingState";
+import { VictoryState } from "./VictoryState";
 import { MissingActiveLevelError } from "./errors";
+
+export type GameContextSnapshot = {
+  readonly phase: GamePhase;
+  readonly result: LevelResult;
+};
 
 /**
  * State pattern — context.
@@ -68,5 +77,32 @@ export class GameContext {
 
   setResult(result: LevelResult): void {
     this.currentResult = result;
+  }
+
+  snapshot(): GameContextSnapshot {
+    return {
+      phase: this.phase,
+      result: this.currentResult
+    };
+  }
+
+  restore(snapshot: GameContextSnapshot): void {
+    this.currentState = GameContext.stateFromPhase(snapshot.phase);
+    this.currentResult = snapshot.result;
+  }
+
+  private static stateFromPhase(phase: GamePhase): IGameState {
+    switch (phase) {
+      case GamePhase.Menu:
+        return new MenuState();
+      case GamePhase.Playing:
+        return new PlayingState();
+      case GamePhase.Paused:
+        return new PausedState();
+      case GamePhase.GameOver:
+        return new GameOverState();
+      case GamePhase.Victory:
+        return new VictoryState();
+    }
   }
 }
