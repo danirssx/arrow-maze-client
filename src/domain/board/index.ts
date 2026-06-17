@@ -6,4 +6,7 @@ export { WallCell } from "./WallCell";
 export { EmptyCell } from "./EmptyCell";
 export { ExitCell } from "./ExitCell";
 export { BoardGroup } from "./BoardGroup";
-export { DuplicateCellError } from "./errors";
+export { BoardGraph } from "./BoardGraph";
+export { BoardGraphBuilder } from "./BoardGraphBuilder";
+export { PathfindingService } from "./PathfindingService";
+export { DuplicateCellError, PositionNotInGraphError } from "./errors";

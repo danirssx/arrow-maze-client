@@ -17,6 +17,38 @@ Raw entries live in `ai-log/` and are compiled into this section before delivery
 
 ---
 
+# AI Usage Log: AM-018 Directed Board Graph
+
+## Task / Problem
+
+Extend AM-018 / MAZ-89 after the planning update that added directed graph and pathfinding logic to the mobile board domain.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked Codex to update Linear tickets with the new board graph scope and then continue implementing MAZ-89.
+
+## Result Obtained
+
+Added pure domain graph components in `src/domain/board`: `BoardGraph`, `BoardGraphBuilder`, `PathfindingService`, and `PositionNotInGraphError`.
+
+Movement semantics implemented for AM-018: walls are excluded, exits are terminal, arrows create one directed edge, and empty cells connect to navigable cardinal neighbors.
+
+## Team Modifications Pending Human Review
+
+- Confirm whether future level templates will introduce an explicit `StartCell`; AM-018 currently receives start and exit positions as pathfinding inputs.
+- Confirm whether empty cells should remain four-directional or receive stricter movement rules in AM-020/AM-022.
+
+## Lessons / Limitations
+
+The graph belongs in `src/domain/board` because movement validity is a game-domain invariant. Application and presentation layers should consume graph-backed results through later builders/facades instead of inspecting graph internals directly.
+
+
+---
+
 # AI Usage Log: MAZ-123 Expo SDK 54 Upgrade
 
 ## Task / Problem
