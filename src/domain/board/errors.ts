@@ -9,3 +9,9 @@ export class DuplicateCellError extends DomainError {
     super(message);
   }
 }
+
+export class PositionNotInGraphError extends DomainError {
+  constructor(message: string) {
+    super(message);
+  }
+}
