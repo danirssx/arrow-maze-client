@@ -1,4 +1,5 @@
 import type { CellType } from "../value-objects/CellType";
+import type { Direction } from "../value-objects/Direction";
 import type { Position } from "../value-objects/Position";
 import type { ICell } from "./ICell";
 
@@ -27,6 +28,10 @@ export abstract class Cell implements ICell {
 
   toCells(): readonly ICell[] {
     return [this];
+  }
+
+  get direction(): Direction | undefined {
+    return undefined;
   }
 
   isExit(): boolean {
