@@ -1,4 +1,4 @@
-import { InvalidCellSpecError } from "./errors";
+import { InvalidDirectionError } from "./errors";
 
 /**
  * Direction value object (immutable).
@@ -27,7 +27,7 @@ export class Direction {
   static fromName(name: string): Direction {
     const match = Direction.all().find((direction) => direction.name === name);
     if (match === undefined) {
-      throw new InvalidCellSpecError(`Unknown direction: ${name}.`);
+      throw new InvalidDirectionError(`Unknown direction: ${name}.`);
     }
     return match;
   }

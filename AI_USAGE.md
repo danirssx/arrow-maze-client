@@ -1377,19 +1377,6 @@ Pre-checks: client and backend `AGENTS.md` reviewed, `MEMORY.md` reviewed,
 `Linear_MCP_Guideline.md` reviewed, and Linear MAZ-116 read before validation.
 Existing AM-031 observer contract and AM-044 facades were used as the boundary
 for the presentation layer.
-# AI Log - AM-046 - Implement mobile settings, i18n, audio and UX polish
-
-## Task / problem
-Complete the visible user experience: language switch (EN/ES), sound mute,
-friendly error messages with i18n, and loading/error/empty state components.
-
-## Tool and model
-Claude Code - claude-sonnet-4-6
-
-## Prompt used
-Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
-Existing i18n setup (i18n.ts, locales) and AppErrorBoundary studied.
-AM-042 files brought in from prior branch.
 
 ## Agent Roles Used
 
@@ -1447,55 +1434,6 @@ Closeout fixes before PR:
 ## Task / problem
 Complete the visible user experience: language switch (EN/ES), sound mute,
 friendly error messages with i18n, and loading/error/empty state components.
-| Spec Partner | Referenced | Spec from MAZ-117 guided in-scope items | MAZ-117 |
-| Planner/Slicer | Referenced | locales → ports → infra → components → tests | file list |
-| TDD Implementer | Referenced | Fake IAudioPlayer; @testing-library/react-native for SettingsScreen | test files |
-| Judge | Not used | No .agents/ directory configured | N/A |
-| Mutation Tester | Not used | No .agents/ directory configured | N/A |
-
-## Result obtained
-Created / updated:
-- `src/framework/i18n/locales/en.json` + `es.json` — added settings/errors/states keys
-- `src/application/ports/ISettingsRepository.ts` — { language, muted } port
-- `src/application/ports/IAudioPlayer.ts` — SoundKey + play port
-- `src/infrastructure/storage/SettingsRepository.ts` — Pattern: Adapter; persists via ILocalStorage
-- `src/infrastructure/audio/AudioFacade.ts` — Pattern: Facade, Singleton; mute blocks all play()
-- `src/infrastructure/audio/ExpoAudioAdapter.ts` — Pattern: Adapter; wraps expo-av
-- `src/presentation/components/LoadingState.tsx` — uses t('states.loading')
-- `src/presentation/components/ErrorState.tsx` — maps HttpError codes to translated messages
-- `src/presentation/components/EmptyState.tsx` — variants: default/progress/leaderboard
-- `src/presentation/screens/SettingsScreen.tsx` — language toggle + mute Switch
-- `src/framework/errors/AppErrorBoundary.tsx` — updated hardcoded string to i18n key
-- `tests/infrastructure/audio/AudioFacade.test.ts` — 5 tests (mute/unmute/singleton)
-- `tests/infrastructure/storage2/SettingsRepository.test.ts` — 3 tests
-- `tests/presentation/screens/SettingsScreen.test.tsx` — 5 tests (i18n + interactions)
-
-57 tests passing. typecheck clean. 0 lint errors.
-
-## Team modifications pending human review
-- ExpoAudioAdapter requires sound asset files in assets/sounds/ — not bundled here
-- SettingsScreen is a pure presentational component; a ViewModel/hook to wire
-  ISettingsRepository is needed before connecting to navigation
-- i18n.changeLanguage() is called imperatively in SettingsScreen; team may prefer
-  a context/provider approach for persistence across navigation
-
-## Lessons / limitations
-- DoD "no hardcoded visible strings without translation": AppErrorBoundary was the
-  only existing hardcoded string — replaced with i18n.t('errors.generic')
-- Acceptance criterion "mute enabled → no sound plays": verified by
-  should_not_play_sound_when_muted in AudioFacade.test.ts
-- Acceptance criterion "language changes to Spanish → text is translated": verified by
-  should_show_spanish_labels_when_language_is_es in SettingsScreen.test.tsx
-
-
----
-
-# AI Log - AM-047 - Complete mobile contract tests and release documentation
-
-## Task / problem
-Close client-backend compatibility with a complete contract test suite and
-provide release documentation so a new developer can run, test, and build
-the app from scratch.
 
 ## Tool and model
 Claude Code - claude-sonnet-4-6
@@ -1504,9 +1442,6 @@ Claude Code - claude-sonnet-4-6
 Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
 Existing i18n setup (i18n.ts, locales) and AppErrorBoundary studied.
 AM-042 files brought in from prior branch.
-AM-046 source files brought in from prior branch. Backend openApiSpec
-studied for all endpoint shapes. Existing README.md and CI workflow reviewed
-before updating to avoid duplication.
 
 ## Agent Roles Used
 
@@ -1515,9 +1450,6 @@ before updating to avoid duplication.
 | Spec Partner | Referenced | Spec from MAZ-117 guided in-scope items | MAZ-117 |
 | Planner/Slicer | Referenced | locales → ports → infra → components → tests | file list |
 | TDD Implementer | Referenced | Fake IAudioPlayer; @testing-library/react-native for SettingsScreen | test files |
-| Spec Partner | Referenced | Spec from MAZ-118 guided contract scope and README DoD | MAZ-118 |
-| Planner/Slicer | Referenced | contract tests → README → docs/RELEASE.md order | file list |
-| TDD Implementer | Referenced | Static fixtures, no real network calls | test files |
 | Judge | Not used | No .agents/ directory configured | N/A |
 | Mutation Tester | Not used | No .agents/ directory configured | N/A |
 
@@ -1573,6 +1505,19 @@ Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
 AM-046 source files brought in from prior branch. Backend openApiSpec
 studied for all endpoint shapes. Existing README.md and CI workflow reviewed
 before updating to avoid duplication.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec from MAZ-118 guided contract scope and README DoD | MAZ-118 |
+| Planner/Slicer | Referenced | contract tests → README → docs/RELEASE.md order | file list |
+| TDD Implementer | Referenced | Static fixtures, no real network calls | test files |
+| Judge | Not used | No .agents/ directory configured | N/A |
+| Mutation Tester | Not used | No .agents/ directory configured | N/A |
+
+## Result obtained
+Created / updated:
 - `tests/contract/levels.contract.test.ts` — 9 tests for GET /levels and GET /levels/:id
 - `tests/contract/auth.contract.test.ts` — 6 tests (LoginResponse, RegisterResponse)
 - `tests/contract/progress.contract.test.ts` — 5 tests (ProgressResponse + ProgressMapper)
@@ -1595,6 +1540,67 @@ before updating to avoid duplication.
 - DoD "docs align with actual commands": all commands verified against package.json
   scripts (start/android/ios/web/lint/typecheck/test/test:coverage/verify/build)
 - Contract tests make no real network calls — static fixtures only
+
+
+---
+
+# AI Usage Log: MAZ-131 Arrow Untangle Domain (ArrowEntity, BoardGroup, CollisionService)
+
+## Task / Problem
+
+Resolve `MAZ-131` (Refactor T2) of the Arrow Untangle pivot: replace the maze-navigation board domain with the untangle-puzzle engine foundation. Delete the cell/Composite/`BoardGraph`/`PathfindingService` model and add `ArrowEntity`, an occupancy-indexed `BoardGroup` (`Map<coordKey, Set<arrowId>>`), and a `CollisionService` that decides extraction via a directional raycast on an unbounded board. This is the base ticket; the rest of the engine (T3-T7) migrates on top of it.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user approved the sealed refactor spec (`Refactor_Arrow_Untangle_Tickets.md`, `Mecanica_Juego_Arrow_Untangle.md`), chose a big-bang sequencing strategy, and asked to implement `MAZ-131` while following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket state, AI usage logging, validation, MEMORY/AGENTS update checks, commit/push/PR, and Linear updates.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Used | Ran a full grill-me spec session that sealed the mechanic (Model B raycast, unbounded canvas, overlaps, win/no-loss, attempts/defeat, DAG solvability) into the refactor docs before any code. | `Refactor_Arrow_Untangle_Tickets.md`, `Mecanica_Juego_Arrow_Untangle.md`, MAZ-131 |
+| Planner/Slicer | Used | Sliced the refactor into MAZ-130..137 with coverage mapping to the superseded AM tickets and blocking edges. | MAZ-130..137, §3 of the tickets doc |
+| TDD Implementer | Used | Wrote domain tests (AAA, `should_*_when_*`) for `ArrowSpec`, `BoundingBox`, `ArrowEntity`, `BoardGroup`, `CollisionService`, and negative-`Position`, then implemented to green. | `tests/domain/board/*`, `tests/domain/value-objects/*`, this branch |
+| Judge | Referenced | Pre-PR self-audit against `AGENTS.md` layer boundaries (no RN/Expo/HTTP in domain), scoped eslint, and a grep confirming no dangling references to deleted modules in the touched layer. | scoped `eslint` (exit 0), `grep` clean |
+| Mutation Tester | Not used | StrykerJS is not configured in this repo. | N/A |
+
+## Result Obtained
+
+Deleted the maze-navigation engine in the board + value-objects layer:
+- `src/domain/board/{ICell,IBoardComponent,Cell,ArrowCell,WallCell,EmptyCell,ExitCell,BoardGraph,BoardGraphBuilder,PathfindingService}.ts`
+- `src/domain/value-objects/{CellSpec,CellType,LevelTemplate}.ts`
+- `src/domain/factory/*` and `src/domain/decorators/*`
+- Dead tests: old `board/{BoardGraph,BoardGroup}.test.ts`, `value-objects/{CellSpec,LevelTemplate}.test.ts`, `tests/domain/cells/*`
+
+Added the untangle domain:
+- `value-objects/ArrowSpec` (immutable; validates orthogonal connectivity, no self-intersection, head not pointing back into its own body).
+- `value-objects/BoundingBox` (camera framing only; never used by rules).
+- `board/ArrowEntity` (entity with `active`/`extracted` reversible state).
+- `board/BoardGroup` (occupancy index `Map<coordKey, Set<arrowId>>`; overlaps allowed; queries filter by `isActive` so removal = state flip).
+- `board/CollisionService.canExtract` (unbounded directional raycast; own body transparent; any other active arrow strictly ahead on the head's axis blocks).
+- `Position` now allows negative integer coordinates; `Direction.fromName` throws the new `InvalidDirectionError`.
+- Updated `board/errors.ts` (`DuplicateArrowError`, `ArrowNotFoundError`), `value-objects/errors.ts` (added `InvalidDirectionError`, `InvalidArrowSpecError`, `InvalidBoundingBoxError`; removed cell/template errors), and both barrels.
+
+## Verification
+
+- `npx jest tests/domain/board tests/domain/value-objects` → 8 suites, 38 tests passing.
+- `npx eslint src/domain/board src/domain/value-objects tests/domain/board tests/domain/value-objects` → exit 0 (clean).
+- `grep` for deleted-module references inside the touched layer → clean.
+- NOTE: full `npm run verify` is **intentionally red** under the approved big-bang strategy, because consumers (`level`/`state`/`command`/`scoring`/`application`/`presentation`) still reference the deleted engine until tickets T3-T7 migrate them. This PR is a Draft and must not merge to `develop` until the refactor chain is green.
+
+## Team Modifications Pending Human Review
+
+- Confirm the big-bang sequencing: T3 (`MAZ-132`), T4 (`MAZ-133`), T6 (`MAZ-135`), T7 (`MAZ-136`) must migrate consumers off the deleted engine before `develop` can go green; PRs stay Draft until then.
+- `docs/design-patterns.md` and `docs/architecture.md` still describe the removed Composite/Graph/Pathfinding patterns; they must be revised once the chain lands (out of T2 scope).
+- Confirm `attempts`/scoring/level-build contracts as their tickets (T1/T4/T5) consume the new `ArrowSpec`/`LevelDefinition`.
+
+## Lessons / Limitations
+
+Modeling arrow removal as an `ArrowEntity` state flip (instead of mutating the occupancy index) keeps `CollisionService` and future undo trivial: the index is built once and queries filter by `isActive`. On an unbounded board the raycast is tested against the finite set of other active cells (no edge to walk to). The big-bang approach trades a temporarily red tree for a direct path to the target engine, validated layer-by-layer in isolation.
 
 
 ---
@@ -1625,36 +1631,6 @@ The user asked to verify the M4 milestone port connections and implement the fro
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
-| Spec Partner | Referenced | Spec from MAZ-118 guided contract scope and README DoD | MAZ-118 |
-| Planner/Slicer | Referenced | contract tests → README → docs/RELEASE.md order | file list |
-| TDD Implementer | Referenced | Static fixtures, no real network calls | test files |
-| Judge | Not used | No .agents/ directory configured | N/A |
-| Mutation Tester | Not used | No .agents/ directory configured | N/A |
-
-## Result obtained
-Created / updated:
-- `tests/contract/levels.contract.test.ts` — 9 tests for GET /levels and GET /levels/:id
-- `tests/contract/auth.contract.test.ts` — 6 tests (LoginResponse, RegisterResponse)
-- `tests/contract/progress.contract.test.ts` — 5 tests (ProgressResponse + ProgressMapper)
-- `tests/contract/leaderboard.contract.test.ts` — 4 tests (LeaderboardResponse)
-- `README.md` — added Prerequisites, env vars, detailed quality/build commands,
-  link to RELEASE.md
-- `docs/RELEASE.md` — full release guide: Expo Go, EAS preview/production,
-  web build, CI, contract test run command, versioning, screenshots placeholder
-- `docs/screenshots/.gitkeep` — placeholder for AM-048 screenshots
-
-68 tests passing. typecheck clean. 0 lint errors.
-
-## Team modifications pending human review
-- GET /levels and GET /levels/:id contract fixtures are based on domain model
-  (LevelDto shape); must be reconciled with actual backend spec when AM-013 lands
-- `eas.json` not created — EAS profile setup requires team EAS account credentials
-- Screenshots placeholder in docs/screenshots/ to be filled after AM-048 UI polish
-
-## Lessons / limitations
-- DoD "docs align with actual commands": all commands verified against package.json
-  scripts (start/android/ios/web/lint/typecheck/test/test:coverage/verify/build)
-- Contract tests make no real network calls — static fixtures only
 | Spec Partner | Referenced | Used the backend change description as the accepted spec and kept scope limited to the mobile integration contract. | User-provided Fix #8; backend `LeaderboardController`/routes inspection. |
 | Planner/Slicer | Referenced | Mapped the fix to application port, facade, repository, and contract-test updates without touching domain/gameplay. | `ILeaderboardRepository`, `LeaderboardFacade`, `HttpLeaderboardRepository`, contract tests. |
 | TDD Implementer | Referenced | Updated tests around expected behavior first, then adjusted the port/repository implementation to pass them. | Leaderboard facade, repository, and contract tests. |

@@ -4,10 +4,11 @@ import { InvalidPositionError } from "./errors";
 /**
  * Position value object (immutable).
  *
- * A board coordinate as non-negative integer `row`/`col`. Construction is
- * validated through `Position.of`, so an out-of-range or non-integer coordinate
- * fails in a controlled way (`InvalidPositionError`). Translating past the
- * board origin (negative result) fails the same way.
+ * A lattice coordinate as integer `row`/`col` on an UNBOUNDED board: negative
+ * coordinates are valid because the untangle board has no fixed origin or edges.
+ * Construction is validated through `Position.of`, so a non-integer coordinate
+ * fails in a controlled way (`InvalidPositionError`). `translate` may cross into
+ * negative space.
  */
 export class Position {
   private constructor(
@@ -18,9 +19,6 @@ export class Position {
   static of(row: number, col: number): Position {
     if (!Number.isInteger(row) || !Number.isInteger(col)) {
       throw new InvalidPositionError(`Position coordinates must be integers, received (${row}, ${col}).`);
-    }
-    if (row < 0 || col < 0) {
-      throw new InvalidPositionError(`Position coordinates must be non-negative, received (${row}, ${col}).`);
     }
     return new Position(row, col);
   }
