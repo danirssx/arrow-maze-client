@@ -8,8 +8,12 @@ const LEADERBOARD: Leaderboard = {
 
 class FakeLeaderboardRepo implements ILeaderboardRepository {
   submitted: SubmitScoreInput | null = null;
+  submittedAccessToken: string | null = null;
   async getTopScores(_levelId: string): Promise<Leaderboard> { return LEADERBOARD; }
-  async submitScore(input: SubmitScoreInput): Promise<void> { this.submitted = input; }
+  async submitScore(input: SubmitScoreInput, accessToken: string): Promise<void> {
+    this.submitted = input;
+    this.submittedAccessToken = accessToken;
+  }
 }
 
 describe('LeaderboardFacade', () => {
@@ -29,11 +33,13 @@ describe('LeaderboardFacade', () => {
 
   it('should_delegate_submit_score_to_repository', async () => {
     const input: SubmitScoreInput = {
-      leaderboardId: 'lb-1', entryId: 'e-2', userId: 'user-1',
+      leaderboardId: 'lb-1', entryId: 'e-2',
       levelId: 'level-001', usernameSnapshot: 'player',
       score: 800, timeSeconds: 60, movesCount: 20,
     };
-    await facade.submitScore(input);
+    await facade.submitScore(input, 'jwt-token-1');
     expect(repo.submitted?.score).toBe(800);
+    expect(repo.submitted).not.toHaveProperty('userId');
+    expect(repo.submittedAccessToken).toBe('jwt-token-1');
   });
 });
