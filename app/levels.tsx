@@ -1,8 +1,13 @@
 import { useMemo } from "react";
-import { useRouter } from "expo-router";
+import { type Href, useRouter } from "expo-router";
 
 import { LevelSelectScreen } from "@/presentation/screens/LevelSelectScreen";
 import { LevelSelectViewModel } from "@/presentation/view-models/LevelSelectViewModel";
+
+const getGameRoute = (levelId: string): Href => ({
+  pathname: "/game",
+  params: { levelId },
+} as unknown as Href);
 
 export default function LevelsRoute() {
   const router = useRouter();
@@ -11,7 +16,7 @@ export default function LevelsRoute() {
   return (
     <LevelSelectScreen
       levels={viewModel.getLevels()}
-      onSelect={(levelId) => router.push({ pathname: "/game", params: { levelId } })}
+      onSelect={(levelId) => router.push(getGameRoute(levelId))}
       onBack={() => router.back()}
     />
   );

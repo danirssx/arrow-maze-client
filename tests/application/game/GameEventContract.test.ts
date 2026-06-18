@@ -1,7 +1,10 @@
 import { GameFacade, GameplayStateError } from "@/application/facades";
-import { InvalidLevelDefinitionError, TutorialLevelStrategy } from "@/application/level-build";
-import type { LevelDefinition } from "@/application/level-build";
-import { LevelKind } from "@/application/level-build";
+import {
+  InvalidLevelDefinitionError,
+  LevelKind,
+  TutorialLevelStrategy,
+  type LevelDefinition
+} from "@/application/level-build";
 import {
   GameEventBridge,
   GameEventType,
