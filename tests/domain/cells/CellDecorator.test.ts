@@ -1,6 +1,7 @@
-import { ArrowCell, BoardGroup, EmptyCell } from "@/domain/board";
+import { ArrowCell, BoardGroup, EmptyCell, ExitCell } from "@/domain/board";
 import { CollectableCellDecorator, LockedCellDecorator } from "@/domain/decorators";
 import { BoardGraphBuilder } from "@/domain/board/BoardGraphBuilder";
+import { CellType } from "@/domain/value-objects/CellType";
 import { Direction } from "@/domain/value-objects/Direction";
 import { Position } from "@/domain/value-objects/Position";
 
@@ -9,11 +10,20 @@ describe("Cell decorators", () => {
     const cell = new CollectableCellDecorator(new ArrowCell(Position.of(0, 0), Direction.Right), "coin-1");
 
     expect(cell.position.equals(Position.of(0, 0))).toBe(true);
+    expect(cell.type).toBe(CellType.Arrow);
     expect(cell.direction).toBe(Direction.Right);
     expect(cell.size).toBe(1);
     expect(cell.find(Position.of(0, 0))).toBe(cell);
     expect(cell.find(Position.of(1, 1))).toBeUndefined();
     expect(cell.toCells()).toEqual([cell]);
+    expect(cell.unwrap()).toBeInstanceOf(ArrowCell);
+  });
+
+  it("should_delegate_exit_behavior_when_base_decorator_wraps_exit_cell", () => {
+    const cell = new CollectableCellDecorator(new ExitCell(Position.of(0, 0)), "trophy-1");
+
+    expect(cell.isExit()).toBe(true);
+    expect(cell.isBlocking()).toBe(false);
   });
 
   it("should_block_movement_when_locked_decorator_wraps_walkable_cell", () => {

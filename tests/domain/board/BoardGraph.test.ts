@@ -72,6 +72,44 @@ describe("BoardGraph", () => {
 
     expect(() => graph.addEdge(Position.of(0, 0), Position.of(0, 1))).toThrow(PositionNotInGraphError);
   });
+
+  it("should_fail_in_controlled_way_when_edge_starts_from_unknown_node", () => {
+    const graph = new BoardGraph().addNode(Position.of(0, 1));
+
+    expect(() => graph.addEdge(Position.of(0, 0), Position.of(0, 1))).toThrow(PositionNotInGraphError);
+  });
+
+  it("should_ignore_duplicate_nodes_and_edges_when_graph_is_built_incrementally", () => {
+    const graph = new BoardGraph()
+      .addNode(Position.of(0, 0))
+      .addNode(Position.of(0, 0))
+      .addNode(Position.of(0, 1))
+      .addEdge(Position.of(0, 0), Position.of(0, 1))
+      .addEdge(Position.of(0, 0), Position.of(0, 1));
+
+    expect(graph.nodeCount).toBe(2);
+    expect(graph.edgeCount).toBe(1);
+  });
+
+  it("should_return_defensive_neighbor_copy_when_neighbors_are_requested", () => {
+    const graph = new BoardGraph()
+      .addNode(Position.of(0, 0))
+      .addNode(Position.of(0, 1))
+      .addNode(Position.of(0, 2))
+      .addEdge(Position.of(0, 0), Position.of(0, 1));
+    const neighbors = graph.neighborsOf(Position.of(0, 0)) as Position[];
+
+    neighbors.push(Position.of(0, 2));
+
+    expect(graph.canMove(Position.of(0, 0), Position.of(0, 2))).toBe(false);
+    expect(graph.edgeCount).toBe(1);
+  });
+
+  it("should_return_empty_neighbors_when_position_is_not_part_of_graph", () => {
+    const graph = new BoardGraph().addNode(Position.of(0, 0));
+
+    expect(graph.neighborsOf(Position.of(1, 1))).toEqual([]);
+  });
 });
 
 describe("PathfindingService", () => {
@@ -94,5 +132,22 @@ describe("PathfindingService", () => {
 
     expect(service.existsPath(graph, Position.of(0, 0), Position.of(1, 1))).toBe(false);
     expect(service.calculateOptimalMoves(graph, Position.of(0, 0), Position.of(1, 1))).toBeUndefined();
+  });
+
+  it("should_return_zero_optimal_moves_when_start_is_already_exit", () => {
+    const graph = new BoardGraph().addNode(Position.of(0, 0));
+    const service = new PathfindingService();
+
+    expect(service.existsPath(graph, Position.of(0, 0), Position.of(0, 0))).toBe(true);
+    expect(service.shortestPath(graph, Position.of(0, 0), Position.of(0, 0))).toEqual([Position.of(0, 0)]);
+    expect(service.calculateOptimalMoves(graph, Position.of(0, 0), Position.of(0, 0))).toBe(0);
+  });
+
+  it("should_return_undefined_when_start_or_exit_is_missing_from_graph", () => {
+    const graph = new BoardGraph().addNode(Position.of(0, 0));
+    const service = new PathfindingService();
+
+    expect(service.shortestPath(graph, Position.of(9, 9), Position.of(0, 0))).toBeUndefined();
+    expect(service.shortestPath(graph, Position.of(0, 0), Position.of(9, 9))).toBeUndefined();
   });
 });
