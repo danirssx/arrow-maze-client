@@ -1,7 +1,7 @@
 export type { ILevelBuilder } from "./ILevelBuilder";
 export type { ILevelStrategy } from "./ILevelStrategy";
 export type { LevelDefinition } from "./LevelDefinition";
-export { LevelKind } from "./LevelDefinition";
+export { LevelKind, DEFAULT_ATTEMPTS } from "./LevelDefinition";
 export type { BuiltLevel } from "./BuiltLevel";
 export { ConcreteLevelBuilder } from "./ConcreteLevelBuilder";
 export { LevelDirector } from "./LevelDirector";

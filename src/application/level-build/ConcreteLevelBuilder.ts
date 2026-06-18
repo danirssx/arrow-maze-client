@@ -1,68 +1,54 @@
-import { BoardGraphBuilder } from "../../domain/board/BoardGraphBuilder";
+import { ArrowEntity } from "../../domain/board/ArrowEntity";
 import { BoardGroup } from "../../domain/board/BoardGroup";
-import { PathfindingService } from "../../domain/board/PathfindingService";
-import { CellFactory } from "../../domain/factory/CellFactory";
-import type { ICellFactory } from "../../domain/factory/ICellFactory";
 import type { BaseLevel } from "../../domain/level/BaseLevel";
 import { NormalLevel } from "../../domain/level/NormalLevel";
 import { TimedLevel } from "../../domain/level/TimedLevel";
-import { CellType } from "../../domain/value-objects/CellType";
-import type { LevelTemplate } from "../../domain/value-objects/LevelTemplate";
-import type { Position } from "../../domain/value-objects/Position";
+import type { ArrowSpec } from "../../domain/value-objects/ArrowSpec";
 import type { BuiltLevel } from "./BuiltLevel";
 import type { ILevelBuilder } from "./ILevelBuilder";
-import { LevelKind } from "./LevelDefinition";
-import { InvalidLevelDefinitionError, LevelBuildStateError, UnsolvableLevelError } from "./errors";
-
-type LevelBuilderDependencies = {
-  factory?: ICellFactory;
-  graphBuilder?: BoardGraphBuilder;
-  pathfinding?: PathfindingService;
-};
+import { DEFAULT_ATTEMPTS, LevelKind } from "./LevelDefinition";
+import { InvalidLevelDefinitionError, LevelBuildStateError } from "./errors";
 
 /**
- * Builder pattern — concrete level builder.
+ * Builder pattern — concrete level builder (untangle puzzle).
  *
- * Accumulates the parts of a level and, on `build()`, rebuilds the board graph
- * (Factory Method + Composite + Graph patterns) to validate solvability with
- * `PathfindingService` before instantiating the concrete `BaseLevel`. Domain
- * construction errors are pre-empted by explicit application-level validation,
- * so callers only ever see controlled `ApplicationError`s.
+ * Accumulates the parts of a level and, on `build()`, instantiates each arrow as
+ * an `ArrowEntity`, registers them in a `BoardGroup` (occupancy index), and
+ * constructs the concrete `BaseLevel` with its attempts budget. Structural
+ * problems are surfaced as controlled `ApplicationError`s. Solvability is NOT
+ * checked here — the backend guarantees it at publish time (cycle/DAG check).
  *
- * Application layer: depends only on domain abstractions and concrete domain
- * classes. It never imports React, Expo, HTTP, or storage.
+ * Application layer: depends only on domain classes; never imports React, Expo,
+ * HTTP, or storage.
  */
 export class ConcreteLevelBuilder implements ILevelBuilder {
-  private readonly factory: ICellFactory;
-  private readonly graphBuilder: BoardGraphBuilder;
-  private readonly pathfinding: PathfindingService;
-
-  private template: LevelTemplate | undefined;
-  private start: Position | undefined;
+  private id: string | undefined;
+  private arrows: readonly ArrowSpec[] | undefined;
+  private attempts: number | undefined;
   private kind: LevelKind = LevelKind.Normal;
   private timeLimitSeconds: number | undefined;
 
-  constructor(dependencies: LevelBuilderDependencies = {}) {
-    this.factory = dependencies.factory ?? new CellFactory();
-    this.graphBuilder = dependencies.graphBuilder ?? new BoardGraphBuilder();
-    this.pathfinding = dependencies.pathfinding ?? new PathfindingService();
-  }
-
   reset(): this {
-    this.template = undefined;
-    this.start = undefined;
+    this.id = undefined;
+    this.arrows = undefined;
+    this.attempts = undefined;
     this.kind = LevelKind.Normal;
     this.timeLimitSeconds = undefined;
     return this;
   }
 
-  useTemplate(template: LevelTemplate): this {
-    this.template = template;
+  withId(id: string): this {
+    this.id = id;
     return this;
   }
 
-  startingAt(start: Position): this {
-    this.start = start;
+  withArrows(arrows: readonly ArrowSpec[]): this {
+    this.arrows = arrows;
+    return this;
+  }
+
+  withAttempts(attempts: number): this {
+    this.attempts = attempts;
     return this;
   }
 
@@ -79,61 +65,51 @@ export class ConcreteLevelBuilder implements ILevelBuilder {
   }
 
   build(): BuiltLevel {
-    const template = this.requireTemplate();
-    const start = this.requireStart();
+    const id = this.requireId();
+    const arrows = this.requireArrows();
 
-    const board = new BoardGroup(template.cells.map((spec) => this.factory.create(spec)));
-    const graph = this.graphBuilder.build(board, template.rows, template.cols);
-
-    if (!graph.hasNode(start)) {
-      throw new InvalidLevelDefinitionError(
-        `Start position ${start.toKey()} is not a navigable cell in level ${template.id}.`
-      );
+    if (arrows.length === 0) {
+      throw new InvalidLevelDefinitionError(`Level ${id} must define at least one arrow.`);
     }
 
-    const exit = this.resolveExit(template);
-    const optimalMoves = this.pathfinding.calculateOptimalMoves(graph, start, exit);
-    if (optimalMoves === undefined) {
-      throw new UnsolvableLevelError(
-        `Level ${template.id} has no path from ${start.toKey()} to exit ${exit.toKey()}.`
-      );
+    const ids = new Set<string>();
+    for (const arrow of arrows) {
+      if (ids.has(arrow.id)) {
+        throw new InvalidLevelDefinitionError(`Level ${id} has a duplicate arrow id "${arrow.id}".`);
+      }
+      ids.add(arrow.id);
     }
 
-    const level = this.instantiateLevel(template, start);
-    return { level, optimalMoves };
+    const attempts = this.attempts ?? DEFAULT_ATTEMPTS;
+    if (!Number.isInteger(attempts) || attempts <= 0) {
+      throw new InvalidLevelDefinitionError(`Level ${id} requires a positive integer attempts budget.`);
+    }
+
+    const board = new BoardGroup(arrows.map((spec) => new ArrowEntity(spec)));
+    return { level: this.instantiate(id, board, attempts) };
   }
 
-  private instantiateLevel(template: LevelTemplate, start: Position): BaseLevel {
+  private instantiate(id: string, board: BoardGroup, attempts: number): BaseLevel {
     if (this.kind === LevelKind.Timed) {
       if (this.timeLimitSeconds === undefined || this.timeLimitSeconds <= 0) {
-        throw new InvalidLevelDefinitionError(
-          `Timed level ${template.id} requires a positive time limit in seconds.`
-        );
+        throw new InvalidLevelDefinitionError(`Timed level ${id} requires a positive time limit in seconds.`);
       }
-      return new TimedLevel(template, start, this.timeLimitSeconds);
+      return new TimedLevel(id, board, attempts, this.timeLimitSeconds);
     }
-    return new NormalLevel(template, start);
+    return new NormalLevel(id, board, attempts);
   }
 
-  private resolveExit(template: LevelTemplate): Position {
-    const exit = template.cells.find((spec) => spec.type === CellType.Exit);
-    if (exit === undefined) {
-      throw new InvalidLevelDefinitionError(`Level ${template.id} has no exit cell.`);
+  private requireId(): string {
+    if (this.id === undefined) {
+      throw new LevelBuildStateError("Cannot build a level before an id is set.");
     }
-    return exit.position;
+    return this.id;
   }
 
-  private requireTemplate(): LevelTemplate {
-    if (this.template === undefined) {
-      throw new LevelBuildStateError("Cannot build a level before a template is set.");
+  private requireArrows(): readonly ArrowSpec[] {
+    if (this.arrows === undefined) {
+      throw new LevelBuildStateError("Cannot build a level before arrows are set.");
     }
-    return this.template;
-  }
-
-  private requireStart(): Position {
-    if (this.start === undefined) {
-      throw new LevelBuildStateError("Cannot build a level before a start position is set.");
-    }
-    return this.start;
+    return this.arrows;
   }
 }

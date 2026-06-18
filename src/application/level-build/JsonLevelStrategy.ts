@@ -1,8 +1,6 @@
-import { CellSpec } from "../../domain/value-objects/CellSpec";
-import { CellType } from "../../domain/value-objects/CellType";
+import { ArrowSpec } from "../../domain/value-objects/ArrowSpec";
 import { Difficulty } from "../../domain/value-objects/Difficulty";
 import { Direction } from "../../domain/value-objects/Direction";
-import { LevelTemplate } from "../../domain/value-objects/LevelTemplate";
 import { Position } from "../../domain/value-objects/Position";
 import type { LevelDefinition } from "./LevelDefinition";
 import { LevelKind } from "./LevelDefinition";
@@ -12,16 +10,13 @@ import { InvalidLevelDefinitionError } from "./errors";
 type JsonRecord = Record<string, unknown>;
 
 /**
- * Strategy pattern — JSON/API level source.
+ * Strategy pattern — JSON/API level source (untangle puzzle).
  *
- * Parses a raw JSON document (from a bundled asset or an API payload) into a
- * validated `LevelDefinition`. All parsing and shape validation happen here, and
- * any malformed input — bad JSON, missing fields, unknown cell type/direction,
- * out-of-board cells — is surfaced as a controlled `InvalidLevelDefinitionError`
- * rather than a raw parser or domain error.
- *
- * It performs no I/O itself; the caller supplies the already-fetched JSON text,
- * keeping the HTTP adapter out of scope and the application layer transport-free.
+ * Parses a raw JSON document into a validated `LevelDefinition` of arrows. All
+ * parsing and shape validation happen here; malformed input — bad JSON, missing
+ * fields, unknown direction/difficulty/kind, or an invalid arrow path — is
+ * surfaced as a controlled `InvalidLevelDefinitionError` rather than a raw parser
+ * or domain error. It performs no I/O; the caller supplies the fetched text.
  */
 export class JsonLevelStrategy implements ILevelStrategy {
   constructor(private readonly source: string) {}
@@ -45,44 +40,38 @@ export class JsonLevelStrategy implements ILevelStrategy {
   }
 
   private static mapDefinition(raw: JsonRecord): LevelDefinition {
-    const rows = JsonLevelStrategy.asInteger(raw.rows, "rows");
-    const cols = JsonLevelStrategy.asInteger(raw.cols, "cols");
-    const template = LevelTemplate.create({
-      id: JsonLevelStrategy.asString(raw.id, "id"),
-      rows,
-      cols,
-      difficulty: JsonLevelStrategy.asDifficulty(raw.difficulty),
-      cells: JsonLevelStrategy.asArray(raw.cells, "cells").map((cell, index) =>
-        JsonLevelStrategy.mapCell(JsonLevelStrategy.asRecord(cell, `cells[${index}]`))
-      )
-    });
-
-    const start = JsonLevelStrategy.asRecord(raw.start, "start");
     const kind = JsonLevelStrategy.asKind(raw.kind);
+    const arrows = JsonLevelStrategy.asArray(raw.arrows, "arrows").map((arrow, index) =>
+      JsonLevelStrategy.mapArrow(JsonLevelStrategy.asRecord(arrow, `arrows[${index}]`))
+    );
 
     return {
-      template,
-      start: Position.of(
-        JsonLevelStrategy.asInteger(start.row, "start.row"),
-        JsonLevelStrategy.asInteger(start.col, "start.col")
-      ),
+      id: JsonLevelStrategy.asString(raw.id, "id"),
+      difficulty: JsonLevelStrategy.asDifficulty(raw.difficulty),
+      arrows,
       kind,
+      ...(raw.attempts !== undefined ? { attempts: JsonLevelStrategy.asInteger(raw.attempts, "attempts") } : {}),
       ...(kind === LevelKind.Timed
         ? { timeLimitSeconds: JsonLevelStrategy.asInteger(raw.timeLimitSeconds, "timeLimitSeconds") }
         : {})
     };
   }
 
-  private static mapCell(raw: JsonRecord): CellSpec {
-    const position = Position.of(
-      JsonLevelStrategy.asInteger(raw.row, "cell.row"),
-      JsonLevelStrategy.asInteger(raw.col, "cell.col")
+  private static mapArrow(raw: JsonRecord): ArrowSpec {
+    const path = JsonLevelStrategy.asArray(raw.path, "arrow.path").map((cell, index) => {
+      const record = JsonLevelStrategy.asRecord(cell, `arrow.path[${index}]`);
+      return Position.of(
+        JsonLevelStrategy.asInteger(record.row, "arrow.path.row"),
+        JsonLevelStrategy.asInteger(record.col, "arrow.path.col")
+      );
+    });
+
+    return ArrowSpec.of(
+      JsonLevelStrategy.asString(raw.id, "arrow.id"),
+      JsonLevelStrategy.asString(raw.color, "arrow.color"),
+      path,
+      Direction.fromName(JsonLevelStrategy.asString(raw.direction, "arrow.direction"))
     );
-    const type = JsonLevelStrategy.asCellType(raw.type);
-    if (type === CellType.Arrow) {
-      return CellSpec.of(position, type, Direction.fromName(JsonLevelStrategy.asString(raw.direction, "direction")));
-    }
-    return CellSpec.of(position, type);
   }
 
   private static asRecord(value: unknown, field: string): JsonRecord {
@@ -119,14 +108,6 @@ export class JsonLevelStrategy implements ILevelStrategy {
       throw new InvalidLevelDefinitionError(`Field "difficulty" must be one of ${difficulties.join(", ")}.`);
     }
     return value as Difficulty;
-  }
-
-  private static asCellType(value: unknown): CellType {
-    const types = Object.values(CellType) as string[];
-    if (typeof value !== "string" || !types.includes(value)) {
-      throw new InvalidLevelDefinitionError(`Field "cell.type" must be one of ${types.join(", ")}.`);
-    }
-    return value as CellType;
   }
 
   private static asKind(value: unknown): LevelKind {
