@@ -1,61 +1,66 @@
-import { NormalLevel } from "@/domain/level";
-import { CellSpec } from "@/domain/value-objects/CellSpec";
-import { CellType } from "@/domain/value-objects/CellType";
-import { Difficulty } from "@/domain/value-objects/Difficulty";
+import { ArrowEntity } from "@/domain/board/ArrowEntity";
+import { BoardGroup } from "@/domain/board/BoardGroup";
+import { DefeatReason } from "@/domain/level/LevelResult";
+import { NormalLevel } from "@/domain/level/NormalLevel";
+import { ArrowNotExtractableError, InvalidAttemptsError } from "@/domain/level/errors";
+import { ArrowSpec } from "@/domain/value-objects/ArrowSpec";
 import { Direction } from "@/domain/value-objects/Direction";
-import { LevelTemplate } from "@/domain/value-objects/LevelTemplate";
 import { Position } from "@/domain/value-objects/Position";
 
-/**
- * Solvable 2x3 board:
- *   (0,0) Arrow Right -> (0,1) Empty -> (0,2) Empty -> (1,2) Exit
- *   (1,1) is a Wall and (1,0) is left empty (no cell, non-navigable).
- */
-function buildSolvableTemplate(): LevelTemplate {
-  return LevelTemplate.create({
-    id: "level-normal",
-    rows: 2,
-    cols: 3,
-    difficulty: Difficulty.Easy,
-    cells: [
-      CellSpec.of(Position.of(0, 0), CellType.Arrow, Direction.Right),
-      CellSpec.of(Position.of(0, 1), CellType.Empty),
-      CellSpec.of(Position.of(0, 2), CellType.Empty),
-      CellSpec.of(Position.of(1, 1), CellType.Wall),
-      CellSpec.of(Position.of(1, 2), CellType.Exit)
-    ]
-  });
-}
+const arrow = (id: string, cells: [number, number][], direction: Direction): ArrowEntity =>
+  new ArrowEntity(ArrowSpec.of(id, "blue", cells.map(([row, col]) => Position.of(row, col)), direction));
 
 describe("NormalLevel", () => {
-  it("should_produce_victory_when_player_reaches_exit_through_allowed_route", () => {
-    const level = new NormalLevel(buildSolvableTemplate(), Position.of(0, 0));
+  it("should_win_when_all_arrows_are_extracted", () => {
+    const level = new NormalLevel("L1", new BoardGroup([arrow("a", [[0, 0], [0, 1]], Direction.Right)]), 3);
 
-    level.move(Position.of(0, 1));
-    level.move(Position.of(0, 2));
-    level.move(Position.of(1, 2));
-    const result = level.evaluate();
+    expect(level.evaluate().isPlaying()).toBe(true);
+    level.extractArrow("a");
 
-    expect(result.isWon()).toBe(true);
-    expect(level.moves).toBe(3);
-    expect(level.position.equals(Position.of(1, 2))).toBe(true);
+    expect(level.evaluate().isWon()).toBe(true);
+    expect(level.activeArrowCount).toBe(0);
   });
 
-  it("should_stay_playing_when_player_has_not_reached_exit", () => {
-    const level = new NormalLevel(buildSolvableTemplate(), Position.of(0, 0));
+  it("should_throw_when_extracting_a_blocked_arrow", () => {
+    const a = arrow("a", [[0, 0], [0, 1]], Direction.Right); // ray covers (0,2)
+    const b = arrow("b", [[0, 2]], Direction.Up);
+    const level = new NormalLevel("L1", new BoardGroup([a, b]), 3);
 
-    level.move(Position.of(0, 1));
-    const result = level.evaluate();
-
-    expect(result.isPlaying()).toBe(true);
-    expect(result.isWon()).toBe(false);
+    expect(() => level.extractArrow("a")).toThrow(ArrowNotExtractableError);
+    expect(level.activeArrowCount).toBe(2);
   });
 
-  it("should_never_produce_defeat_when_level_is_untimed", () => {
-    const level = new NormalLevel(buildSolvableTemplate(), Position.of(0, 0));
+  it("should_decrement_attempts_only_once_per_arrow_on_failed_taps", () => {
+    const level = new NormalLevel("L1", new BoardGroup([arrow("a", [[0, 0]], Direction.Up)]), 3);
 
+    expect(level.registerFailedAttempt("a")).toBe(true);
+    expect(level.attemptsRemaining).toBe(2);
+    expect(level.registerFailedAttempt("a")).toBe(false);
+    expect(level.attemptsRemaining).toBe(2);
+  });
+
+  it("should_lose_with_out_of_attempts_when_the_budget_is_exhausted", () => {
+    const a = arrow("a", [[0, 0]], Direction.Up);
+    const b = arrow("b", [[5, 5]], Direction.Up);
+    const level = new NormalLevel("L1", new BoardGroup([a, b]), 1);
+
+    level.registerFailedAttempt("a");
     const result = level.evaluate();
 
-    expect(result.isLost()).toBe(false);
+    expect(result.isLost()).toBe(true);
+    expect(result.reason).toBe(DefeatReason.OutOfAttempts);
+  });
+
+  it("should_restore_an_extracted_arrow", () => {
+    const level = new NormalLevel("L1", new BoardGroup([arrow("a", [[0, 0], [0, 1]], Direction.Right)]), 3);
+
+    level.extractArrow("a");
+    expect(level.activeArrowCount).toBe(0);
+    level.restoreArrow("a");
+    expect(level.activeArrowCount).toBe(1);
+  });
+
+  it("should_reject_a_non_positive_attempts_budget", () => {
+    expect(() => new NormalLevel("L1", new BoardGroup([]), 0)).toThrow(InvalidAttemptsError);
   });
 });
