@@ -1,10 +1,11 @@
 // Pattern: Adapter, Repository
 import type { IHttpClient } from '@/application/ports/IHttpClient';
 import type { LocalProgress, CompletedLevelData } from '@/application/ports/IProgressRepository';
+import type { IRemoteProgressRepository } from '@/application/ports/IRemoteProgressRepository';
 import type { ProgressResponseDto } from '@/infrastructure/mappers/progress/ProgressDtos';
 import { ProgressMapper } from '@/infrastructure/mappers/progress/ProgressMapper';
 
-export class HttpProgressRepository {
+export class HttpProgressRepository implements IRemoteProgressRepository {
   constructor(private readonly http: IHttpClient) {}
 
   async fetchRemote(accessToken: string): Promise<LocalProgress> {

@@ -1,6 +1,6 @@
 import { ProgressFacade } from '@/application/facades/ProgressFacade';
 import type { IProgressRepository, LocalProgress } from '@/application/ports/IProgressRepository';
-import type { HttpProgressRepository } from '@/infrastructure/repositories/HttpProgressRepository';
+import type { IRemoteProgressRepository } from '@/application/ports/IRemoteProgressRepository';
 
 const REMOTE_PROGRESS: LocalProgress = {
   progressId: 'p-remote', userId: 'user-1', version: 2,
@@ -30,7 +30,7 @@ class FakeLocalRepo implements IProgressRepository {
   }
 }
 
-class FakeHttpProgressRepo {
+class FakeHttpProgressRepo implements IRemoteProgressRepository {
   fetchResult = REMOTE_PROGRESS;
   syncResult = REMOTE_PROGRESS;
   async fetchRemote(_token: string): Promise<LocalProgress> { return this.fetchResult; }
@@ -45,7 +45,7 @@ describe('ProgressFacade', () => {
   beforeEach(() => {
     local = new FakeLocalRepo();
     remote = new FakeHttpProgressRepo();
-    facade = new ProgressFacade(local, remote as unknown as HttpProgressRepository);
+    facade = new ProgressFacade(local, remote);
   });
 
   it('should_return_cached_progress_without_fetching_remote', async () => {

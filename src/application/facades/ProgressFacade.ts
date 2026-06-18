@@ -1,11 +1,11 @@
 // Pattern: Facade — ViewModels interact only with this; never with storage or HTTP directly
 import type { IProgressRepository, LocalProgress, CompletedLevelData } from '@/application/ports/IProgressRepository';
-import type { HttpProgressRepository } from '@/infrastructure/repositories/HttpProgressRepository';
+import type { IRemoteProgressRepository } from '@/application/ports/IRemoteProgressRepository';
 
 export class ProgressFacade {
   constructor(
     private readonly local: IProgressRepository,
-    private readonly remote: HttpProgressRepository,
+    private readonly remote: IRemoteProgressRepository,
   ) {}
 
   async load(userId: string, accessToken: string): Promise<LocalProgress> {
