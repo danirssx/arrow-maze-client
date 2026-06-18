@@ -7,14 +7,13 @@ import { GameplayStateError } from "./errors";
 /**
  * Application session state for gameplay use cases.
  *
- * Keeps the domain `GameContext`, command history, selected level strategy, and
- * computed optimal-move metadata together without leaking storage, HTTP, React,
- * or ViewModel concerns into domain objects.
+ * Keeps the domain `GameContext`, the command history, and the selected level
+ * strategy (for restart) together without leaking storage, HTTP, React, or
+ * ViewModel concerns into domain objects.
  */
 export class GameSession {
   private context: GameContext | undefined;
   private history: CommandHistory | undefined;
-  private currentOptimalMoves: number | undefined;
   private currentStrategy: ILevelStrategy | undefined;
 
   start(built: BuiltLevel, strategy: ILevelStrategy): void {
@@ -23,7 +22,6 @@ export class GameSession {
 
     this.context = context;
     this.history = new CommandHistory();
-    this.currentOptimalMoves = built.optimalMoves;
     this.currentStrategy = strategy;
   }
 
@@ -39,13 +37,6 @@ export class GameSession {
       throw new GameplayStateError("Cannot use command history before a level is started.");
     }
     return this.history;
-  }
-
-  requireOptimalMoves(): number {
-    if (this.currentOptimalMoves === undefined) {
-      throw new GameplayStateError("Cannot read optimal moves before a level is started.");
-    }
-    return this.currentOptimalMoves;
   }
 
   requireStrategy(): ILevelStrategy {

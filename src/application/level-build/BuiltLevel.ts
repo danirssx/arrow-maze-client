@@ -4,11 +4,10 @@ import type { BaseLevel } from "../../domain/level/BaseLevel";
  * BuiltLevel (application product).
  *
  * The result of building a level: a ready-to-play `BaseLevel` (a `NormalLevel`
- * or `TimedLevel` with its `BoardGraph` already wired internally) together with
- * the `optimalMoves` computed by `PathfindingService` during solvability
- * validation, so callers (scoring, UI hints) do not recompute it.
+ * or `TimedLevel` with its `BoardGroup` of arrows already wired internally).
+ * There is no `optimalMoves` anymore — the untangle game scores by time, and
+ * solvability is guaranteed by the backend at publish time (cycle/DAG check).
  */
 export type BuiltLevel = {
   readonly level: BaseLevel;
-  readonly optimalMoves: number;
 };

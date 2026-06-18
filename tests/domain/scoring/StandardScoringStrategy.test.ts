@@ -1,38 +1,21 @@
-import { DefeatReason, LevelResult } from "@/domain/level";
-import { ScoreContext, StandardScoringStrategy } from "@/domain/scoring";
+import { DefeatReason, LevelResult } from "@/domain/level/LevelResult";
+import { ScoreContext } from "@/domain/scoring/ScoreContext";
+import { StandardScoringStrategy } from "@/domain/scoring/StandardScoringStrategy";
 
 describe("StandardScoringStrategy", () => {
-  it("should_award_base_points_when_level_is_won", () => {
-    const strategy = new StandardScoringStrategy();
-    const context = ScoreContext.create({ result: LevelResult.won(), moves: 5, optimalMoves: 3 });
+  it("should_award_base_points_when_won", () => {
+    const strategy = new StandardScoringStrategy(1000);
 
-    const score = strategy.score(context);
+    const score = strategy.score(ScoreContext.create({ result: LevelResult.won(), elapsedMs: 0 }));
 
     expect(score.value).toBe(1000);
   });
 
-  it("should_score_zero_when_level_is_lost", () => {
-    const strategy = new StandardScoringStrategy();
-    const context = ScoreContext.create({ result: LevelResult.lost(DefeatReason.Time), moves: 5, optimalMoves: 3 });
+  it("should_award_zero_when_not_won", () => {
+    const strategy = new StandardScoringStrategy(1000);
 
-    const score = strategy.score(context);
-
-    expect(score.value).toBe(0);
-  });
-
-  it("should_score_zero_when_level_is_still_playing", () => {
-    const strategy = new StandardScoringStrategy();
-    const context = ScoreContext.create({ result: LevelResult.playing(), moves: 1, optimalMoves: 3 });
-
-    const score = strategy.score(context);
+    const score = strategy.score(ScoreContext.create({ result: LevelResult.lost(DefeatReason.OutOfAttempts), elapsedMs: 0 }));
 
     expect(score.value).toBe(0);
-  });
-
-  it("should_be_deterministic_when_scoring_the_same_context_twice", () => {
-    const strategy = new StandardScoringStrategy();
-    const context = ScoreContext.create({ result: LevelResult.won(), moves: 5, optimalMoves: 3 });
-
-    expect(strategy.score(context).value).toBe(strategy.score(context).value);
   });
 });
