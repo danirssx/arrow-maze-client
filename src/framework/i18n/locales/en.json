@@ -1,6 +1,88 @@
 {
   "app": {
-    "title": "Arrow Maze",
-    "setupStatus": "Project setup is ready."
+    "architectureNote": "NativeWind is enabled for presentation styling only. Game rules stay in domain/application and never depend on UI libraries.",
+    "hideDetails": "Hide details",
+    "kicker": "Clean Architecture mobile game",
+    "setupStatus": "Project setup is ready for feature slices, worktrees, and reviewed AI-assisted delivery.",
+    "showDetails": "Show details",
+    "title": "Arrow Maze"
+  },
+  "nav": {
+    "settings": "Settings"
+  },
+  "home": {
+    "greeting": "Welcome",
+    "title": "Let's Play!",
+    "play": "Play",
+    "challenges": "Challenges",
+    "cardDailyTitle": "Daily challenges",
+    "cardDailySubtitle": "New levels every day",
+    "cardRewardsTitle": "Win rewards",
+    "cardRewardsSubtitle": "Play and earn coins",
+    "cardFollowTitle": "Follow the arrow",
+    "cardFollowSubtitle": "Reach the goal"
+  },
+  "levels": {
+    "title": "Levels",
+    "subtitle": "Choose a level to play"
+  },
+  "game": {
+    "level": "Level {{order}}",
+    "moves": "Moves",
+    "optimal": "Best",
+    "objective": "Goal",
+    "undo": "Undo",
+    "restart": "Restart",
+    "invalidMove": "You can only move along the arrows."
+  },
+  "victory": {
+    "title": "You did it!",
+    "subtitle": "Level complete. Great routing!",
+    "moves": "Moves",
+    "optimal": "Optimal",
+    "perfect": "Perfect run!",
+    "playAgain": "Play again",
+    "next": "Next level",
+    "home": "Home"
+  },
+  "defeat": {
+    "title": "Time's up",
+    "subtitle": "You ran out of time. Try again!",
+    "retry": "Try again",
+    "home": "Home"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "score": "{{score}} pts"
+  },
+  "progress": {
+    "title": "Progress",
+    "completed": "Completed levels",
+    "pendingSync": "Pending sync",
+    "bestScore": "{{score}} pts"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageEn": "English",
+    "languageEs": "Spanish",
+    "sound": "Sound",
+    "soundOn": "On",
+    "soundOff": "Off (muted)",
+    "mute": "Mute",
+    "unmute": "Unmute"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "No internet connection. Check your network and retry.",
+    "notFound": "Content not found.",
+    "unauthorized": "Session expired. Please log in again.",
+    "retry": "Retry"
+  },
+  "states": {
+    "loading": "Loading…",
+    "empty": "Nothing here yet.",
+    "emptyProgress": "No levels completed yet. Start playing!",
+    "emptyLeaderboard": "No scores yet. Be the first!"
   }
 }

@@ -1,7 +1,13 @@
 import "@/framework/i18n/i18n";
+import "../global.css";
 
 import { Stack } from "expo-router";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <SafeAreaProvider>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#F4F5FF" } }} />
+    </SafeAreaProvider>
+  );
 }

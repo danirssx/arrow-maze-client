@@ -1,20 +1,22 @@
-import { Text, View } from "react-native";
-import { useTranslation } from "react-i18next";
+import { type Href, useRouter } from "expo-router";
 
-export default function HomeScreen() {
-  const { t } = useTranslation();
+import { HomeScreen } from "@/presentation/screens/HomeScreen";
+
+const LEVELS_ROUTE = "/levels" as Href;
+const LEADERBOARD_ROUTE = "/leaderboard" as Href;
+const PROGRESS_ROUTE = "/progress" as Href;
+const SETTINGS_ROUTE = "/settings" as Href;
+
+export default function HomeRoute() {
+  const router = useRouter();
 
   return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24
-      }}
-    >
-      <Text>{t("app.title")}</Text>
-      <Text>{t("app.setupStatus")}</Text>
-    </View>
+    <HomeScreen
+      onPlay={() => router.push(LEVELS_ROUTE)}
+      onChallenges={() => router.push(LEVELS_ROUTE)}
+      onLeaderboard={() => router.push(LEADERBOARD_ROUTE)}
+      onProgress={() => router.push(PROGRESS_ROUTE)}
+      onSettings={() => router.push(SETTINGS_ROUTE)}
+    />
   );
 }
