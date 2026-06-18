@@ -3,7 +3,7 @@ import { InvalidPositionError } from "@/domain/value-objects/errors";
 import { Position } from "@/domain/value-objects/Position";
 
 describe("Position", () => {
-  it("should_create_position_when_coordinates_are_non_negative_integers", () => {
+  it("should_create_position_when_coordinates_are_integers", () => {
     const position = Position.of(2, 3);
 
     expect(position.row).toBe(2);
@@ -11,8 +11,12 @@ describe("Position", () => {
     expect(position.toKey()).toBe("2,3");
   });
 
-  it("should_throw_controlled_error_when_coordinates_are_negative", () => {
-    expect(() => Position.of(-1, 0)).toThrow(InvalidPositionError);
+  it("should_allow_negative_coordinates_when_board_is_unbounded", () => {
+    const position = Position.of(-2, -5);
+
+    expect(position.row).toBe(-2);
+    expect(position.col).toBe(-5);
+    expect(position.toKey()).toBe("-2,-5");
   });
 
   it("should_throw_controlled_error_when_coordinates_are_not_integers", () => {
@@ -25,8 +29,10 @@ describe("Position", () => {
     expect(moved.equals(Position.of(1, 2))).toBe(true);
   });
 
-  it("should_fail_in_controlled_way_when_translation_leaves_the_board", () => {
-    expect(() => Position.of(0, 0).translate(Direction.Up)).toThrow(InvalidPositionError);
+  it("should_translate_into_negative_space_when_moving_past_the_origin", () => {
+    const moved = Position.of(0, 0).translate(Direction.Up);
+
+    expect(moved.equals(Position.of(-1, 0))).toBe(true);
   });
 
   it("should_be_value_equal_when_coordinates_match", () => {

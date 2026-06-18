@@ -1,15 +1,14 @@
-export { CellSpec } from "./CellSpec";
-export { CellType } from "./CellType";
+export { ArrowSpec } from "./ArrowSpec";
+export { BoundingBox } from "./BoundingBox";
 export { Difficulty } from "./Difficulty";
 export { Direction } from "./Direction";
-export { LevelTemplate } from "./LevelTemplate";
 export { Position } from "./Position";
 export { Score } from "./Score";
 export {
   DomainError,
-  InvalidCellSpecError,
-  InvalidLevelTemplateError,
+  InvalidArrowSpecError,
+  InvalidBoundingBoxError,
+  InvalidDirectionError,
   InvalidPositionError,
-  InvalidScoreError,
-  PositionOutOfBoundsError
+  InvalidScoreError
 } from "./errors";

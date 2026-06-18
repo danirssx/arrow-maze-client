@@ -1,5 +1,5 @@
 import { Direction } from "@/domain/value-objects/Direction";
-import { InvalidCellSpecError } from "@/domain/value-objects/errors";
+import { InvalidDirectionError } from "@/domain/value-objects/errors";
 
 describe("Direction", () => {
   it("should_expose_grid_delta_when_direction_is_used", () => {
@@ -20,6 +20,6 @@ describe("Direction", () => {
   });
 
   it("should_throw_controlled_error_when_name_is_unknown", () => {
-    expect(() => Direction.fromName("DIAGONAL")).toThrow(InvalidCellSpecError);
+    expect(() => Direction.fromName("DIAGONAL")).toThrow(InvalidDirectionError);
   });
 });
