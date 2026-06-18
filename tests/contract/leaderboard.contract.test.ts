@@ -62,7 +62,7 @@ describe('Leaderboard contract — LeaderboardResponseDto', () => {
   it('should_have_correct_entry_shape', () => {
     const entry = LEADERBOARD_FIXTURE.data.entries[0];
     expect(entry).toBeDefined();
-    if (!entry) return;
+    if (entry === undefined) return;
     expect(typeof entry.entryId).toBe('string');
     expect(typeof entry.userId).toBe('string');
     expect(typeof entry.usernameSnapshot).toBe('string');

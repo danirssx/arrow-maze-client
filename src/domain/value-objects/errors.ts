@@ -36,3 +36,9 @@ export class InvalidLevelTemplateError extends DomainError {
     super(message);
   }
 }
+
+export class InvalidScoreError extends DomainError {
+  constructor(message: string) {
+    super(message);
+  }
+}

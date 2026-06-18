@@ -36,7 +36,7 @@ describe('Progress contract — ProgressResponseDto', () => {
   it('should_have_correct_completedLevel_shape', () => {
     const level = PROGRESS_FIXTURE.data.completedLevels[0];
     expect(level).toBeDefined();
-    if (!level) return;
+    if (level === undefined) return;
     expect(typeof level.levelId).toBe('string');
     expect(typeof level.score).toBe('number');
     expect(typeof level.timeSeconds).toBe('number');

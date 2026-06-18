@@ -13,8 +13,8 @@ import type { IBoardComponent } from "./IBoardComponent";
 export interface ICell extends IBoardComponent {
   readonly position: Position;
   readonly type: CellType;
-  /** Present only for arrow cells. */
-  readonly direction?: Direction;
+  /** Defined only for arrow cells. */
+  readonly direction: Direction | undefined;
 
   isExit(): boolean;
   isBlocking(): boolean;

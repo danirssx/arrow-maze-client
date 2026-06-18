@@ -28,6 +28,29 @@ Business rules belong in `src/domain`. Use cases and ports belong in `src/applic
 
 NativeWind is approved only for presentation styling in `app`, `src/presentation`, and framework-level UI wiring. Zustand is approved only for UI/view-model state. Neither library may be used in `src/domain`, `src/application`, or game-rule logic.
 
+## Design Patterns
+
+The mobile game engine (domain + application layers) applies these Gang of Four / graph patterns.
+Each pattern class carries a pattern header in its source file. Full rationale and the
+class → layer map live in [`docs/design-patterns.md`](docs/design-patterns.md).
+
+| Pattern | Layer | Key class(es) |
+| --- | --- | --- |
+| Composite | domain | `BoardGroup`, `Cell` + cell leaves |
+| Graph Model / Pathfinding | domain | `BoardGraph`, `BoardGraphBuilder`, `PathfindingService` |
+| Decorator | domain | `CellDecorator`, `LockedCellDecorator`, `CollectableCellDecorator` |
+| Factory Method | domain | `CellFactory` |
+| Template Method | domain | `BaseLevel`, `NormalLevel`, `TimedLevel` |
+| State | domain | `GameContext`, `*State`, `GamePhase` |
+| Command | domain | `MoveCommand`, `CommandHistory` |
+| Observer | domain | `GameEventEmitter`, `GameEvent` (subject: `BaseLevel`) |
+| Strategy | domain / application | `IScoringStrategy` strategies; `ILevelStrategy` sources |
+| Builder + Director | application | `ConcreteLevelBuilder`, `LevelDirector` |
+| Facade | application | `GameFacade` |
+
+The `presentation`, `infrastructure`, and `framework` layers are scaffolding only at this stage;
+their patterns will be documented as those layers are implemented.
+
 ## Academic Compliance
 
 This repository must stay aligned with Section 6 and Section 7 of the project statement.
