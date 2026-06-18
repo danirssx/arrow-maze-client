@@ -13,8 +13,8 @@ import type { GameEventDto } from "./GameEventDto";
  * - Subscribe via `GameFacade.addEventListener(this)` and unsubscribe on teardown.
  * - Translate each `GameEventDto` into observable UI state (e.g. show victory or
  *   defeat on `LEVEL_FINISHED`, animate movement on `MOVE_EXECUTED`).
- * - Drive gameplay only through the `GameFacade` (`startLevel`, `playTurn`,
- *   `undoMove`, `pauseGame`, `resumeGame`) and read board layout through
+ * - Drive gameplay only through the `GameFacade` (`startLevel`, `tapArrow`,
+ *   `undo`, `pauseGame`, `resumeGame`) and read the layout through
  *   `BoardSnapshotDto` / `GameSnapshotDto`.
  *
  * GameViewModel must NOT:

@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-redeclare */
-import type { LevelTemplate } from "../../domain/value-objects/LevelTemplate";
-import type { Position } from "../../domain/value-objects/Position";
+import type { ArrowSpec } from "../../domain/value-objects/ArrowSpec";
+import type { Difficulty } from "../../domain/value-objects/Difficulty";
+
+/** Default attempts budget when a level definition omits one. */
+export const DEFAULT_ATTEMPTS = 5;
 
 /**
  * LevelKind value object.
@@ -17,15 +20,19 @@ export const LevelKind = {
 export type LevelKind = (typeof LevelKind)[keyof typeof LevelKind];
 
 /**
- * LevelDefinition (application DTO).
+ * LevelDefinition (application DTO) — untangle puzzle.
  *
  * The source-agnostic description a level strategy produces and the builder
- * consumes: the validated domain `LevelTemplate`, the player's start position,
- * which concrete level kind to build, and the time budget for timed levels.
+ * consumes: the arrows that populate the unbounded board, the attempts budget,
+ * which concrete level kind to build, and the time budget for timed levels. It
+ * mirrors the backend level contract (id, difficulty, arrows, attempts) plus the
+ * client-only kind/time fields.
  */
 export type LevelDefinition = {
-  readonly template: LevelTemplate;
-  readonly start: Position;
+  readonly id: string;
+  readonly difficulty: Difficulty;
+  readonly arrows: readonly ArrowSpec[];
+  readonly attempts?: number;
   readonly kind: LevelKind;
   readonly timeLimitSeconds?: number;
 };

@@ -1,589 +1,152 @@
-import { CellSpec } from "../../../domain/value-objects/CellSpec";
-import { CellType } from "../../../domain/value-objects/CellType";
+import { ArrowSpec } from "../../../domain/value-objects/ArrowSpec";
 import { Difficulty } from "../../../domain/value-objects/Difficulty";
 import { Direction } from "../../../domain/value-objects/Direction";
-import { LevelTemplate } from "../../../domain/value-objects/LevelTemplate";
 import { Position } from "../../../domain/value-objects/Position";
 import type { LevelDefinition } from "../LevelDefinition";
 import { LevelKind } from "../LevelDefinition";
-import { InvalidLevelDefinitionError } from "../errors";
 
-type Coordinate = readonly [row: number, col: number];
+/**
+ * Builder-compatible manual level fixtures (Arrow Untangle puzzle).
+ *
+ * Each level is a set of straight 1-cell-wide arrows that point only UP or RIGHT
+ * and cross each other to form a "knot". This family is provably solvable: with
+ * only UP/RIGHT straight arrows the blocking graph is always acyclic (a blocker
+ * always has a strictly smaller `row - col` than the arrow it blocks), so a valid
+ * removal order always exists — guaranteed by the solvability test, not assumed.
+ * Difficulty scales with arrow count, body length, and the number of crossings.
+ * These are baseline layouts; visual art-direction (curved bodies) can refine
+ * them later without changing the contract.
+ */
 
-type ManualLevelParams = {
+type Axis = "UP" | "RIGHT";
+
+type ArrowDraft = {
   readonly id: string;
-  readonly order: number;
-  readonly version: number;
-  readonly rows: number;
-  readonly cols: number;
+  readonly color: string;
+  readonly headRow: number;
+  readonly headCol: number;
+  readonly axis: Axis;
+  readonly length: number;
+};
+
+type LevelDraft = {
+  readonly id: string;
   readonly difficulty: Difficulty;
-  readonly path: readonly Coordinate[];
-  readonly walls?: readonly Coordinate[];
+  readonly arrowCount: number;
+  readonly attempts?: number;
   readonly timeLimitSeconds?: number;
 };
 
 export type ManualLevelFixture = {
   readonly id: string;
   readonly order: number;
-  readonly version: number;
-  readonly expectedOptimalMoves: number;
+  readonly difficulty: Difficulty;
+  readonly arrowCount: number;
   readonly definition: LevelDefinition;
 };
 
-function position([row, col]: Coordinate): Position {
-  return Position.of(row, col);
+const COLORS = ["blue", "green", "yellow", "pink", "cyan", "purple", "crimson", "white", "orange", "teal"] as const;
+
+function color(index: number): string {
+  return COLORS[index % COLORS.length] ?? "blue";
 }
 
-function directionBetween(from: Coordinate, to: Coordinate): Direction {
-  const rowDelta = to[0] - from[0];
-  const colDelta = to[1] - from[1];
-
-  if (rowDelta === -1 && colDelta === 0) {
-    return Direction.Up;
-  }
-  if (rowDelta === 1 && colDelta === 0) {
-    return Direction.Down;
-  }
-  if (rowDelta === 0 && colDelta === -1) {
-    return Direction.Left;
-  }
-  if (rowDelta === 0 && colDelta === 1) {
-    return Direction.Right;
-  }
-
-  throw new InvalidLevelDefinitionError(`Manual level path has non-adjacent step ${from.join(",")} -> ${to.join(",")}.`);
+function letter(index: number): string {
+  return String.fromCharCode(97 + index); // a, b, c, ...
 }
 
-function makeLevel(params: ManualLevelParams): ManualLevelFixture {
-  if (params.path.length < 2) {
-    throw new InvalidLevelDefinitionError(`Manual level ${params.id} must include at least start and exit.`);
-  }
-  const start = params.path[0];
-  if (start === undefined) {
-    throw new InvalidLevelDefinitionError(`Manual level ${params.id} must include a start position.`);
-  }
-
-  const pathCells = params.path.map((cell, index) => {
-    const next = params.path[index + 1];
-    if (next === undefined) {
-      return CellSpec.of(position(cell), CellType.Exit);
+/** Build a straight arrow (head points outward along its single axis). */
+function straight(draft: ArrowDraft): ArrowSpec {
+  const cells: Position[] = [];
+  if (draft.axis === "UP") {
+    // Body hangs below the head; path runs tail (bottom) -> head (top).
+    for (let i = draft.length - 1; i >= 0; i -= 1) {
+      cells.push(Position.of(draft.headRow + i, draft.headCol));
     }
-    return CellSpec.of(position(cell), CellType.Arrow, directionBetween(cell, next));
-  });
-
-  const wallCells = (params.walls ?? []).map((cell) => CellSpec.of(position(cell), CellType.Wall));
-  const template = LevelTemplate.create({
-    id: params.id,
-    rows: params.rows,
-    cols: params.cols,
-    difficulty: params.difficulty,
-    cells: [...pathCells, ...wallCells]
-  });
-
-  const baseDefinition = {
-    template,
-    start: position(start),
-    kind: params.timeLimitSeconds === undefined ? LevelKind.Normal : LevelKind.Timed
-  };
-
-  return {
-    id: params.id,
-    order: params.order,
-    version: params.version,
-    expectedOptimalMoves: params.path.length - 1,
-    definition:
-      params.timeLimitSeconds === undefined
-        ? baseDefinition
-        : { ...baseDefinition, timeLimitSeconds: params.timeLimitSeconds }
-  };
+    return ArrowSpec.of(draft.id, draft.color, cells, Direction.Up);
+  }
+  // RIGHT: body extends left; path runs tail (left) -> head (right).
+  for (let i = draft.length - 1; i >= 0; i -= 1) {
+    cells.push(Position.of(draft.headRow, draft.headCol - i));
+  }
+  return ArrowSpec.of(draft.id, draft.color, cells, Direction.Right);
 }
 
 /**
- * Builder-compatible manual level fixtures.
- *
- * These definitions are local application data, not UI assets. Each path is a
- * directed solution route made of arrow cells ending in one exit cell; walls add
- * visible obstacle complexity for future rendering while `LevelDirector`
- * remains the source of truth for solvability and `optimalMoves`.
+ * Deterministically lay out `n` crossing arrows: one RIGHT "top bar" on row 0
+ * plus UP arrows hanging under it (blocked by the bar until it leaves) and a few
+ * extra RIGHT arrows on lower rows. Every arrow points UP or RIGHT, so the set
+ * is always solvable while still requiring the player to find the order.
  */
-export const manualLevels: readonly ManualLevelFixture[] = [
-  makeLevel({
-    id: "manual-001-first-turn",
-    order: 1,
-    version: 1,
-    rows: 2,
-    cols: 3,
-    difficulty: Difficulty.Easy,
-    path: [
-      [0, 0],
-      [0, 1],
-      [0, 2]
-    ]
-  }),
-  makeLevel({
-    id: "manual-002-corner-drop",
-    order: 2,
-    version: 1,
-    rows: 2,
-    cols: 4,
-    difficulty: Difficulty.Easy,
-    path: [
-      [0, 0],
-      [0, 1],
-      [1, 1],
-      [1, 2],
-      [1, 3]
-    ],
-    walls: [
-      [1, 0],
-      [0, 2]
-    ]
-  }),
-  makeLevel({
-    id: "manual-003-bottom-run",
-    order: 3,
-    version: 1,
-    rows: 3,
-    cols: 4,
-    difficulty: Difficulty.Easy,
-    path: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [2, 1],
-      [2, 2],
-      [2, 3]
-    ],
-    walls: [
-      [0, 1],
-      [1, 1],
-      [1, 2]
-    ]
-  }),
-  makeLevel({
-    id: "manual-004-center-bend",
-    order: 4,
-    version: 1,
-    rows: 3,
-    cols: 5,
-    difficulty: Difficulty.Easy,
-    path: [
-      [0, 0],
-      [0, 1],
-      [0, 2],
-      [1, 2],
-      [2, 2],
-      [2, 3],
-      [2, 4]
-    ],
-    walls: [
-      [1, 0],
-      [1, 1],
-      [1, 3],
-      [0, 4]
-    ]
-  }),
-  makeLevel({
-    id: "manual-005-wide-intro",
-    order: 5,
-    version: 1,
-    rows: 4,
-    cols: 5,
-    difficulty: Difficulty.Easy,
-    path: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [2, 1],
-      [2, 2],
-      [1, 2],
-      [1, 3],
-      [1, 4]
-    ],
-    walls: [
-      [0, 1],
-      [0, 2],
-      [3, 0],
-      [3, 2],
-      [2, 4]
-    ]
-  }),
-  makeLevel({
-    id: "manual-006-medium-switchback",
-    order: 6,
-    version: 1,
-    rows: 4,
-    cols: 5,
-    difficulty: Difficulty.Medium,
-    path: [
-      [0, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [2, 2],
-      [2, 3],
-      [3, 3],
-      [3, 4]
-    ],
-    walls: [
-      [1, 0],
-      [1, 2],
-      [0, 3],
-      [3, 1],
-      [2, 4],
-      [0, 4]
-    ]
-  }),
-  makeLevel({
-    id: "manual-007-medium-timer",
-    order: 7,
-    version: 1,
-    rows: 4,
-    cols: 6,
-    difficulty: Difficulty.Medium,
-    path: [
-      [0, 0],
-      [1, 0],
-      [1, 1],
-      [1, 2],
-      [2, 2],
-      [3, 2],
-      [3, 3],
-      [3, 4],
-      [3, 5]
-    ],
-    walls: [
-      [0, 1],
-      [0, 2],
-      [2, 0],
-      [2, 1],
-      [2, 4],
-      [1, 5],
-      [0, 5]
-    ],
-    timeLimitSeconds: 70
-  }),
-  makeLevel({
-    id: "manual-008-medium-lane",
-    order: 8,
-    version: 1,
-    rows: 5,
-    cols: 6,
-    difficulty: Difficulty.Medium,
-    path: [
-      [0, 0],
-      [0, 1],
-      [0, 2],
-      [1, 2],
-      [2, 2],
-      [2, 3],
-      [2, 4],
-      [3, 4],
-      [4, 4],
-      [4, 5]
-    ],
-    walls: [
-      [1, 0],
-      [1, 1],
-      [1, 3],
-      [3, 1],
-      [3, 2],
-      [3, 3],
-      [4, 0],
-      [0, 5]
-    ]
-  }),
-  makeLevel({
-    id: "manual-009-medium-pressure",
-    order: 9,
-    version: 1,
-    rows: 5,
-    cols: 7,
-    difficulty: Difficulty.Medium,
-    path: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [2, 1],
-      [2, 2],
-      [3, 2],
-      [4, 2],
-      [4, 3],
-      [4, 4],
-      [3, 4],
-      [3, 5],
-      [3, 6]
-    ],
-    walls: [
-      [0, 1],
-      [1, 1],
-      [1, 3],
-      [2, 4],
-      [2, 5],
-      [4, 0],
-      [4, 1],
-      [0, 6],
-      [1, 6]
-    ],
-    timeLimitSeconds: 65
-  }),
-  makeLevel({
-    id: "manual-010-medium-finale",
-    order: 10,
-    version: 1,
-    rows: 5,
-    cols: 8,
-    difficulty: Difficulty.Medium,
-    path: [
-      [0, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [2, 2],
-      [2, 3],
-      [1, 3],
-      [1, 4],
-      [1, 5],
-      [2, 5],
-      [3, 5],
-      [4, 5],
-      [4, 6],
-      [4, 7]
-    ],
-    walls: [
-      [1, 0],
-      [3, 0],
-      [3, 1],
-      [0, 3],
-      [0, 4],
-      [2, 4],
-      [3, 3],
-      [3, 4],
-      [0, 7],
-      [2, 7]
-    ],
-    timeLimitSeconds: 60
-  }),
-  makeLevel({
-    id: "manual-011-hard-crossing",
-    order: 11,
-    version: 1,
-    rows: 6,
-    cols: 8,
-    difficulty: Difficulty.Hard,
-    path: [
-      [0, 0],
-      [0, 1],
-      [0, 2],
-      [1, 2],
-      [2, 2],
-      [2, 3],
-      [2, 4],
-      [3, 4],
-      [4, 4],
-      [4, 5],
-      [4, 6],
-      [5, 6],
-      [5, 7]
-    ],
-    walls: [
-      [1, 0],
-      [1, 1],
-      [2, 0],
-      [3, 0],
-      [3, 2],
-      [3, 3],
-      [5, 0],
-      [5, 1],
-      [0, 5],
-      [1, 5],
-      [2, 7],
-      [4, 7]
-    ]
-  }),
-  makeLevel({
-    id: "manual-012-hard-timer",
-    order: 12,
-    version: 1,
-    rows: 6,
-    cols: 9,
-    difficulty: Difficulty.Hard,
-    path: [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [2, 1],
-      [2, 2],
-      [3, 2],
-      [4, 2],
-      [4, 3],
-      [4, 4],
-      [4, 5],
-      [3, 5],
-      [3, 6],
-      [4, 6],
-      [5, 6],
-      [5, 7],
-      [5, 8]
-    ],
-    walls: [
-      [0, 1],
-      [1, 1],
-      [3, 0],
-      [4, 0],
-      [0, 3],
-      [1, 3],
-      [2, 4],
-      [2, 5],
-      [1, 7],
-      [2, 7],
-      [4, 8],
-      [0, 8],
-      [5, 0]
-    ],
-    timeLimitSeconds: 70
-  }),
-  makeLevel({
-    id: "manual-013-hard-ridge",
-    order: 13,
-    version: 1,
-    rows: 7,
-    cols: 9,
-    difficulty: Difficulty.Hard,
-    path: [
-      [0, 0],
-      [0, 1],
-      [1, 1],
-      [2, 1],
-      [3, 1],
-      [3, 2],
-      [3, 3],
-      [2, 3],
-      [2, 4],
-      [2, 5],
-      [3, 5],
-      [4, 5],
-      [5, 5],
-      [5, 6],
-      [5, 7],
-      [6, 7],
-      [6, 8]
-    ],
-    walls: [
-      [1, 0],
-      [2, 0],
-      [4, 0],
-      [4, 1],
-      [0, 3],
-      [1, 3],
-      [4, 3],
-      [5, 3],
-      [0, 6],
-      [1, 6],
-      [2, 7],
-      [3, 7],
-      [4, 8],
-      [6, 0]
-    ],
-    timeLimitSeconds: 65
-  }),
-  makeLevel({
-    id: "manual-014-hard-maze",
-    order: 14,
-    version: 1,
-    rows: 7,
-    cols: 10,
-    difficulty: Difficulty.Hard,
-    path: [
-      [0, 0],
-      [1, 0],
-      [1, 1],
-      [1, 2],
-      [2, 2],
-      [3, 2],
-      [3, 3],
-      [3, 4],
-      [4, 4],
-      [5, 4],
-      [5, 5],
-      [5, 6],
-      [4, 6],
-      [4, 7],
-      [4, 8],
-      [5, 8],
-      [6, 8],
-      [6, 9]
-    ],
-    walls: [
-      [0, 1],
-      [0, 2],
-      [2, 0],
-      [3, 0],
-      [4, 0],
-      [0, 4],
-      [1, 4],
-      [2, 4],
-      [2, 6],
-      [3, 6],
-      [6, 4],
-      [6, 5],
-      [1, 8],
-      [2, 8],
-      [3, 9]
-    ],
-    timeLimitSeconds: 60
-  }),
-  makeLevel({
-    id: "manual-015-hard-finale",
-    order: 15,
-    version: 1,
-    rows: 8,
-    cols: 10,
-    difficulty: Difficulty.Hard,
-    path: [
-      [0, 0],
-      [0, 1],
-      [0, 2],
-      [1, 2],
-      [2, 2],
-      [2, 3],
-      [2, 4],
-      [3, 4],
-      [4, 4],
-      [4, 5],
-      [4, 6],
-      [3, 6],
-      [2, 6],
-      [2, 7],
-      [2, 8],
-      [3, 8],
-      [4, 8],
-      [5, 8],
-      [6, 8],
-      [6, 9],
-      [7, 9]
-    ],
-    walls: [
-      [1, 0],
-      [2, 0],
-      [3, 0],
-      [4, 0],
-      [5, 0],
-      [1, 4],
-      [5, 4],
-      [6, 4],
-      [7, 4],
-      [0, 5],
-      [1, 5],
-      [5, 6],
-      [6, 6],
-      [7, 6],
-      [0, 8],
-      [1, 8],
-      [4, 9]
-    ],
-    timeLimitSeconds: 55
-  })
+function knot(n: number): ArrowDraft[] {
+  const width = Math.max(4, Math.ceil(n / 2) + 2);
+  const arrows: ArrowDraft[] = [
+    { id: letter(0), color: color(0), headRow: 0, headCol: width, axis: "RIGHT", length: width + 1 }
+  ];
+
+  for (let i = 1; i < n; i += 1) {
+    if (i % 2 === 1) {
+      arrows.push({
+        id: letter(i),
+        color: color(i),
+        headRow: 1 + (i % 3),
+        headCol: (i * 2) % width,
+        axis: "UP",
+        length: 2 + (i % 3)
+      });
+    } else {
+      arrows.push({
+        id: letter(i),
+        color: color(i),
+        headRow: 1 + (i % 4),
+        headCol: width + 1 + (i % 3),
+        axis: "RIGHT",
+        length: 2 + (i % 3)
+      });
+    }
+  }
+
+  return arrows;
+}
+
+function toDefinition(draft: LevelDraft): LevelDefinition {
+  const arrows = knot(draft.arrowCount).map(straight);
+  const timed = draft.timeLimitSeconds !== undefined;
+
+  return {
+    id: draft.id,
+    difficulty: draft.difficulty,
+    arrows,
+    kind: timed ? LevelKind.Timed : LevelKind.Normal,
+    ...(draft.attempts !== undefined ? { attempts: draft.attempts } : {}),
+    ...(timed ? { timeLimitSeconds: draft.timeLimitSeconds } : {})
+  };
+}
+
+const LEVEL_DRAFTS: readonly LevelDraft[] = [
+  { id: "manual-001-first-knot", difficulty: Difficulty.Easy, arrowCount: 2 },
+  { id: "manual-002-warm-up", difficulty: Difficulty.Easy, arrowCount: 3 },
+  { id: "manual-003-cross", difficulty: Difficulty.Easy, arrowCount: 3 },
+  { id: "manual-004-tangle", difficulty: Difficulty.Easy, arrowCount: 4 },
+  { id: "manual-005-weave", difficulty: Difficulty.Easy, arrowCount: 4 },
+  { id: "manual-006-stack", difficulty: Difficulty.Medium, arrowCount: 5 },
+  { id: "manual-007-rush", difficulty: Difficulty.Medium, arrowCount: 5, timeLimitSeconds: 75 },
+  { id: "manual-008-lattice", difficulty: Difficulty.Medium, arrowCount: 6 },
+  { id: "manual-009-pressure", difficulty: Difficulty.Medium, arrowCount: 6, timeLimitSeconds: 70 },
+  { id: "manual-010-medium-finale", difficulty: Difficulty.Medium, arrowCount: 7, timeLimitSeconds: 65 },
+  { id: "manual-011-hard-knot", difficulty: Difficulty.Hard, arrowCount: 7, attempts: 4 },
+  { id: "manual-012-hard-timer", difficulty: Difficulty.Hard, arrowCount: 8, attempts: 4, timeLimitSeconds: 70 },
+  { id: "manual-013-hard-mesh", difficulty: Difficulty.Hard, arrowCount: 8, attempts: 4, timeLimitSeconds: 65 },
+  { id: "manual-014-hard-snarl", difficulty: Difficulty.Hard, arrowCount: 9, attempts: 4, timeLimitSeconds: 60 },
+  { id: "manual-015-hard-finale", difficulty: Difficulty.Hard, arrowCount: 10, attempts: 3, timeLimitSeconds: 55 }
 ];
+
+export const manualLevels: readonly ManualLevelFixture[] = LEVEL_DRAFTS.map((draft, index) => ({
+  id: draft.id,
+  order: index + 1,
+  difficulty: draft.difficulty,
+  arrowCount: draft.arrowCount,
+  definition: toDefinition(draft)
+}));
 
 export const manualLevelDefinitions: readonly LevelDefinition[] = manualLevels.map((level) => level.definition);

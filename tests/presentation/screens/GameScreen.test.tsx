@@ -19,42 +19,30 @@ function setup() {
 }
 
 describe("GameScreen", () => {
-  it("should_route_cell_tap_through_controller_to_play_turn", () => {
+  it("should_route_arrow_tap_through_controller_to_tap_arrow", () => {
     const { viewModel, controller } = setup();
-    const playTurn = jest.spyOn(viewModel, "playTurn");
+    const tapArrow = jest.spyOn(viewModel, "tapArrow");
 
     const { getByTestId } = renderWithProviders(
-      <GameScreen
-        viewModel={viewModel}
-        controller={controller}
-        levelOrder={1}
-        onExit={jest.fn()}
-        onHome={jest.fn()}
-      />
+      <GameScreen viewModel={viewModel} controller={controller} levelOrder={1} onExit={jest.fn()} onHome={jest.fn()} />
     );
 
-    fireEvent.press(getByTestId("cell-0-1"));
+    fireEvent.press(getByTestId("arrow-a"));
 
-    expect(playTurn).toHaveBeenCalledWith({ row: 0, column: 1 });
+    expect(tapArrow).toHaveBeenCalledWith("a");
   });
 
-  it("should_render_victory_overlay_when_level_is_won", () => {
+  it("should_render_victory_overlay_when_the_board_is_cleared", () => {
     const { viewModel, controller } = setup();
 
     const { getByTestId, queryByTestId } = renderWithProviders(
-      <GameScreen
-        viewModel={viewModel}
-        controller={controller}
-        levelOrder={1}
-        onExit={jest.fn()}
-        onHome={jest.fn()}
-      />
+      <GameScreen viewModel={viewModel} controller={controller} levelOrder={1} onExit={jest.fn()} onHome={jest.fn()} />
     );
 
     expect(queryByTestId("victory-screen")).toBeNull();
 
-    fireEvent.press(getByTestId("cell-0-1"));
-    fireEvent.press(getByTestId("cell-0-2"));
+    fireEvent.press(getByTestId("arrow-a"));
+    fireEvent.press(getByTestId("arrow-b"));
 
     expect(getByTestId("victory-screen")).toBeTruthy();
   });

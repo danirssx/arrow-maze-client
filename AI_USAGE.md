@@ -1605,6 +1605,207 @@ Modeling arrow removal as an `ArrowEntity` state flip (instead of mutating the o
 
 ---
 
+# AI Usage Log: MAZ-132 Arrow Extraction, Attempts/Defeat, Win Condition (gameplay domain)
+
+## Task / Problem
+
+Resolve `MAZ-132` (Refactor T3) of the Arrow Untangle pivot: migrate the gameplay domain off the deleted maze engine. Replace player movement with arrow extraction, add the limited-attempts soft-defeat system (with per-arrow dedup), and make victory "empty board". Stacked on `MAZ-131`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-132` following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket state, AI usage logging, validation, MEMORY/AGENTS update checks, commit/push/PR, and Linear updates, noting the refactor requires reviewing all affected tickets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | The mechanic (Model B extraction, attempts/dedup, soft defeat, empty-board victory) was already sealed in the refactor docs and MAZ-132; no new interview. | `Refactor_Arrow_Untangle_Tickets.md` (T3), MAZ-132 |
+| Planner/Slicer | Used | Re-sliced T3 to the gameplay domain core (command/level/state) and deferred the application use-cases + GameFacade to T4 because they are inseparable from the level-build Builder. | this log, MEMORY re-slice note |
+| TDD Implementer | Used | Wrote AAA `should_*_when_*` tests for ExtractArrowCommand, NormalLevel, TimedLevel, GameContext, then implemented to green. | `tests/domain/{command,level,state}`, this branch |
+| Judge | Referenced | Pre-PR self-audit: scoped eslint, dangling maze-ref grep, layer boundaries (domain imports no RN/Expo/HTTP). | scoped `eslint` (exit 0), `grep` clean |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
+
+## Result Obtained
+
+- Domain `command`: removed `MoveCommand`; added `ExtractArrowCommand` — captures a `GameContext` snapshot, delegates extraction, and on `undo` re-places the arrow and restores the prior phase/result. `CommandHistory`/`ICommand` unchanged.
+- Domain `level`: rewrote `BaseLevel` over `BoardGroup` + `CollisionService` with `attemptsRemaining` + `penalizedFailures: Set` (dedup), `extractArrow`/`restoreArrow`/`registerFailedAttempt`/`canExtract`; victory = empty board; defeat = out-of-attempts (`DefeatReason.OutOfAttempts`) plus the subclass hook (`TimedLevel` time). Dropped player/move/graph/template; kept `Clock`; emits `LevelFinished` only. `NormalLevel`/`TimedLevel` re-based on `(id, board, attempts, ...)`.
+- Domain `state`: `IGameState`/`BaseGameState` now expose `extract`/`failAttempt` instead of `move`; `PlayingState` extract→`VictoryState`, failAttempt→`GameOverState`; `GameContext` exposes `extract`/`failAttempt` and snapshot/restore.
+- Errors: `level/errors` now `InvalidTimeLimitError`, `InvalidAttemptsError`, `ArrowNotExtractableError` (dropped maze errors); barrels updated.
+
+## Verification
+
+- `npx jest tests/domain/level tests/domain/command tests/domain/state` → 4 suites, 17 tests passing.
+- `npx eslint src/domain/{level,command,state} tests/domain/{level,command,state}` → exit 0 (clean).
+- `grep` for maze refs (`BoardGraph`, `PathfindingService`, `CellFactory`, `LevelTemplate`, `MoveCommand`, `.move(`, `playerPosition`) in the touched layer → clean.
+- Full `npm run verify` is **intentionally red** (big-bang) until the application layer migrates (T4) and UI/levels land.
+
+## Team Modifications Pending Human Review
+
+- **Re-slice (please confirm):** the application `use-cases/game` + `GameFacade` migration moved to **T4 (MAZ-133)**, because `GameSession`/`StartLevelUseCase`/`GameFacade` construct levels via the `level-build` Builder (T4) and emit via the `dto` `GameEventBridge` (T6). `BaseLevel` is now constructed from a `BoardGroup` + attempts, which the Builder will supply.
+- The `observer`/`dto` event chain still references the old move/cell events; it compiles but is semantically stale and should be revised when the UI lands (T6).
+
+## Lessons / Limitations
+
+Re-slicing T3 to the domain core keeps the slice coherent and green-in-isolation, mirroring how MAZ-131 was a clean board/value-objects slice. The application/facade is inseparable from the T4 builder, so migrating it there avoids pulling T4/T6 scope into T3. Keeping arrow removal as an `ArrowEntity` state flip made `ExtractArrowCommand.undo` a one-liner (`restoreArrow` + context restore).
+
+
+---
+
+# AI Usage Log: MAZ-133 Time Scoring, Arrow Level Builder, Application Gameplay
+
+## Task / Problem
+
+Resolve `MAZ-133` (Refactor T4) of the Arrow Untangle pivot: replace pathfinding-based scoring with time-based scoring, rebuild the level-build Builder/Director/strategies over `ArrowSpec`, and (absorbed from the T3 re-slice) migrate the application `use-cases/game` + `GameFacade` to the new domain. Stacked on `MAZ-132`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user approved the T3 re-slice and asked to implement `MAZ-133` (T4) absorbing the deferred application/facade migration, following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket state, AI usage logging, validation, MEMORY/AGENTS update checks, commit/push/PR, and Linear updates.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Time scoring (`max(0, base − elapsedSeconds·k)`), ArrowSpec contract, and attempts were already sealed in the refactor docs; no new interview. | `Refactor_Arrow_Untangle_Tickets.md` (T4, §1.1) |
+| Planner/Slicer | Used | Absorbed the T3 re-slice (application use-cases + GameFacade) into T4; scoped GameFacade's board-snapshot/event-DTO board mapping out to T6. | this log, MEMORY note |
+| TDD Implementer | Used | Wrote AAA tests for TimeScoring/ScoreContext, the arrow Builder/Director/Json strategy, and a GameFacade play→win→undo flow, then implemented to green. | `tests/domain/scoring`, `tests/application/{level-build,game}`, this branch |
+| Judge | Referenced | Pre-PR self-audit: scoped eslint (T4 files clean), dangling-ref grep, layer boundaries (no React/Expo/HTTP). | scoped `eslint`, `grep` |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
+
+## Result Obtained
+
+- Domain `scoring`: removed `EfficiencyScoringStrategy` and `TimeBonusScoringStrategy`; added `TimeScoringStrategy` (`score = max(0, base − elapsedSeconds·pointsPerSecond)`, higher = better, zero when not won); simplified `ScoreContext` to `{ result, elapsedMs }` (dropped moves/optimalMoves/remainingMs); kept `StandardScoringStrategy`; updated barrel.
+- Application `level-build`: `LevelDefinition` is now `{ id, difficulty, arrows: ArrowSpec[], attempts?, kind, timeLimitSeconds? }` (+ `DEFAULT_ATTEMPTS = 5`); `BuiltLevel = { level }` (no optimalMoves); `ILevelBuilder`/`ConcreteLevelBuilder` build a `BoardGroup` of `ArrowEntity` and instantiate `NormalLevel`/`TimedLevel` with attempts (no graph/pathfinding/solvability — backend owns solvability via the DAG check); `LevelDirector`, `TutorialLevelStrategy` (a 2-arrow dependency puzzle), and `JsonLevelStrategy` (parses arrows) rewritten.
+- Application `use-cases/game`: `GameSession` drops optimalMoves; `PlayTurnUseCase` → `TapArrowUseCase(arrowId)` (extract if the ray is clear, else a deduped failed attempt); `GameSnapshotDto`/mapper now expose `arrowsRemaining`/`attemptsRemaining`/`canUndo` (no position/moves/optimalMoves); `StartLevelUseCase`/`Undo`/`Pause`/`Resume` adapted.
+- `GameFacade`: gameplay orchestration (`startLevel`/`tapArrow`/`undo`/`pause`/`resume`/`restart`/`getSnapshot`) + the domain→DTO event bridge. `getBoardSnapshot` (static board rendering) was removed and deferred to the mobile UI ticket (T6).
+
+## Verification
+
+- `npx jest tests/domain/scoring tests/application/level-build/{ConcreteLevelBuilder,LevelDirector,JsonLevelStrategy}.test.ts tests/application/game/GameFacade.test.ts` → 7 suites, 26 tests passing (incl. a start→blocked-tap→clear→win→undo flow through the real `GameFacade`).
+- `npx eslint` on the touched scoring/level-build/use-cases/facade files + tests → clean. (The only eslint errors are in `level-build/fixtures/manualLevels.ts`, which belongs to T5 and was already red.)
+- Full `npm run verify` is **intentionally red** (big-bang) until T5 (manual levels) and T6 (UI) land.
+
+## Team Modifications Pending Human Review
+
+- `GameFacade.getBoardSnapshot` + `dto/BoardSnapshotMapper` (static board rendering) deferred to **T6 (MAZ-135, UI)** — they map a level definition to UI cells, a presentation concern.
+- `level-build/fixtures/manualLevels.ts` and the manual-level tests still reference the deleted cell model — owned by **T5 (MAZ-134)**.
+- Application/UI event/contract tests (`GameEventContract`, the old `GameplayApplicationFlow`) belong to **T6/T7** and were left/removed accordingly.
+
+## Lessons / Limitations
+
+Modeling level construction as "arrows → `ArrowEntity` → `BoardGroup` → level" let the Builder stay a thin, dependency-free assembler now that solvability lives in the backend. Taps are addressed by arrow id (the UI disambiguates overlaps from rendered geometry), which keeps the application layer free of pixel/geometry concerns. Keeping the event bridge while dropping the board snapshot was the clean cut that let `GameFacade` compile without pulling in the T6 rendering mapper.
+
+
+---
+
+# AI Usage Log: MAZ-134 Manual Arrow-Knot Levels (15 fixtures)
+
+## Task / Problem
+
+Resolve `MAZ-134` (Refactor T5): replace the maze-era manual level fixtures with 15 solvable arrow-untangle "knot" levels in the new `ArrowSpec` format, with progressive difficulty. This also unblocks the `level-build/fixtures/manualLevels.ts` red left by T4. Stacked on `MAZ-133`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-134` (T5) following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket state, AI usage logging, validation, MEMORY/AGENTS update checks, commit/push/PR, and Linear updates.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Level-design guidance (progressive difficulty by arrow count / crossings / body length, no self-pointing, DAG-solvable) was already sealed in the refactor docs. | `Refactor_Arrow_Untangle_Tickets.md` (T5) |
+| Planner/Slicer | Used | Scoped T5 to the client fixtures; deferred the backend seed reseed to T1 (MAZ-130), which owns the new schema. | this log, MEMORY note |
+| TDD Implementer | Used | Wrote a greedy-solver test (proves each level's blocking graph is acyclic) + structure/progression/buildability tests, then authored the fixtures to green. | `tests/application/levels/ManualLevels.test.ts` |
+| Judge | Referenced | Pre-PR self-audit: scoped eslint, confirmed fixtures no longer reference the deleted cell model, verified the solvability guarantee. | scoped `eslint`, `grep` |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
+
+## Result Obtained
+
+- Rewrote `src/application/level-build/fixtures/manualLevels.ts`: 15 ordered `LevelDefinition`s of `ArrowSpec` arrows, progressive (2 → 10 arrows; Easy → Medium → Hard; growing body length; timed + reduced attempts on harder levels).
+- Solvability guarantee: every arrow points only UP or RIGHT and is straight, which makes the blocking graph provably acyclic (a blocker always has a strictly smaller `row − col`), so a removal order always exists. A deterministic `knot(n)` helper lays out a crossing "top bar + hanging verticals + side bars" so levels have real dependencies, not just free arrows.
+- `ManualLevelFixture` is now `{ id, order, difficulty, arrowCount, definition }` (dropped maze-era `expectedOptimalMoves`/`version`); `manualLevels` + `manualLevelDefinitions` exports preserved for `LevelSelectViewModel` (T6).
+- Unblocks the `fixtures/manualLevels.ts` red left by T4 (the `level-build` layer now builds clean).
+
+## Verification
+
+- `npx jest tests/application/levels/ManualLevels.test.ts` → 32 tests passing (15 build-via-director + 15 greedy-solvable + structure/progression).
+- `npx eslint src/application/level-build/fixtures tests/application/levels/ManualLevels.test.ts` → clean.
+- `grep` confirms the fixtures no longer reference `CellSpec`/`CellType`/`LevelTemplate`/`optimalMoves`/`walls`.
+- Full `npm run verify` still intentionally red until T6 (UI) lands (presentation layer).
+
+## Team Modifications Pending Human Review
+
+- **Backend seed reseed (`001_seed_levels.sql`) deferred to T1 (MAZ-130)** — it needs the new `ArrowSpec` JSONB schema, which does not exist yet. The client fixtures can be exported to seed format once the backend lands.
+- The levels are **baseline procedural layouts** (straight UP/RIGHT arrows). They satisfy solvability + progression + no-self-pointing; curved/art-directed bodies can refine them later without changing the contract.
+- `LevelSelectViewModel` (presentation) still references the old domain elsewhere and lands green in T6; the fixtures API it consumes (`manualLevels` → `id`/`definition`) was kept compatible.
+
+## Lessons / Limitations
+
+Constraining the fixtures to straight UP/RIGHT arrows turned "is this level solvable?" from a hand-verification burden into a proof: the `row − col` potential strictly decreases along every blocking edge, so no cycle can form. The greedy-solver test then doubles as the acceptance check for all 15 levels at once.
+
+
+---
+
+# AI Usage Log: MAZ-135 Mobile UI — canvas, HUD, MVVM (closes the client chain green)
+
+## Task / Problem
+
+Resolve `MAZ-135` (Refactor T6): rebuild the gameplay presentation for the arrow untangle game — a dark dotted canvas with colored arrows, tap-to-extract, scroll, a HUD (arrows + attempts) and a soft-defeat overlay — following the `design/` guidelines, and re-introduce the board-snapshot DTO. As the last red layer, this brings the whole client green. Stacked on `MAZ-134`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-135` (T6) taking `arrow-maze-client/design/` into account, following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket state, AI usage logging, validation, MEMORY/AGENTS update checks, commit/push/PR, and Linear updates.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Mechanic/HUD/overlay behavior was sealed in the refactor docs; `design/README.md` provided the palette (blue/lavender app chrome; dark game board per `game-design/`). | `Refactor_Arrow_Untangle_Tickets.md` (T6), `design/README.md` |
+| Planner/Slicer | Used | Scoped T6 to the testable presentation logic + functional RN views; folded the inherited strict-null fixes needed for green into this green-gate ticket. | this log, MEMORY note |
+| TDD Implementer | Used | Wrote/rewrote ViewModel, controller, screen, mapper, and level-select tests to the new model, then implemented to green. | `tests/presentation/*`, `tests/application/dto/BoardSnapshotMapper.test.ts` |
+| Judge | Referenced | Pre-PR self-audit: full `npm run verify`, layer boundaries (NativeWind/Zustand only in presentation; no domain classes in views). | `npm run verify` output |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
+
+## Result Obtained
+
+- **dto:** `BoardSnapshotDto`/`BoardSnapshotMapper` rebuilt around arrows (`ArrowDto`, `CoordinateDto`, `BoardBoundsDto`); `GameEventDto`/`GameEventMapper` now use a local `CoordinateDto` (the removed `PositionDto` dependency is gone); `dto/index` updated.
+- **presentation logic:** `GameUiState` holds arrows + extracted ids + bounds + HUD counters + overlay + shake id. `GameViewModel` is snapshot-driven (a tap that lowers `arrowsRemaining` extracted an arrow — pushed to a LIFO stack for undo; an unchanged count is a blocked tap flagged for shake). `GameUIController.handleArrowTap(id)` replaces cell taps. `LevelSelectViewModel` updated to the new fixtures.
+- **RN views:** `BoardView` renders a dark dotted lattice with colored rounded arrow cells (palette-aligned), both-axis scroll, and head glyphs; tapping any cell reports the arrow id. `GameScreen` HUD shows arrows-remaining + attempts-remaining; `VictoryScreen`/`DefeatScreen` (out-of-attempts) overlays. i18n keys `game.arrows`/`game.attempts` + defeat copy added (en/es).
+- **facade:** restored `GameFacade.getBoardSnapshot()` using the new arrow mapper; fixed `app/victory.tsx`.
+- **Green-gate fixes (inherited from earlier chain branches, surfaced by full `tsc`):** strict-null (`noUncheckedIndexedAccess`) fixes in `ArrowSpec`, `BoundingBox`, and `fixtures/manualLevels.ts`; index-access fix in `ManualLevels.test`; removed the stale maze `LevelObserver.test` (untangle observer tests belong to T7).
+
+## Verification
+
+- `npx tsc --noEmit` → clean (whole project typechecks).
+- `npm run verify` (lint + typecheck + test:coverage) → **47 suites, 222 tests passing**, 0 lint errors. The full client is green for the first time since the pivot began.
+
+## Team Modifications Pending Human Review
+
+- The board render is **functional, not final art**: arrows are straight cells (not curved snakes), there is no live timer/"Best" wiring yet, and power-ups (hint/shuffle) remain in **T8**. These are visual/score refinements, not contract changes.
+- The per-ticket jest runs (T2-T5) did not run full `tsc`, so a few strict-null errors were latent; they are fixed here. Future tickets should run `npm run typecheck` (not only jest) before claiming local green.
+- Observer tests for the untangle events (`LevelFinished`) should be re-added in **T7 (MAZ-136)**.
+
+## Lessons / Limitations
+
+A snapshot-driven ViewModel (read the `GameSnapshotDto` returned by each facade call, track extracted ids locally) avoided exposing live arrow state from the domain while keeping the screen in sync — including undo via a LIFO stack. Running the full `tsc` at the green-gate ticket caught strict-null issues that per-file jest had masked; that is the real lesson for the rest of the chain.
+
+
+---
+
 # AI Log - Fix Leaderboard Authenticated Score Submit
 
 ## Task / Problem

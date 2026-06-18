@@ -1,47 +1,21 @@
-import { LevelResult } from "@/domain/level";
-import { InvalidScoreContextError, ScoreContext } from "@/domain/scoring";
+import { DefeatReason, LevelResult } from "@/domain/level/LevelResult";
+import { ScoreContext } from "@/domain/scoring/ScoreContext";
+import { InvalidScoreContextError } from "@/domain/scoring/errors";
 
 describe("ScoreContext", () => {
-  it("should_report_efficient_when_moves_are_at_most_optimal", () => {
-    const context = ScoreContext.create({ result: LevelResult.won(), moves: 3, optimalMoves: 3 });
-
-    expect(context.isEfficient()).toBe(true);
-    expect(context.extraMoves()).toBe(0);
-  });
-
-  it("should_report_extra_moves_when_above_optimal", () => {
-    const context = ScoreContext.create({ result: LevelResult.won(), moves: 6, optimalMoves: 3 });
-
-    expect(context.isEfficient()).toBe(false);
-    expect(context.extraMoves()).toBe(3);
-  });
-
-  it("should_floor_remaining_milliseconds_to_whole_seconds", () => {
-    const context = ScoreContext.create({
-      result: LevelResult.won(),
-      moves: 3,
-      optimalMoves: 3,
-      remainingMs: 4_999
-    });
-
-    expect(context.remainingSeconds()).toBe(4);
-  });
-
-  it("should_reject_negative_move_count", () => {
-    expect(() => ScoreContext.create({ result: LevelResult.won(), moves: -1, optimalMoves: 3 })).toThrow(
-      InvalidScoreContextError
+  it("should_be_scorable_only_when_won", () => {
+    expect(ScoreContext.create({ result: LevelResult.won(), elapsedMs: 0 }).isScorable()).toBe(true);
+    expect(ScoreContext.create({ result: LevelResult.playing(), elapsedMs: 0 }).isScorable()).toBe(false);
+    expect(ScoreContext.create({ result: LevelResult.lost(DefeatReason.OutOfAttempts), elapsedMs: 0 }).isScorable()).toBe(
+      false
     );
   });
 
-  it("should_reject_non_integer_optimal_moves", () => {
-    expect(() => ScoreContext.create({ result: LevelResult.won(), moves: 3, optimalMoves: 2.5 })).toThrow(
-      InvalidScoreContextError
-    );
+  it("should_floor_elapsed_seconds", () => {
+    expect(ScoreContext.create({ result: LevelResult.won(), elapsedMs: 4999 }).elapsedSeconds()).toBe(4);
   });
 
-  it("should_reject_negative_remaining_time", () => {
-    expect(() =>
-      ScoreContext.create({ result: LevelResult.won(), moves: 3, optimalMoves: 3, remainingMs: -10 })
-    ).toThrow(InvalidScoreContextError);
+  it("should_throw_when_elapsed_is_negative", () => {
+    expect(() => ScoreContext.create({ result: LevelResult.won(), elapsedMs: -1 })).toThrow(InvalidScoreContextError);
   });
 });

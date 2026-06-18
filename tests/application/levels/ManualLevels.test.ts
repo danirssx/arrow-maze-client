@@ -1,75 +1,68 @@
-import { ConcreteLevelBuilder, LevelDirector, LevelKind } from "@/application/level-build";
+import { ConcreteLevelBuilder } from "@/application/level-build/ConcreteLevelBuilder";
+import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
+import { LevelDirector } from "@/application/level-build/LevelDirector";
 import { manualLevels } from "@/application/level-build/fixtures";
-import { CellType } from "@/domain/value-objects/CellType";
+import { ArrowEntity } from "@/domain/board/ArrowEntity";
+import { BoardGroup } from "@/domain/board/BoardGroup";
+import { CollisionService } from "@/domain/board/CollisionService";
 import { Difficulty } from "@/domain/value-objects/Difficulty";
 
-const difficultyWeight = {
-  [Difficulty.Easy]: 1,
-  [Difficulty.Medium]: 2,
-  [Difficulty.Hard]: 3
-} as const;
+const DIFFICULTY_RANK: Record<string, number> = {
+  [Difficulty.Easy]: 0,
+  [Difficulty.Medium]: 1,
+  [Difficulty.Hard]: 2
+};
 
-function progressionScore(index: number): number {
-  const level = manualLevels[index];
-  if (level === undefined) {
-    throw new Error(`Missing manual level at index ${index}.`);
-  }
-  const { template, kind, timeLimitSeconds } = level.definition;
-  const walls = template.cells.filter((cell) => cell.type === CellType.Wall).length;
-  const timedBonus = kind === LevelKind.Timed ? Math.max(1, Math.floor((120 - (timeLimitSeconds ?? 120)) / 10)) : 0;
+/**
+ * Greedy solver: repeatedly extract every currently-unblocked arrow. Because a
+ * removal only ever frees cells, this empties the board if and only if the
+ * blocking graph is acyclic (i.e. the level is solvable).
+ */
+function clearsCompletely(definition: LevelDefinition): boolean {
+  const board = new BoardGroup(definition.arrows.map((spec) => new ArrowEntity(spec)));
+  const collision = new CollisionService();
 
-  return (
-    difficultyWeight[template.difficulty] * 1000 +
-    template.rows * template.cols +
-    level.expectedOptimalMoves * 20 +
-    walls * 5 +
-    timedBonus
-  );
-}
-
-describe("manualLevels fixtures", () => {
-  it("should_define_exactly_15_unique_manual_levels_when_loaded", () => {
-    const ids = manualLevels.map((level) => level.id);
-
-    expect(manualLevels).toHaveLength(15);
-    expect(new Set(ids).size).toBe(15);
-    expect(manualLevels.map((level) => level.order)).toEqual([...Array.from({ length: 15 }, (_, index) => index + 1)]);
-  });
-
-  it("should_build_every_manual_level_when_validated_by_level_director", () => {
-    const director = new LevelDirector(new ConcreteLevelBuilder());
-
-    for (const fixture of manualLevels) {
-      const built = director.construct({
-        createDefinition: () => fixture.definition
-      });
-
-      expect(built.optimalMoves).toBe(fixture.expectedOptimalMoves);
-      expect(built.level.position.equals(fixture.definition.start)).toBe(true);
-    }
-  });
-
-  it("should_include_start_exit_time_limit_version_and_expected_optimal_moves_when_declared", () => {
-    for (const fixture of manualLevels) {
-      const { template, kind, timeLimitSeconds } = fixture.definition;
-      const exitCount = template.cells.filter((cell) => cell.type === CellType.Exit).length;
-
-      expect(fixture.version).toBeGreaterThanOrEqual(1);
-      expect(fixture.expectedOptimalMoves).toBeGreaterThan(0);
-      expect(template.cellAt(fixture.definition.start)).toBeDefined();
-      expect(exitCount).toBe(1);
-
-      if (kind === LevelKind.Timed) {
-        expect(timeLimitSeconds).toBeGreaterThan(0);
-      } else {
-        expect(timeLimitSeconds).toBeUndefined();
+  let progressed = true;
+  while (progressed) {
+    progressed = false;
+    for (const arrow of board.activeArrows()) {
+      if (collision.canExtract(board, arrow.id)) {
+        arrow.extract();
+        progressed = true;
       }
     }
+  }
+
+  return board.activeArrowCount() === 0;
+}
+
+describe("manual level fixtures", () => {
+  it("should_provide_15_levels_with_unique_ids_in_order", () => {
+    expect(manualLevels).toHaveLength(15);
+    expect(manualLevels.map((level) => level.order)).toEqual(Array.from({ length: 15 }, (_, index) => index + 1));
+    expect(new Set(manualLevels.map((level) => level.id)).size).toBe(15);
   });
 
-  it("should_increase_difficulty_progressively_when_levels_are_ordered", () => {
+  it("should_progress_in_difficulty_and_arrow_count", () => {
+    const ranks = manualLevels.map((level) => DIFFICULTY_RANK[level.difficulty] ?? 0);
+    const counts = manualLevels.map((level) => level.arrowCount);
+
     for (let index = 1; index < manualLevels.length; index += 1) {
-      expect(progressionScore(index)).toBeGreaterThanOrEqual(progressionScore(index - 1));
+      expect(ranks[index] ?? 0).toBeGreaterThanOrEqual(ranks[index - 1] ?? 0);
+      expect(counts[index] ?? 0).toBeGreaterThanOrEqual(counts[index - 1] ?? 0);
     }
+  });
+
+  it.each(manualLevels)("should_build_$id_via_the_director", (fixture) => {
+    const built = new LevelDirector(new ConcreteLevelBuilder()).construct({
+      createDefinition: () => fixture.definition
+    });
+
+    expect(built.level.id).toBe(fixture.id);
+    expect(built.level.activeArrowCount).toBe(fixture.arrowCount);
+  });
+
+  it.each(manualLevels)("should_be_fully_solvable_$id", (fixture) => {
+    expect(clearsCompletely(fixture.definition)).toBe(true);
   });
 });

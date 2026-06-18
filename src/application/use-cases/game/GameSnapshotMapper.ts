@@ -1,14 +1,6 @@
 import type { LevelResult } from "../../../domain/level/LevelResult";
-import type { Position } from "../../../domain/value-objects/Position";
-import type { GameSnapshotDto, PositionDto } from "./GameSnapshotDto";
+import type { GameSnapshotDto } from "./GameSnapshotDto";
 import type { GameSession } from "./GameSession";
-
-function mapPosition(position: Position): PositionDto {
-  return {
-    row: position.row,
-    column: position.col
-  };
-}
 
 function mapResult(result: LevelResult): GameSnapshotDto["result"] {
   if (result.reason === undefined) {
@@ -25,9 +17,8 @@ export function mapGameSnapshot(session: GameSession): GameSnapshotDto {
   return {
     phase: context.phase,
     result: mapResult(context.result),
-    position: mapPosition(level.position),
-    moves: level.moves,
-    canUndo: history.canUndo,
-    optimalMoves: session.requireOptimalMoves()
+    arrowsRemaining: level.activeArrowCount,
+    attemptsRemaining: level.attemptsRemaining,
+    canUndo: history.canUndo
   };
 }

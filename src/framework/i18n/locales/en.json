@@ -31,9 +31,11 @@
     "moves": "Moves",
     "optimal": "Best",
     "objective": "Goal",
+    "arrows": "Arrows",
+    "attempts": "Attempts",
     "undo": "Undo",
     "restart": "Restart",
-    "invalidMove": "You can only move along the arrows."
+    "invalidMove": "That arrow is blocked — clear its path first."
   },
   "victory": {
     "title": "You did it!",
@@ -46,8 +48,8 @@
     "home": "Home"
   },
   "defeat": {
-    "title": "Time's up",
-    "subtitle": "You ran out of time. Try again!",
+    "title": "Out of attempts",
+    "subtitle": "You ran out of attempts. Try again!",
     "retry": "Try again",
     "home": "Home"
   },

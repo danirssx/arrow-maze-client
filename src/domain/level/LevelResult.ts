@@ -8,7 +8,8 @@
  * moves, trap, etc.) extend this map without touching the level hierarchy.
  */
 export const DefeatReason = {
-  Time: "TIME"
+  Time: "TIME",
+  OutOfAttempts: "OUT_OF_ATTEMPTS"
 } as const;
 
 export type DefeatReason = (typeof DefeatReason)[keyof typeof DefeatReason];
