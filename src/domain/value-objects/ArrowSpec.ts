@@ -34,22 +34,22 @@ export class ArrowSpec {
 
     const seen = new Set<string>();
     for (let i = 0; i < path.length; i += 1) {
-      const cell = path[i];
+      const cell = path[i]!;
       const key = cell.toKey();
       if (seen.has(key)) {
         throw new InvalidArrowSpecError(`Arrow ${id} has a self-intersecting path at ${key}.`);
       }
       seen.add(key);
-      if (i > 0 && !ArrowSpec.areOrthogonallyAdjacent(path[i - 1], cell)) {
+      if (i > 0 && !ArrowSpec.areOrthogonallyAdjacent(path[i - 1]!, cell)) {
         throw new InvalidArrowSpecError(
-          `Arrow ${id} path is not orthogonally connected between ${path[i - 1].toKey()} and ${key}.`
+          `Arrow ${id} path is not orthogonally connected between ${path[i - 1]!.toKey()} and ${key}.`
         );
       }
     }
 
-    const head = path[path.length - 1];
+    const head = path[path.length - 1]!;
     if (path.length >= 2) {
-      const penultimate = path[path.length - 2];
+      const penultimate = path[path.length - 2]!;
       if (head.translate(direction).equals(penultimate)) {
         throw new InvalidArrowSpecError(`Arrow ${id} head points back into its own body.`);
       }
@@ -59,7 +59,7 @@ export class ArrowSpec {
   }
 
   get head(): Position {
-    return this.path[this.path.length - 1];
+    return this.path[this.path.length - 1]!;
   }
 
   get cells(): readonly Position[] {

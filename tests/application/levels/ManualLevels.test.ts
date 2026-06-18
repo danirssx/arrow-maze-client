@@ -48,8 +48,8 @@ describe("manual level fixtures", () => {
     const counts = manualLevels.map((level) => level.arrowCount);
 
     for (let index = 1; index < manualLevels.length; index += 1) {
-      expect(ranks[index]).toBeGreaterThanOrEqual(ranks[index - 1]);
-      expect(counts[index]).toBeGreaterThanOrEqual(counts[index - 1]);
+      expect(ranks[index]!).toBeGreaterThanOrEqual(ranks[index - 1]!);
+      expect(counts[index]!).toBeGreaterThanOrEqual(counts[index - 1]!);
     }
   });
 

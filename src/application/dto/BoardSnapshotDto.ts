@@ -1,31 +1,34 @@
-import type { CellType } from "../../domain/value-objects/CellType";
 import type { PositionDto } from "../use-cases/game/GameSnapshotDto";
 
 /**
- * UI-neutral board cell DTO.
+ * UI-neutral arrow DTO.
  *
- * Plain, serializable description of a single cell for rendering: its position,
- * its `CellType` (a shared serializable string), and, only for arrow cells, the
- * direction name (`UP`/`DOWN`/`LEFT`/`RIGHT`). It exposes no domain cell class.
+ * Plain, serializable description of one Arrow Untangle piece for rendering.
+ * It exposes no domain entity instance and is safe for presentation/ViewModels.
  */
-export type BoardCellDto = {
-  readonly row: number;
-  readonly column: number;
-  readonly type: CellType;
-  readonly direction?: string;
+export type BoardArrowDto = {
+  readonly id: string;
+  readonly color: string;
+  readonly path: readonly PositionDto[];
+  readonly direction: string;
+};
+
+export type BoardBoundingBoxDto = {
+  readonly minRow: number;
+  readonly maxRow: number;
+  readonly minColumn: number;
+  readonly maxColumn: number;
 };
 
 /**
  * UI-neutral board snapshot (domain → presentation boundary).
  *
- * The full static board layout a screen needs to draw the grid — dimensions,
- * start and exit positions, and every cell — without ever importing or reading
- * `BoardGraph`, `BoardGroup`, or any domain cell class.
+ * The full static arrow layout a screen needs to draw the unbounded canvas:
+ * arrows, derived bounds, and attempts budget. There is no player/start/exit.
  */
 export type BoardSnapshotDto = {
-  readonly rows: number;
-  readonly cols: number;
-  readonly start: PositionDto;
-  readonly exit: PositionDto;
-  readonly cells: readonly BoardCellDto[];
+  readonly levelId: string;
+  readonly arrows: readonly BoardArrowDto[];
+  readonly boundingBox: BoardBoundingBoxDto;
+  readonly attempts: number;
 };

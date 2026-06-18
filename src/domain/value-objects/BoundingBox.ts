@@ -22,10 +22,11 @@ export class BoundingBox {
       throw new InvalidBoundingBoxError("A bounding box requires at least one position.");
     }
 
-    let minRow = positions[0].row;
-    let maxRow = positions[0].row;
-    let minCol = positions[0].col;
-    let maxCol = positions[0].col;
+    const first = positions[0]!;
+    let minRow = first.row;
+    let maxRow = first.row;
+    let minCol = first.col;
+    let maxCol = first.col;
     for (const position of positions) {
       minRow = Math.min(minRow, position.row);
       maxRow = Math.max(maxRow, position.row);
