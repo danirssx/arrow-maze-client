@@ -45,7 +45,8 @@
     "perfect": "¡Ruta perfecta!",
     "playAgain": "Jugar de nuevo",
     "next": "Siguiente nivel",
-    "home": "Inicio"
+    "home": "Inicio",
+    "leaderboard": "Ver ranking"
   },
   "defeat": {
     "title": "Sin intentos",

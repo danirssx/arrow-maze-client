@@ -18,6 +18,7 @@ interface GameScreenProps {
   onExit: () => void;
   onHome: () => void;
   onNextLevel?: (() => void) | undefined;
+  onViewLeaderboard?: (() => void) | undefined;
 }
 
 /**
@@ -34,7 +35,8 @@ export function GameScreen({
   levelOrder,
   onExit,
   onHome,
-  onNextLevel
+  onNextLevel,
+  onViewLeaderboard
 }: GameScreenProps) {
   const { t } = useTranslation();
   const state = useViewModelState(viewModel);
@@ -84,7 +86,12 @@ export function GameScreen({
 
       {state.overlay === GameOverlay.Victory ? (
         <View className="absolute inset-0">
-          <VictoryScreen onPlayAgain={() => controller.handleRestart()} onHome={onHome} onNextLevel={onNextLevel} />
+          <VictoryScreen
+            onPlayAgain={() => controller.handleRestart()}
+            onHome={onHome}
+            onNextLevel={onNextLevel}
+            onViewLeaderboard={onViewLeaderboard}
+          />
         </View>
       ) : null}
 

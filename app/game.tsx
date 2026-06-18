@@ -10,6 +10,11 @@ const getGameRoute = (levelId: string): Href => ({
   params: { levelId },
 } as unknown as Href);
 
+const getLeaderboardRoute = (levelId: string): Href => ({
+  pathname: "/leaderboard",
+  params: { levelId },
+} as unknown as Href);
+
 export default function GameRoute() {
   const router = useRouter();
   const params = useLocalSearchParams<{ levelId?: string }>();
@@ -34,6 +39,9 @@ export default function GameRoute() {
         nextLevel !== undefined
           ? () => router.replace(getGameRoute(nextLevel.id))
           : undefined
+      }
+      onViewLeaderboard={
+        levelId.length > 0 ? () => router.push(getLeaderboardRoute(levelId)) : undefined
       }
     />
   );
