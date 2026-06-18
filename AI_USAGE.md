@@ -910,6 +910,292 @@ The user asked to implement Linear ticket `MAZ-99` while following the project w
 
 ---
 
+# AI Usage Log: AM-029 Complete Mobile Gameplay Application Tests
+
+## Task / Problem
+
+Resolve MAZ-100 / AM-029 by hardening the gameplay application test suite: exercise the
+orchestration of use cases and the `GameFacade` (start, play turn, undo, pause/resume, level
+building and graph solvability) without coupling to UI or infrastructure. Test-only ticket; no
+production code changes.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement MAZ-100 following `AGENTS.md` in both repositories, `MEMORY.md`,
+`Linear_MCP_Guideline.md`, AI usage logging (including the required agent-role table),
+validation, checking whether `MEMORY.md`/`AGENTS.md` need updates, commit, push, PR, and
+Linear update rules.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | The spec came from the Linear ticket AM-029; `.agents/spec-partner.md` conventions were followed, not re-run. | Linear MAZ-100 |
+| Planner/Slicer | Referenced | Ticket was already planned/sliced in `ArrowMaze_Linear_Tickets_Plan.md`; no new slicing. | Linear MAZ-100 |
+| TDD Implementer | Used | Wrote test-first/behavior tests driving the existing `GameFacade`/use cases and `LevelDirector` against manual level fixtures. | `tests/application/game/GameplayApplicationFlow.test.ts`, `tests/application/level-build/ManualLevelsDirector.test.ts`, PR #18 |
+| Judge | Referenced | Self-review via the `.agents/judge.md` checklist and `npm run verify`; no separate review PR. | `npm run verify` output |
+| Mutation Tester | Not used | No mutation run for this test-hardening ticket. | N/A |
+
+## Result Obtained
+
+Added application-layer tests (no production changes):
+
+- `tests/application/game/GameplayApplicationFlow.test.ts`: for every one of the 15 manual
+  level fixtures, derives the winning move sequence from the board graph
+  (`PathfindingService.shortestPath`), plays it through the `GameFacade`, and asserts a
+  `Victory`/`Won` snapshot whose `moves` and `optimalMoves` equal the fixture's
+  `expectedOptimalMoves`; then composes an `EfficiencyScoringStrategy` over the snapshot to
+  assert a positive score (and exactly 1500 for an optimal run). Error handling: play/pause
+  before start → `GameplayStateError`; unsolvable strategy → `UnsolvableLevelError`; malformed
+  JSON strategy → `InvalidLevelDefinitionError`; disconnected destination → `IllegalMoveError`.
+- `tests/application/level-build/ManualLevelsDirector.test.ts`: drives `LevelDirector` over all
+  15 fixtures, asserting computed `optimalMoves` matches `expectedOptimalMoves` and the
+  concrete level kind (`NormalLevel`/`TimedLevel`) matches each definition.
+
+The facade snapshot has no `score` field, so "victory with score" is satisfied at the
+application boundary by feeding the snapshot (`result`, `moves`, `optimalMoves`) into the
+scoring strategy — no production code was changed to add a field.
+
+## Verification
+
+- `npm test -- --runInBand tests/application/game/GameplayApplicationFlow.test.ts tests/application/level-build/ManualLevelsDirector.test.ts` (51 tests passing).
+- `npm run verify` (lint + typecheck + coverage): 200 tests across 28 suites passing, 0 lint
+  errors (remaining output is pre-existing warnings only).
+
+## Team Modifications Pending Human Review
+
+- Decide whether `GameSnapshotDto` should carry a `score` field directly (so ViewModels in
+  AM-045 do not compose scoring themselves), or keep scoring as a separate application call.
+- Confirm whether the winning-sequence helper should live as a shared test utility once more
+  application/presentation tests need a "solve this level" helper.
+
+## Lessons / Limitations
+
+Deriving the winning path from `PathfindingService` (rather than hard-coding move lists) keeps
+the tests robust to fixture edits and matches the acceptance criterion "winning sequence per
+the graph". Using a tiny inline `ILevelStrategy` stub (an application port) avoided mocking any
+domain object, satisfying "mocks only for external ports" — here there were no external ports
+to mock at all, since the gameplay stack is pure.
+
+
+---
+
+# AI Usage Log: AM-030 Document Mobile Game Engine Patterns
+
+## Task / Problem
+
+Resolve MAZ-101 / AM-030 by documenting the GoF (and directed-graph) patterns of the mobile
+game engine for defense and maintenance: a per-pattern catalog with key class, layer, and
+reason, plus a class → layer map. Docs-only ticket.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement MAZ-101 following `AGENTS.md` in both repositories, `MEMORY.md`,
+`Linear_MCP_Guideline.md`, AI usage logging (with the required agent-role table), validation,
+checking whether `MEMORY.md`/`AGENTS.md` need updates, commit, push, PR, and Linear update
+rules.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec taken from Linear AM-030; `.agents/spec-partner.md` conventions followed, not re-run. | Linear MAZ-101 |
+| Planner/Slicer | Referenced | Ticket already planned/sliced in `ArrowMaze_Linear_Tickets_Plan.md`. | Linear MAZ-101 |
+| TDD Implementer | Not used | Docs-only ticket; no production code or tests. | N/A |
+| Judge | Referenced | Coherence self-check: every documented class verified against a `grep` of pattern headers in `src`; no claims about unimplemented layers. | `npm run verify`, source scan |
+| Mutation Tester | Not used | No code under test in this ticket. | N/A |
+
+## Result Obtained
+
+Documentation only (no source/test changes):
+
+- `docs/design-patterns.md` (new): catalog of the 11 patterns — Composite, Graph
+  Model/Pathfinding, Decorator, Factory Method, Template Method, State, Command, Observer,
+  Strategy (scoring + level source), Builder+Director, Facade — each with key class(es), files,
+  layer, and rationale; a class → layer → pattern table; the directed-graph movement rules; and
+  the dependency direction.
+- `docs/architecture.md`: added a "Design Patterns" section summarizing patterns by layer and
+  linking to `design-patterns.md`.
+- `README.md`: added a "Design Patterns" section (table of the 11 patterns + key classes) linking
+  to the detailed doc, satisfying the Section 6 requirement to document design patterns.
+
+The class → pattern map was derived from an actual `grep` of pattern header comments in `src`, so
+acceptance criterion 2 (every pattern class carries a header) was verified, not assumed. The docs
+explicitly state that `presentation`/`infrastructure`/`framework` are scaffolding only, so no
+claims are made about unimplemented features (UI, persistence, backend).
+
+## Verification
+
+- Source scan: `grep -rnE "pattern" --include=*.ts src` confirmed all 11 patterns have header
+  comments across `domain` and `application`.
+- `npm run verify` (lint + typecheck + coverage): 200 tests across 28 suites passing, 0 lint
+  errors (docs change does not affect code).
+
+## Team Modifications Pending Human Review
+
+- Confirm the patterns doc should be referenced from the academic defense deck / Section 6
+  checklist, and whether the required `docs/class-diagram.*` diagrams should embed this map.
+- Revisit the doc when the presentation layer (MVVM, AM-045) lands to add its patterns.
+
+## Lessons / Limitations
+
+Generating the class → pattern map from a header `grep` rather than from memory kept the document
+faithful to the code and made the "every pattern class has a header" criterion verifiable. The
+doc is intentionally limited to implemented layers to honor the "no claims about unimplemented
+features" Definition of Done.
+
+
+---
+
+# AI Usage Log: AM-031 Domain-to-ViewModel Observer Contract
+
+## Task / Problem
+
+Resolve MAZ-102 / AM-031 by defining the contract that lets a future `GameViewModel` observe the
+domain without leaking UI into the domain or forcing presentation to read domain internals
+(`BoardGraph`, level classes). Provide UI-neutral event DTOs, an observer bridge, a board
+snapshot mapper, and document the `GameViewModel` responsibilities.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement MAZ-102 following `AGENTS.md` in both repositories, `MEMORY.md`,
+`Linear_MCP_Guideline.md`, AI usage logging (with the agent-role table), validation, checking
+whether `MEMORY.md`/`AGENTS.md` need updates, commit, push, PR, and Linear update rules.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec taken from Linear AM-031; `.agents/spec-partner.md` conventions followed. | Linear MAZ-102 |
+| Planner/Slicer | Referenced | Ticket already planned/sliced in the tickets plan. | Linear MAZ-102 |
+| TDD Implementer | Used | Built the contract guided by mapper/bridge/facade tests covering both acceptance criteria. | `tests/application/game/GameEventContract.test.ts`, PR #20 |
+| Judge | Referenced | Self-review via `.agents/judge.md` checklist + `npm run verify`; coordination with the presentation owner flagged for AM-045. | Linear comment, `npm run verify` |
+| Mutation Tester | Not used | No mutation run for this boundary ticket. | N/A |
+
+## Result Obtained
+
+New application module `src/application/dto` (UI-neutral domain→presentation boundary):
+
+- `GameEventDto` — discriminated union mirroring domain `GameEvent` with plain payloads
+  (`PositionDto`, `GameResultDto`); reuses the domain `GameEventType` string discriminator.
+- `IGameEventListener` — presentation-facing observer interface, with documented `GameViewModel`
+  responsibilities (subscribe via the facade, translate DTOs to UI state, never import
+  `BoardGraph`/level classes/`Position`/`LevelResult`).
+- `GameEventMapper.mapGameEvent` — single domain `GameEvent` → `GameEventDto` translation point.
+- `GameEventBridge` — implements the domain `IGameObserver`, maps events, and forwards DTOs to an
+  `IGameEventListener` (keeps presentation from implementing the domain observer directly).
+- `BoardSnapshotDto` + `mapBoardSnapshot` — UI-neutral board layout (dimensions, start, exit,
+  cells with type and direction name) mapped from a `LevelDefinition`, so screens render the grid
+  without reading `BoardGraph`/`BoardGroup`.
+
+Facade integration (`src/application/facades/GameFacade.ts`):
+
+- `addEventListener` / `removeEventListener` and `getBoardSnapshot`.
+- The facade owns one `GameEventBridge` that it (re)registers on each new level (start/restart)
+  and fans out to all listeners. The level definition is captured once at start (single
+  `createDefinition` call) to back the board snapshot, with no domain or use-case changes.
+
+The domain layer was not modified (kept pure); the bridge subscribes through the existing
+`BaseLevel`/`IObservable` API.
+
+## Verification
+
+- `npm test -- --runInBand tests/application/game/GameEventContract.test.ts` (11 tests:
+  event mapping, bridge forwarding, board snapshot mapping, facade subscribe/win/remove,
+  board-snapshot and pre-start error cases).
+- `npm run verify` (lint + typecheck + coverage): 211 tests across 29 suites passing, 0 lint
+  errors (remaining output is pre-existing warnings only). `application/dto` 100% and
+  `application/facades` 100% statements.
+
+## Team Modifications Pending Human Review
+
+- Definition of Done requires coordination with the presentation owner (Daniella Cruz) before
+  AM-045: confirm the `GameEventDto`/`BoardSnapshotDto` shapes and the `IGameEventListener`
+  contract match the planned `GameViewModel`/MVVM design. Flagged in the Linear comment.
+- Decide whether `GameSnapshotDto` should also carry the current `score` (open question from
+  AM-029) so the ViewModel reads it from one snapshot.
+
+## Lessons / Limitations
+
+Bridging the domain `IGameObserver` into a DTO-only `IGameEventListener` at the application
+boundary lets presentation stay free of domain imports while keeping the domain observer pure.
+Capturing the `LevelDefinition` once at `startLevel` (and reusing it for the board snapshot)
+avoided exposing the board through the domain `BaseLevel` API, keeping all changes within the
+ticket's touch paths (`application/dto`, `application/facades`).
+
+
+---
+
+# AI Log - AM-042 - Implement mobile HTTP, storage, mappers and AOP adapters
+
+## Task / problem
+Implement external gateways and mappers so that presentation/application layers
+do not depend on concrete libraries (Axios, AsyncStorage).
+Define IHttpClient, ILocalStorage, AxiosHttpClientAdapter, AsyncStorageAdapter,
+HttpError, StorageError, IMapper, and AOP wrappers for use cases.
+
+## Tool and model
+Claude Code - claude-sonnet-4-6
+
+## Prompt used
+Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed,
+existing ports (Logger.ts) and ConsoleLogger studied to match style.
+AM-013 / AM-017 branches inspected for contract and tsconfig constraints.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec from MAZ-113 guided in-scope items | MAZ-113 |
+| Planner/Slicer | Referenced | ports → errors → adapters → mappers → AOP → tests | file list |
+| TDD Implementer | Referenced | jest-expo + mock axios/AsyncStorage | test files |
+| Judge | Not used | No .agents/ directory configured | N/A |
+| Mutation Tester | Not used | No .agents/ directory configured | N/A |
+
+## Result obtained
+Created:
+- `src/application/ports/IHttpClient.ts` — HTTP client interface
+- `src/application/ports/ILocalStorage.ts` — local storage interface
+- `src/application/ports/UseCase.ts` — generic use case interface
+- `src/infrastructure/http/HttpError.ts` — typed app error codes from HTTP status
+- `src/infrastructure/http/AxiosHttpClientAdapter.ts` — Pattern: Adapter; wraps Axios
+- `src/infrastructure/storage/StorageError.ts` — typed error for storage failures
+- `src/infrastructure/storage/AsyncStorageAdapter.ts` — Pattern: Adapter; wraps AsyncStorage
+- `src/infrastructure/mappers/IMapper.ts` — generic mapper contract
+- `src/application/aspects/LoggingUseCaseWrapper.ts` — Pattern: AOP; logs start/success/error
+- `src/application/aspects/ErrorHandlingUseCaseWrapper.ts` — Pattern: AOP; centralised error handling
+- `tests/infrastructure/http/AxiosHttpClientAdapter.test.ts` — 5 tests
+- `tests/infrastructure/storage/AsyncStorageAdapter.test.ts` — 5 tests
+- `tests/application/aspects/LoggingUseCaseWrapper.test.ts` — 3 tests (incl. no-token-leak)
+
+All 44 tests pass. typecheck clean.
+
+## Team modifications pending human review
+- IMapper.toDto is declared but concrete mappers (progress, auth) await AM-043/AM-044 specs
+- ErrorHandlingUseCaseWrapper.onError is typed as `ErrorHandler = (err: unknown) => never`;
+  team may prefer a Result<T,E> pattern instead
+- AxiosHttpClientAdapter baseURL is constructor-injected; DI wiring is pending AM-043
+
+## Lessons / limitations
+- exactOptionalPropertyTypes:true requires omitting undefined keys from AxiosRequestConfig
+  rather than setting them to undefined
+- DoD "no tokens logged": verified by test `should_not_log_input_values_to_prevent_token_leakage`
+
+
+---
+
 # AI Usage Log: Agent Role Traceability Documentation
 
 ## Task / Problem
@@ -954,226 +1240,292 @@ Past work followed `AGENTS.md` constraints and role intent, but logs did not mak
 
 ---
 
-# AI Log — AM-042 — Mobile infrastructure adapters
-
-**Date:** 2026-06-17
-**Ticket:** MAZ-113 (AM-042)
-**Branch:** feat/mobile-infrastructure-adapters-AM-042
-**Developer:** Daniella Cruz (Dev C)
+# AI Log - AM-043 - Implement mobile auth session and backend contract tests
 
 ## Task / problem
-
-Implement infrastructure adapters and application-layer cross-cutting concerns for the mobile client: HTTP client port + Axios adapter, local storage port + AsyncStorage adapter, AOP logging and error-handling wrappers.
+Consume auth backend endpoints and validate client DTOs against backend OpenAPI
+shapes. Implement session manager (Singleton), auth repository (Adapter),
+auth use cases, and contract tests for auth/progress/leaderboard responses.
 
 ## Tool and model
-
-- Tool: Claude Code (claude.ai/code)
-- Model: Claude Sonnet 4.6
+Claude Code - claude-sonnet-4-6
 
 ## Prompt used
-
-User instructed to implement ticket AM-042 following the project workflow.
+Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed,
+AM-042 files brought in via git checkout from prior branch.
+Backend openApiSpec.ts studied for exact response shapes (LoginResponse,
+RegisterResponse, ProgressResponse, LeaderboardResponse).
 
 ## Agent Roles Used
 
-| Agent | Status | How it was used |
-| --- | --- | --- |
-| Spec Partner | Referenced | MAZ-113 spec used as acceptance criteria |
-| TDD Implementer | Used | Tests written before implementation; 13 tests |
-| Judge | Referenced | Pre-PR self-audit: `exactOptionalPropertyTypes` compliance, no token logging |
-| Mutation Tester | Not used | N/A |
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec from MAZ-114 guided session boundary / contract DoD | MAZ-114 |
+| Planner/Slicer | Referenced | ports → DTOs → mapper → repo → session → use cases → tests | file list |
+| TDD Implementer | Referenced | Fake implementations for all ports in tests | test files |
+| Judge | Not used | No .agents/ directory configured | N/A |
+| Mutation Tester | Not used | No .agents/ directory configured | N/A |
 
 ## Result obtained
+Created:
+- `src/application/auth/AuthSession.ts` — session model { userId, username, role, accessToken }
+- `src/application/ports/IAuthRepository.ts` — register/login port
+- `src/application/ports/ISessionManager.ts` — get/save/clear port
+- `src/infrastructure/mappers/auth/AuthDtos.ts` — DTOs matching backend OpenAPI
+- `src/infrastructure/mappers/auth/AuthMapper.ts` — Pattern: Adapter; toSession, toRegisterOutput
+- `src/infrastructure/repositories/HttpAuthRepository.ts` — Pattern: Adapter, Repository
+- `src/framework/session/SessionManager.ts` — Pattern: Singleton; persists session via ILocalStorage
+- `src/application/auth/LoginUseCase.ts` — calls repo.login + sessionManager.save
+- `src/application/auth/RegisterUseCase.ts`
+- `src/application/auth/LogoutUseCase.ts`
+- `src/application/auth/GetCurrentSessionUseCase.ts`
+- `tests/infrastructure/repositories/HttpAuthRepository.test.ts` — 3 tests
+- `tests/framework/session/SessionManager.test.ts` — 4 tests
+- `tests/contract/auth.contract.test.ts` — 5 tests (incl. no rawPassword in session)
+- `tests/contract/progress.contract.test.ts` — 4 tests
+- `tests/contract/leaderboard.contract.test.ts` — 4 tests
 
-- `src/application/ports/IHttpClient.ts` — `HttpRequestConfig`, `HttpResponse<T>`, `get/post/put/delete`.
-- `src/application/ports/ILocalStorage.ts` — `getItem/setItem/removeItem/clear`.
-- `src/application/ports/UseCase.ts` — `interface UseCase<TInput, TOutput>`.
-- `src/infrastructure/http/HttpError.ts` — `AppErrorCode` union, `HttpError.fromStatusCode()`.
-- `src/infrastructure/http/AxiosHttpClientAdapter.ts` — Pattern: Adapter; `exactOptionalPropertyTypes`-compliant; casts `res.data as T`.
-- `src/infrastructure/storage/AsyncStorageAdapter.ts` — Pattern: Adapter; throws `StorageError`.
-- `src/application/aspects/LoggingUseCaseWrapper.ts` — Pattern: AOP; never logs input values.
-- `src/application/aspects/ErrorHandlingUseCaseWrapper.ts` — Pattern: AOP.
-- 13 tests: 5 HTTP, 5 storage, 3 AOP (includes `should_not_log_input_values_to_prevent_token_leakage`).
-
-`npm run verify` passes.
+65 total tests passing. typecheck clean.
 
 ## Team modifications pending human review
-
-- Confirm `AxiosHttpClientAdapter` constructor `baseURL` + optional `defaultHeaders` is the right signature.
-- Review the `res.data as T` cast — acceptable for typed API responses behind contract tests.
+- SessionManager.resetInstance() exposed for testing; team may prefer a factory instead
+- accessToken stored as plain string in AsyncStorage (JSON); encryption pending team decision
+- No refresh-token flow implemented — backend openApiSpec does not currently expose one
 
 ## Lessons / limitations
-
-- `exactOptionalPropertyTypes: true` requires building `AxiosRequestConfig` objects conditionally — never assign `undefined` to optional properties, omit the key instead.
-- TS2719 (`T is not assignable to type T`) is resolved by calling `this.client.get(url, config)` without a generic and casting the result.
+- DoD "no secrets in fixtures": all fixtures use placeholder strings
+  (accessToken: 'contract-test-token-placeholder', no real passwords)
+- Contract tests are static shape checks — not live API calls; team
+  should run real integration tests before production deploy
 
 
 ---
 
-# AI Log — AM-043 — Mobile auth contract
-
-**Date:** 2026-06-17
-**Ticket:** MAZ-114 (AM-043)
-**Branch:** feat/mobile-auth-contract-AM-043
-**Developer:** Daniella Cruz (Dev C)
+# AI Log - AM-044 - Implement mobile offline-first progress and leaderboard repos
 
 ## Task / problem
-
-Implement authentication ports, repositories, use cases, session management, and contract tests for auth endpoints.
+Implement client-side repositories for offline-first progress and remote leaderboard.
+ViewModels must not call storage or HTTP directly — facades enforce the boundary.
 
 ## Tool and model
+Claude Code - claude-sonnet-4-6
 
-- Tool: Claude Code (claude.ai/code)
-- Model: Claude Sonnet 4.6
+## Prompt used
+Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
+AM-042/AM-043 files brought in via git checkout. Backend openApiSpec studied
+for /progress/me, /progress/sync, /leaderboard/:levelId, /leaderboard/scores shapes.
 
 ## Agent Roles Used
 
-| Agent | Status | How it was used |
-| --- | --- | --- |
-| Spec Partner | Referenced | MAZ-114 spec |
-| TDD Implementer | Used | Contract tests first |
-| Judge | Referenced | Pre-PR: no raw password in session, no secrets in fixtures |
-| Mutation Tester | Not used | N/A |
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec from MAZ-115 guided offline-first and facade DoD | MAZ-115 |
+| Planner/Slicer | Referenced | ports → DTOs → repos → facades → tests order | file list |
+| TDD Implementer | Referenced | Fake implementations for all ports | test files |
+| Judge | Not used | No .agents/ directory configured | N/A |
+| Mutation Tester | Not used | No .agents/ directory configured | N/A |
 
 ## Result obtained
+Created:
+- `src/application/ports/IProgressRepository.ts` — load/save/markPendingSync/clearPendingSync
+- `src/application/ports/ILeaderboardRepository.ts` — getTopScores/submitScore
+- `src/infrastructure/mappers/progress/ProgressDtos.ts`, `ProgressMapper.ts`
+- `src/infrastructure/mappers/leaderboard/LeaderboardDtos.ts`
+- `src/infrastructure/repositories/LocalProgressRepository.ts` — Pattern: Adapter, Repository
+- `src/infrastructure/repositories/HttpProgressRepository.ts` — fetchRemote/sync with Bearer token
+- `src/infrastructure/repositories/HttpLeaderboardRepository.ts` — Pattern: Adapter, Repository
+- `src/application/facades/ProgressFacade.ts` — Pattern: Facade; offline-first load/saveOffline/sync
+- `src/application/facades/LeaderboardFacade.ts` — Pattern: Facade
+- `tests/infrastructure/repositories/LocalProgressRepository.test.ts` — 5 tests
+- `tests/infrastructure/repositories/HttpLeaderboardRepository.test.ts` — 2 tests
+- `tests/application/facades/ProgressFacade.test.ts` — 6 tests
+- `tests/application/facades/LeaderboardFacade.test.ts` — 2 tests
 
-- `src/application/auth/` — `AuthSession`, `IAuthRepository`, `ISessionManager` ports.
-- `src/infrastructure/mappers/auth/AuthDtos.ts`, `AuthMapper.ts`.
-- `src/infrastructure/repositories/HttpAuthRepository.ts` — Pattern: Adapter, Repository.
-- `src/framework/session/SessionManager.ts` — Pattern: Singleton; `static resetInstance()` for tests.
-- `src/application/auth/` — `LoginUseCase`, `RegisterUseCase`, `LogoutUseCase`, `GetCurrentSessionUseCase`.
-- `tests/contract/auth.contract.test.ts` — 6 tests; `accessToken` uses placeholder string; `should_not_expose_raw_password_in_session` verifies DoD.
-- `tests/contract/progress.contract.test.ts`, `leaderboard.contract.test.ts` — 4 tests each.
+59 tests passing. typecheck clean.
 
-`npm run verify` passes.
+## Team modifications pending human review
+- HttpProgressRepository is not behind an interface (only used by ProgressFacade);
+  team may want IRemoteProgressRepository port for full testability
+- Offline merge strategy is local-wins (send local completedLevels to /sync);
+  backend ProgressMergePolicy handles union + best-score logic
+- No TTL/cache-invalidation on LocalProgressRepository — team decision pending
 
 ## Lessons / limitations
-
-Singleton `SessionManager` needs `static resetInstance()` for test isolation — without it, state leaks between test suites.
+- DoD "ViewModels do not call storage/HTTP directly" enforced by facades accepting
+  only IProgressRepository and HttpProgressRepository (not IHttpClient or ILocalStorage)
+- Acceptance criterion "marks pending sync locally": verified by
+  should_mark_pending_sync_when_saving_offline in ProgressFacade.test.ts
+- Acceptance criterion "merges and clears pending sync": verified by
+  should_clear_pending_sync_after_successful_sync
 
 
 ---
 
-# AI Log — AM-044 — Mobile progress and leaderboard repositories
-
-**Date:** 2026-06-18
-**Ticket:** MAZ-115 (AM-044)
-**Branch:** feat/mobile-progress-leaderboard-repos-AM-044
-**Developer:** Daniella Cruz (Dev C)
+# AI Log - AM-046 - Implement mobile settings, i18n, audio and UX polish
 
 ## Task / problem
-
-Implement offline-first progress storage, remote progress sync, and leaderboard repositories for the mobile client.
+Complete the visible user experience: language switch (EN/ES), sound mute,
+friendly error messages with i18n, and loading/error/empty state components.
 
 ## Tool and model
+Claude Code - claude-sonnet-4-6
 
-- Tool: Claude Code (claude.ai/code)
-- Model: Claude Sonnet 4.6
+## Prompt used
+Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
+Existing i18n setup (i18n.ts, locales) and AppErrorBoundary studied.
+AM-042 files brought in from prior branch.
 
 ## Agent Roles Used
 
-| Agent | Status | How it was used |
-| --- | --- | --- |
-| Spec Partner | Referenced | MAZ-115 spec |
-| TDD Implementer | Used | Fake classes for all repositories |
-| Judge | Referenced | Pre-PR: `import/no-restricted-paths` compliance check |
-| Mutation Tester | Not used | N/A |
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec from MAZ-117 guided in-scope items | MAZ-117 |
+| Planner/Slicer | Referenced | locales → ports → infra → components → tests | file list |
+| TDD Implementer | Referenced | Fake IAudioPlayer; @testing-library/react-native for SettingsScreen | test files |
+| Judge | Not used | No .agents/ directory configured | N/A |
+| Mutation Tester | Not used | No .agents/ directory configured | N/A |
 
 ## Result obtained
+Created / updated:
+- `src/framework/i18n/locales/en.json` + `es.json` — added settings/errors/states keys
+- `src/application/ports/ISettingsRepository.ts` — { language, muted } port
+- `src/application/ports/IAudioPlayer.ts` — SoundKey + play port
+- `src/infrastructure/storage/SettingsRepository.ts` — Pattern: Adapter; persists via ILocalStorage
+- `src/infrastructure/audio/AudioFacade.ts` — Pattern: Facade, Singleton; mute blocks all play()
+- `src/infrastructure/audio/ExpoAudioAdapter.ts` — Pattern: Adapter; wraps expo-av
+- `src/presentation/components/LoadingState.tsx` — uses t('states.loading')
+- `src/presentation/components/ErrorState.tsx` — maps HttpError codes to translated messages
+- `src/presentation/components/EmptyState.tsx` — variants: default/progress/leaderboard
+- `src/presentation/screens/SettingsScreen.tsx` — language toggle + mute Switch
+- `src/framework/errors/AppErrorBoundary.tsx` — updated hardcoded string to i18n key
+- `tests/infrastructure/audio/AudioFacade.test.ts` — 5 tests (mute/unmute/singleton)
+- `tests/infrastructure/storage2/SettingsRepository.test.ts` — 3 tests
+- `tests/presentation/screens/SettingsScreen.test.tsx` — 5 tests (i18n + interactions)
 
-- `src/application/ports/IProgressRepository.ts` — offline `LocalProgress` with `pendingSync` flag.
-- `src/application/ports/IRemoteProgressRepository.ts` — `fetchRemote` and `sync` (key fix: moved from infrastructure to application port to avoid `import/no-restricted-paths` violation).
-- `src/application/ports/ILeaderboardRepository.ts`.
-- `src/infrastructure/repositories/LocalProgressRepository.ts` — AsyncStorage with key `arrow_maze_progress_${userId}`.
-- `src/infrastructure/repositories/HttpProgressRepository.ts` — implements `IRemoteProgressRepository`.
-- `src/infrastructure/repositories/HttpLeaderboardRepository.ts`.
-- `src/application/facades/ProgressFacade.ts` — Pattern: Facade; `saveOffline()` sets `pendingSync: true`; `sync()` clears it.
-- `src/application/facades/LeaderboardFacade.ts` — Pattern: Facade.
+57 tests passing. typecheck clean. 0 lint errors.
 
-`npm run verify` passes.
+## Team modifications pending human review
+- ExpoAudioAdapter requires sound asset files in assets/sounds/ — not bundled here
+- SettingsScreen is a pure presentational component; a ViewModel/hook to wire
+  ISettingsRepository is needed before connecting to navigation
+- i18n.changeLanguage() is called imperatively in SettingsScreen; team may prefer
+  a context/provider approach for persistence across navigation
 
 ## Lessons / limitations
-
-ESLint `import/no-restricted-paths` actively caught that `ProgressFacade` (application layer) imported `HttpProgressRepository` from infrastructure. Fix: extracted `IRemoteProgressRepository` port into application layer.
+- DoD "no hardcoded visible strings without translation": AppErrorBoundary was the
+  only existing hardcoded string — replaced with i18n.t('errors.generic')
+- Acceptance criterion "mute enabled → no sound plays": verified by
+  should_not_play_sound_when_muted in AudioFacade.test.ts
+- Acceptance criterion "language changes to Spanish → text is translated": verified by
+  should_show_spanish_labels_when_language_is_es in SettingsScreen.test.tsx
 
 
 ---
 
-# AI Log — AM-046 — Mobile settings, audio, and i18n
-
-**Date:** 2026-06-18
-**Ticket:** MAZ-117 (AM-046)
-**Branch:** feat/mobile-settings-audio-i18n-AM-046
-**Developer:** Daniella Cruz (Dev C)
+# AI Log - AM-047 - Complete mobile contract tests and release documentation
 
 ## Task / problem
-
-Add language settings (en/es), mute toggle, AudioFacade (Singleton + Facade), ExpoAudioAdapter, shared UI state components, and SettingsScreen.
-
-## Tool and model
-
-- Tool: Claude Code (claude.ai/code)
-- Model: Claude Sonnet 4.6
-
-## Result obtained
-
-- `src/framework/i18n/locales/en.json`, `es.json` — added `settings`, `errors`, `states` namespaces.
-- `src/application/ports/ISettingsRepository.ts` — `AppSettings { language, muted }`.
-- `src/application/ports/IAudioPlayer.ts` — `SoundKey` union.
-- `src/infrastructure/storage/SettingsRepository.ts` — Pattern: Adapter; merges with defaults on load.
-- `src/infrastructure/audio/AudioFacade.ts` — Pattern: Facade, Singleton; `static resetInstance()`.
-- `src/infrastructure/audio/ExpoAudioAdapter.ts` — Pattern: Adapter.
-- `src/presentation/components/LoadingState.tsx`, `ErrorState.tsx` (maps `AppErrorCode`), `EmptyState.tsx`.
-- `src/presentation/screens/SettingsScreen.tsx` — testID props on Switch and language display.
-- `src/framework/errors/AppErrorBoundary.tsx` — uses `i18n.t("errors.generic")`.
-
-`npm run verify` passes.
-
-## Lessons / limitations
-
-`AudioFacade.play()` is a no-op when `_muted = true`, ensuring the mute toggle is enforced in domain/application without any UI check.
-
-
----
-
-# AI Log — AM-047 — Mobile contract test and release docs
-
-**Date:** 2026-06-18
-**Ticket:** MAZ-118 (AM-047)
-**Branch:** test/mobile-contract-release-AM-047
-**Developer:** Daniella Cruz (Dev C)
-
-## Task / problem
-
-Add level contract tests, expand progress/leaderboard contract tests, update README with release instructions, and create RELEASE.md.
+Close client-backend compatibility with a complete contract test suite and
+provide release documentation so a new developer can run, test, and build
+the app from scratch.
 
 ## Tool and model
+Claude Code - claude-sonnet-4-6
 
-- Tool: Claude Code (claude.ai/code)
-- Model: Claude Sonnet 4.6
+## Prompt used
+Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
+AM-046 source files brought in from prior branch. Backend openApiSpec
+studied for all endpoint shapes. Existing README.md and CI workflow reviewed
+before updating to avoid duplication.
 
 ## Agent Roles Used
 
-| Agent | Status | How it was used |
-| --- | --- | --- |
-| Spec Partner | Referenced | MAZ-118 spec |
-| TDD Implementer | Used | 9 level contract tests written first |
-| Judge | Referenced | Pre-PR audit after merge conflict resolution |
-| Mutation Tester | Not used | N/A |
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec from MAZ-118 guided contract scope and README DoD | MAZ-118 |
+| Planner/Slicer | Referenced | contract tests → README → docs/RELEASE.md order | file list |
+| TDD Implementer | Referenced | Static fixtures, no real network calls | test files |
+| Judge | Not used | No .agents/ directory configured | N/A |
+| Mutation Tester | Not used | No .agents/ directory configured | N/A |
 
 ## Result obtained
+Created / updated:
+- `tests/contract/levels.contract.test.ts` — 9 tests for GET /levels and GET /levels/:id
+- `tests/contract/auth.contract.test.ts` — 6 tests (LoginResponse, RegisterResponse)
+- `tests/contract/progress.contract.test.ts` — 5 tests (ProgressResponse + ProgressMapper)
+- `tests/contract/leaderboard.contract.test.ts` — 4 tests (LeaderboardResponse)
+- `README.md` — added Prerequisites, env vars, detailed quality/build commands,
+  link to RELEASE.md
+- `docs/RELEASE.md` — full release guide: Expo Go, EAS preview/production,
+  web build, CI, contract test run command, versioning, screenshots placeholder
+- `docs/screenshots/.gitkeep` — placeholder for AM-048 screenshots
 
-- `tests/contract/levels.contract.test.ts` — 9 tests: GET /levels shape, GET /levels/:id shape, `CellSpecDto` direction only for arrows, exit cell has no direction.
-- `tests/contract/progress.contract.test.ts` — added `should_map_to_LocalProgress_via_ProgressMapper` test.
-- `README.md` — added Prerequisites (Node 22+, Expo CLI, simulators), env vars (`EXPO_PUBLIC_API_BASE_URL`), run commands (`npm run android/ios/web`), link to RELEASE.md.
-- `docs/RELEASE.md` — full guide: Expo Go, EAS preview, EAS production, `npm run build` web, CI steps, contract test command, versioning.
-- `docs/screenshots/.gitkeep`.
+68 tests passing. typecheck clean. 0 lint errors.
 
-Merge conflict with `origin/develop` resolved: kept `ProgressMapper` import and mapper test from HEAD; adopted `if (entry === undefined)` guard style from develop. 274 tests passing after merge.
+## Team modifications pending human review
+- GET /levels and GET /levels/:id contract fixtures are based on domain model
+  (LevelDto shape); must be reconciled with actual backend spec when AM-013 lands
+- `eas.json` not created — EAS profile setup requires team EAS account credentials
+- Screenshots placeholder in docs/screenshots/ to be filled after AM-048 UI polish
 
 ## Lessons / limitations
+- DoD "docs align with actual commands": all commands verified against package.json
+  scripts (start/android/ios/web/lint/typecheck/test/test:coverage/verify/build)
+- Contract tests make no real network calls — static fixtures only
 
-Git stash should not be used when staged untracked files exist; they should be committed first. Merge conflicts from develop receiving a prior branch mid-PR require resolving with `git merge --continue`.
+
+---
+
+# AI Log - Fix Leaderboard Authenticated Score Submit
+
+## Task / Problem
+
+Update the mobile client after the backend changed `POST /leaderboard/scores` to require JWT authentication and to read `userId` from the token instead of accepting it in the request body.
+
+Also verify the M4 mobile integration ports around HTTP, auth/session, progress, leaderboard, storage, and contract tests.
+
+## Tool and Model
+
+- Tool: Codex CLI coding agent.
+- Model: GPT-5 based Codex session.
+
+## Prompt Used
+
+The user asked to verify the M4 milestone port connections and implement the frontend fix for `POST /leaderboard/scores`:
+
+- Remove `userId` from the request body.
+- Add `Authorization: Bearer <token>` to the request.
+- Keep `GET /leaderboard/:levelId` unauthenticated.
+- Validate the integration.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Used the backend change description as the accepted spec and kept scope limited to the mobile integration contract. | User-provided Fix #8; backend `LeaderboardController`/routes inspection. |
+| Planner/Slicer | Referenced | Mapped the fix to application port, facade, repository, and contract-test updates without touching domain/gameplay. | `ILeaderboardRepository`, `LeaderboardFacade`, `HttpLeaderboardRepository`, contract tests. |
+| TDD Implementer | Referenced | Updated tests around expected behavior first, then adjusted the port/repository implementation to pass them. | Leaderboard facade, repository, and contract tests. |
+| Judge | Referenced | Checked dependency direction and verified that M4 integration tests pass without React Native, UI, or backend runtime coupling. | `npm run verify`; M4 targeted Jest suites. |
+| Mutation Tester | Not used | Mutation testing is not configured in this repository. | N/A |
+
+## Result Obtained
+
+- `SubmitScoreInput` no longer includes `userId`.
+- `ILeaderboardRepository.submitScore` and `LeaderboardFacade.submitScore` now require an `accessToken` argument.
+- `HttpLeaderboardRepository.submitScore` sends `Authorization: Bearer <token>` and posts a body without `userId`.
+- `GET /leaderboard/:levelId` remains unauthenticated.
+- Contract tests now represent authenticated score submission without spoofable `userId`.
+- M4 integration tests for auth, progress, leaderboard, HTTP, storage, session, and contracts pass.
+
+## Team Modifications Pending Human Review
+
+- Backend Swagger/OpenAPI currently still documents `userId` inside `SubmitScoreRequest` and does not mark `POST /leaderboard/scores` with bearer auth in `origin/develop`; that should be fixed in the backend docs/contract.
+- Future UI/ViewModel callers must pass the stored session token when submitting leaderboard scores.
+
+## Lessons / Limitations
+
+- The fix is compile-time enforced by removing `userId` from `SubmitScoreInput`.
+- No real network request was executed; validation used repository and contract tests with mocked HTTP clients.
 
 
 <!-- AI_LOG_ENTRIES_END -->

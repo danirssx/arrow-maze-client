@@ -8,7 +8,7 @@ export class LeaderboardFacade {
     return this.repository.getTopScores(levelId);
   }
 
-  async submitScore(input: SubmitScoreInput): Promise<void> {
-    return this.repository.submitScore(input);
+  async submitScore(input: SubmitScoreInput, accessToken: string): Promise<void> {
+    return this.repository.submitScore(input, accessToken);
   }
 }
