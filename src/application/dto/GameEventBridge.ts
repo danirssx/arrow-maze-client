@@ -1,5 +1,4 @@
-import type { GameEvent } from "../../domain/observer";
-import type { IGameObserver } from "../../domain/observer";
+import type { GameEvent, IGameObserver } from "../../domain/observer";
 import { mapGameEvent } from "./GameEventMapper";
 import type { IGameEventListener } from "./IGameEventListener";
 

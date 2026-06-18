@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-useless-constructor */
 import type { BoardGraphBuilder } from "../board/BoardGraphBuilder";
 import type { ICellFactory } from "../factory/ICellFactory";
 import type { LevelTemplate } from "../value-objects/LevelTemplate";

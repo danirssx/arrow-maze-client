@@ -1,9 +1,14 @@
 import { useMemo } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 
 import { GameScreen } from "@/presentation/screens/GameScreen";
 import { useGameSession } from "@/presentation/hooks/useGameSession";
 import { LevelSelectViewModel } from "@/presentation/view-models/LevelSelectViewModel";
+
+const getGameRoute = (levelId: string): Href => ({
+  pathname: "/game",
+  params: { levelId },
+} as unknown as Href);
 
 export default function GameRoute() {
   const router = useRouter();
@@ -27,7 +32,7 @@ export default function GameRoute() {
       onHome={() => router.dismissAll()}
       onNextLevel={
         nextLevel !== undefined
-          ? () => router.replace({ pathname: "/game", params: { levelId: nextLevel.id } })
+          ? () => router.replace(getGameRoute(nextLevel.id))
           : undefined
       }
     />

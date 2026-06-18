@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-redeclare */
 import type { LevelTemplate } from "../../domain/value-objects/LevelTemplate";
 import type { Position } from "../../domain/value-objects/Position";
 

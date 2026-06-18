@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-redeclare */
 import type { LevelResult } from "../level/LevelResult";
 import type { Position } from "../value-objects/Position";
 
