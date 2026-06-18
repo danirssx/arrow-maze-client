@@ -77,21 +77,47 @@ ai-log/
 
 ## Getting Started
 
+### Prerequisites
+
+- Node.js 22+
+- npm 10+
+- Expo CLI (`npm install -g expo-cli`) — optional, used for device preview
+- Android Studio or Xcode for native builds (see [Release Guide](docs/RELEASE.md))
+
+### Run locally
+
 ```bash
 npm install
-npm run start
+npm run start          # opens Expo Go QR code in terminal
+npm run android        # launch on Android emulator
+npm run ios            # launch on iOS simulator (macOS only)
+npm run web            # run in browser
 ```
+
+### Environment variables
+
+Create a `.env` file at the project root (never commit it):
+
+```
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
+```
+
+The app reads `process.env.EXPO_PUBLIC_API_BASE_URL` at runtime for all HTTP calls.
 
 ## Quality Commands
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run test:coverage
-npm run verify
-npm run build
+npm run lint           # ESLint with architecture guardrails
+npm run typecheck      # TypeScript strict check, no emit
+npm test               # Jest (all suites including contract tests)
+npm run test:coverage  # Jest with coverage report in ./coverage
+npm run verify         # lint + typecheck + test:coverage (run before PR)
+npm run build          # expo export --platform web (web production bundle)
 ```
+
+## Build & Release
+
+See [docs/RELEASE.md](docs/RELEASE.md) for full Android / iOS / web build instructions.
 
 ## Architecture Guardrails
 

@@ -30,7 +30,7 @@ const LEADERBOARD_FIXTURE: LeaderboardResponseDto = {
   data: {
     leaderboardId: '550e8400-e29b-41d4-a716-446655440001',
     levelId: 'level-001',
-    updatedAt: '2026-06-17T00:00:00.000Z',
+    updatedAt: '2026-06-18T00:00:00.000Z',
     entries: [
       {
         entryId: '550e8400-e29b-41d4-a716-446655440002',
@@ -40,7 +40,7 @@ const LEADERBOARD_FIXTURE: LeaderboardResponseDto = {
         timeSeconds: 45,
         movesCount: 30,
         rank: 1,
-        submittedAt: '2026-06-17T00:00:00.000Z',
+        submittedAt: '2026-06-18T00:00:00.000Z',
       },
     ],
   },

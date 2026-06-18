@@ -3,25 +3,8 @@
  * matches what the client expects to consume.
  * Source of truth: arrow-maze-backend openApiSpec ProgressResponse schema.
  */
-
-interface CompletedLevelDto {
-  levelId: string;
-  score: number;
-  timeSeconds: number;
-  movesCount: number;
-  completedAt: string;
-}
-
-interface ProgressResponseDto {
-  status: 'success';
-  data: {
-    progressId: string;
-    userId: string;
-    version: number;
-    updatedAt: string;
-    completedLevels: CompletedLevelDto[];
-  };
-}
+import { ProgressMapper } from '@/infrastructure/mappers/progress/ProgressMapper';
+import type { ProgressResponseDto } from '@/infrastructure/mappers/progress/ProgressDtos';
 
 const PROGRESS_FIXTURE: ProgressResponseDto = {
   status: 'success',
@@ -29,9 +12,9 @@ const PROGRESS_FIXTURE: ProgressResponseDto = {
     progressId: 'progress-550e8400-e29b-41d4-a716-446655440000',
     userId: '550e8400-e29b-41d4-a716-446655440000',
     version: 3,
-    updatedAt: '2026-06-17T00:00:00.000Z',
+    updatedAt: '2026-06-18T00:00:00.000Z',
     completedLevels: [
-      { levelId: 'level-001', score: 1500, timeSeconds: 45, movesCount: 30, completedAt: '2026-06-17T00:00:00.000Z' },
+      { levelId: 'level-001', score: 1500, timeSeconds: 45, movesCount: 30, completedAt: '2026-06-18T00:00:00.000Z' },
     ],
   },
 };
@@ -64,5 +47,12 @@ describe('Progress contract — ProgressResponseDto', () => {
   it('should_parse_updatedAt_as_valid_date', () => {
     const date = new Date(PROGRESS_FIXTURE.data.updatedAt);
     expect(date.getTime()).not.toBeNaN();
+  });
+
+  it('should_map_to_LocalProgress_via_ProgressMapper', () => {
+    const local = ProgressMapper.toLocal(PROGRESS_FIXTURE);
+    expect(local.userId).toBe(PROGRESS_FIXTURE.data.userId);
+    expect(local.completedLevels).toHaveLength(1);
+    expect(local.pendingSync).toBe(false);
   });
 });
