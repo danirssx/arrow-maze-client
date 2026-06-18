@@ -44,12 +44,12 @@ describe("manual level fixtures", () => {
   });
 
   it("should_progress_in_difficulty_and_arrow_count", () => {
-    const ranks = manualLevels.map((level) => DIFFICULTY_RANK[level.difficulty]);
+    const ranks = manualLevels.map((level) => DIFFICULTY_RANK[level.difficulty] ?? 0);
     const counts = manualLevels.map((level) => level.arrowCount);
 
     for (let index = 1; index < manualLevels.length; index += 1) {
-      expect(ranks[index]).toBeGreaterThanOrEqual(ranks[index - 1]);
-      expect(counts[index]).toBeGreaterThanOrEqual(counts[index - 1]);
+      expect(ranks[index] ?? 0).toBeGreaterThanOrEqual(ranks[index - 1] ?? 0);
+      expect(counts[index] ?? 0).toBeGreaterThanOrEqual(counts[index - 1] ?? 0);
     }
   });
 

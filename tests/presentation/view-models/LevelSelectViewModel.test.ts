@@ -12,21 +12,19 @@ describe("LevelSelectViewModel", () => {
   });
 
   it("should_flag_timed_levels", () => {
-    const levels = new LevelSelectViewModel().getLevels();
-    const timed = levels.filter((level) => level.timed).map((level) => level.id);
+    const timed = new LevelSelectViewModel()
+      .getLevels()
+      .filter((level) => level.timed)
+      .map((level) => level.id);
 
-    expect(timed).toContain("manual-007-medium-timer");
+    expect(timed).toContain("manual-007-rush");
   });
 
-  it("should_resolve_definition_for_known_level", () => {
-    const viewModel = new LevelSelectViewModel();
-
-    expect(viewModel.getDefinition("manual-001-first-turn")).toBeDefined();
+  it("should_resolve_definition_for_a_known_level", () => {
+    expect(new LevelSelectViewModel().getDefinition("manual-001-first-knot")).toBeDefined();
   });
 
-  it("should_return_undefined_for_unknown_level", () => {
-    const viewModel = new LevelSelectViewModel();
-
-    expect(viewModel.getDefinition("nope")).toBeUndefined();
+  it("should_return_undefined_for_an_unknown_level", () => {
+    expect(new LevelSelectViewModel().getDefinition("nope")).toBeUndefined();
   });
 });

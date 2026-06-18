@@ -8,7 +8,7 @@ interface DefeatScreenProps {
 }
 
 /**
- * MVVM view — defeat result.
+ * MVVM view — defeat result (out of attempts).
  *
  * Rendered by `GameScreen` when `GameUiState.overlay` is defeat and also
  * reachable as a standalone route. Presentation only.
@@ -19,7 +19,7 @@ export function DefeatScreen({ onRetry, onHome }: DefeatScreenProps) {
   return (
     <View testID="defeat-screen" className="flex-1 items-center justify-center gap-6 bg-background px-8">
       <View className="h-20 w-20 items-center justify-center rounded-full bg-primary-100">
-        <Text className="text-4xl">⏱️</Text>
+        <Text className="text-4xl">❌</Text>
       </View>
       <View className="items-center gap-1">
         <Text className="text-3xl font-black text-text-primary">{t("defeat.title")}</Text>

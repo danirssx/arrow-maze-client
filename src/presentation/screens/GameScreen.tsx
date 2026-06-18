@@ -1,7 +1,6 @@
 import { Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { BoardView } from "@/presentation/components/BoardView";
-import { CoinBadge } from "@/presentation/components/CoinBadge";
 import { Header } from "@/presentation/components/Header";
 import { PrimaryButton } from "@/presentation/components/PrimaryButton";
 import { ScreenContainer } from "@/presentation/components/ScreenContainer";
@@ -22,12 +21,12 @@ interface GameScreenProps {
 }
 
 /**
- * MVVM view — gameplay screen.
+ * MVVM view — gameplay screen (arrow untangle).
  *
- * Binds to `GameViewModel` state and routes every cell tap through
- * `GameUIController.handleCellTap`, which calls `GameViewModel.playTurn` only.
- * When the ViewModel flips the overlay (from a domain level-finished event), it
- * renders the victory or defeat result. The screen calls no use cases directly.
+ * Binds to `GameViewModel` state and routes every arrow tap through
+ * `GameUIController.handleArrowTap`, which calls `GameViewModel.tapArrow` only.
+ * The HUD shows arrows-remaining and attempts-remaining; the screen renders the
+ * victory/defeat overlay from the ViewModel and calls no use cases directly.
  */
 export function GameScreen({
   viewModel,
@@ -42,36 +41,25 @@ export function GameScreen({
 
   return (
     <ScreenContainer testID="game-screen">
-      <Header
-        title={t("game.level", { order: levelOrder })}
-        onBack={onExit}
-        right={<CoinBadge amount={0} />}
-      />
+      <Header title={t("game.level", { order: levelOrder })} onBack={onExit} />
 
-      <View className="mt-2 flex-row justify-between rounded-2xl bg-background-card border border-border-soft p-4">
+      <View className="mt-2 flex-row justify-around rounded-2xl bg-background-card border border-border-soft p-4">
         <View className="items-center">
-          <Text testID="game-moves" className="text-xl font-black text-text-primary">
-            {state.moves}
+          <Text testID="game-arrows" className="text-xl font-black text-text-primary">
+            {state.arrowsRemaining}
           </Text>
-          <Text className="text-xs text-text-secondary">{t("game.moves")}</Text>
+          <Text className="text-xs text-text-secondary">{t("game.arrows")}</Text>
         </View>
         <View className="items-center">
-          <Text className="text-xl font-black text-primary-700">{state.optimalMoves}</Text>
-          <Text className="text-xs text-text-secondary">{t("game.optimal")}</Text>
-        </View>
-        <View className="items-center">
-          <Text className="text-xl">🏁</Text>
-          <Text className="text-xs text-text-secondary">{t("game.objective")}</Text>
+          <Text testID="game-attempts" className="text-xl font-black text-primary-700">
+            {state.attemptsRemaining}
+          </Text>
+          <Text className="text-xs text-text-secondary">{t("game.attempts")}</Text>
         </View>
       </View>
 
-      <View className="flex-1 items-center justify-center">
-        <BoardView state={state} onCellTap={(position) => controller.handleCellTap(position)} />
-        {state.invalidMoveAt !== null ? (
-          <Text testID="invalid-move" className="mt-4 text-sm text-text-muted">
-            {t("game.invalidMove")}
-          </Text>
-        ) : null}
+      <View className="my-3 flex-1">
+        <BoardView state={state} onArrowTap={(arrowId) => controller.handleArrowTap(arrowId)} />
       </View>
 
       <View className="flex-row gap-3 pb-2">
@@ -96,13 +84,7 @@ export function GameScreen({
 
       {state.overlay === GameOverlay.Victory ? (
         <View className="absolute inset-0">
-          <VictoryScreen
-            moves={state.moves}
-            optimalMoves={state.optimalMoves}
-            onPlayAgain={() => controller.handleRestart()}
-            onHome={onHome}
-            onNextLevel={onNextLevel}
-          />
+          <VictoryScreen onPlayAgain={() => controller.handleRestart()} onHome={onHome} onNextLevel={onNextLevel} />
         </View>
       ) : null}
 

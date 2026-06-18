@@ -48,7 +48,7 @@ export type ManualLevelFixture = {
 const COLORS = ["blue", "green", "yellow", "pink", "cyan", "purple", "crimson", "white", "orange", "teal"] as const;
 
 function color(index: number): string {
-  return COLORS[index % COLORS.length];
+  return COLORS[index % COLORS.length] ?? "blue";
 }
 
 function letter(index: number): string {

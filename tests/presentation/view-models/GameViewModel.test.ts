@@ -1,26 +1,12 @@
 import { GameFacade } from "@/application/facades/GameFacade";
 import { manualLevels } from "@/application/level-build/fixtures";
-import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
-import { BoardGraphBuilder, BoardGroup, PathfindingService } from "@/domain/board";
-import { CellFactory } from "@/domain/factory";
-import { CellType } from "@/domain/value-objects/CellType";
-import type { Position } from "@/domain/value-objects/Position";
-import { GameViewModel } from "@/presentation/view-models/GameViewModel";
 import { GameEventType } from "@/application/dto/GameEventDto";
+import { GameViewModel } from "@/presentation/view-models/GameViewModel";
 import { GameOverlay } from "@/presentation/state/GameUiState";
 
 // Subject to human review — presentation ViewModel test
 
-const firstLevel = manualLevels[0]!;
-
-/** Winning move sequence (positions after the start) derived from the board graph. */
-function winningMovesFor(definition: LevelDefinition): Position[] {
-  const board = new BoardGroup(definition.template.cells.map((spec) => new CellFactory().create(spec)));
-  const graph = new BoardGraphBuilder().build(board, definition.template.rows, definition.template.cols);
-  const exit = definition.template.cells.find((spec) => spec.type === CellType.Exit)!;
-  const path = new PathfindingService().shortestPath(graph, definition.start, exit.position)!;
-  return [...path.slice(1)];
-}
+const firstLevel = manualLevels[0]!; // "manual-001-first-knot": "a" is free, "b" is blocked by "a"
 
 function startedViewModel(): GameViewModel {
   const viewModel = new GameViewModel(GameFacade.createDefault());
@@ -30,58 +16,69 @@ function startedViewModel(): GameViewModel {
 }
 
 describe("GameViewModel", () => {
-  it("should_place_player_at_start_when_level_starts", () => {
-    const viewModel = startedViewModel();
+  it("should_load_board_and_hud_when_level_starts", () => {
+    const state = startedViewModel().getState();
 
-    const state = viewModel.getState();
     expect(state.levelId).toBe(firstLevel.id);
-    expect(state.rows).toBe(firstLevel.definition.template.rows);
-    expect(state.cols).toBe(firstLevel.definition.template.cols);
-    expect(state.playerPosition).toEqual({
-      row: firstLevel.definition.start.row,
-      column: firstLevel.definition.start.col
-    });
-    expect(state.moves).toBe(0);
+    expect(state.arrows).toHaveLength(firstLevel.arrowCount);
+    expect(state.arrowsRemaining).toBe(firstLevel.arrowCount);
+    expect(state.attemptsRemaining).toBe(5);
     expect(state.overlay).toBe(GameOverlay.None);
   });
 
-  it("should_advance_player_and_count_moves_when_turn_is_played", () => {
+  it("should_extract_a_free_arrow_and_track_it_for_undo", () => {
     const viewModel = startedViewModel();
-    const [firstMove] = winningMovesFor(firstLevel.definition);
 
-    viewModel.playTurn({ row: firstMove!.row, column: firstMove!.col });
+    viewModel.tapArrow("a");
 
-    expect(viewModel.getState().moves).toBe(1);
-    expect(viewModel.getState().canUndo).toBe(true);
+    const state = viewModel.getState();
+    expect(state.arrowsRemaining).toBe(firstLevel.arrowCount - 1);
+    expect(state.extractedArrowIds).toContain("a");
+    expect(state.canUndo).toBe(true);
+    expect(state.shakeArrowId).toBeNull();
   });
 
-  it("should_render_victory_overlay_when_winning_sequence_finishes_level", () => {
+  it("should_flag_a_blocked_tap_with_shake_and_cost_one_attempt", () => {
     const viewModel = startedViewModel();
 
-    for (const move of winningMovesFor(firstLevel.definition)) {
-      viewModel.playTurn({ row: move.row, column: move.col });
-    }
+    viewModel.tapArrow("b");
 
+    const state = viewModel.getState();
+    expect(state.arrowsRemaining).toBe(firstLevel.arrowCount);
+    expect(state.attemptsRemaining).toBe(4);
+    expect(state.shakeArrowId).toBe("b");
+  });
+
+  it("should_show_victory_when_the_board_is_cleared", () => {
+    const viewModel = startedViewModel();
+
+    viewModel.tapArrow("a");
+    viewModel.tapArrow("b");
+
+    expect(viewModel.getState().arrowsRemaining).toBe(0);
     expect(viewModel.getState().overlay).toBe(GameOverlay.Victory);
   });
 
-  it("should_render_defeat_overlay_when_level_finished_event_is_lost", () => {
+  it("should_undo_the_last_extraction", () => {
+    const viewModel = startedViewModel();
+
+    viewModel.tapArrow("a");
+    viewModel.undo();
+
+    const state = viewModel.getState();
+    expect(state.arrowsRemaining).toBe(firstLevel.arrowCount);
+    expect(state.extractedArrowIds).toHaveLength(0);
+    expect(state.canUndo).toBe(false);
+  });
+
+  it("should_render_defeat_overlay_on_a_lost_level_finished_event", () => {
     const viewModel = startedViewModel();
 
     viewModel.onGameEvent({
       type: GameEventType.LevelFinished,
-      result: { status: "LOST", reason: "TIME" }
+      result: { status: "LOST", reason: "OUT_OF_ATTEMPTS" }
     });
 
     expect(viewModel.getState().overlay).toBe(GameOverlay.Defeat);
-  });
-
-  it("should_keep_state_and_flag_invalid_move_when_turn_is_illegal", () => {
-    const viewModel = startedViewModel();
-
-    viewModel.playTurn({ row: 1, column: 2 });
-
-    expect(viewModel.getState().moves).toBe(0);
-    expect(viewModel.getState().invalidMoveAt).toEqual({ row: 1, column: 2 });
   });
 });

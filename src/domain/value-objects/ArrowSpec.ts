@@ -33,33 +33,38 @@ export class ArrowSpec {
     }
 
     const seen = new Set<string>();
-    for (let i = 0; i < path.length; i += 1) {
-      const cell = path[i];
+    let previous: Position | undefined;
+    let penultimate: Position | undefined;
+    let head: Position | undefined;
+    for (const cell of path) {
       const key = cell.toKey();
       if (seen.has(key)) {
         throw new InvalidArrowSpecError(`Arrow ${id} has a self-intersecting path at ${key}.`);
       }
       seen.add(key);
-      if (i > 0 && !ArrowSpec.areOrthogonallyAdjacent(path[i - 1], cell)) {
+      if (previous !== undefined && !ArrowSpec.areOrthogonallyAdjacent(previous, cell)) {
         throw new InvalidArrowSpecError(
-          `Arrow ${id} path is not orthogonally connected between ${path[i - 1].toKey()} and ${key}.`
+          `Arrow ${id} path is not orthogonally connected between ${previous.toKey()} and ${key}.`
         );
       }
+      penultimate = previous;
+      previous = cell;
+      head = cell;
     }
 
-    const head = path[path.length - 1];
-    if (path.length >= 2) {
-      const penultimate = path[path.length - 2];
-      if (head.translate(direction).equals(penultimate)) {
-        throw new InvalidArrowSpecError(`Arrow ${id} head points back into its own body.`);
-      }
+    if (head !== undefined && penultimate !== undefined && head.translate(direction).equals(penultimate)) {
+      throw new InvalidArrowSpecError(`Arrow ${id} head points back into its own body.`);
     }
 
     return new ArrowSpec(id, color, [...path], direction);
   }
 
   get head(): Position {
-    return this.path[this.path.length - 1];
+    const head = this.path[this.path.length - 1];
+    if (head === undefined) {
+      throw new InvalidArrowSpecError(`Arrow ${this.id} has an empty path.`);
+    }
+    return head;
   }
 
   get cells(): readonly Position[] {

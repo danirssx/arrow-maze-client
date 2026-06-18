@@ -2,12 +2,16 @@ import type { IObservable } from "../../domain/observer";
 import { GameEventBridge } from "../dto/GameEventBridge";
 import type { GameEventDto } from "../dto/GameEventDto";
 import type { IGameEventListener } from "../dto/IGameEventListener";
+import { mapBoardSnapshot } from "../dto/BoardSnapshotMapper";
+import type { BoardSnapshotDto } from "../dto/BoardSnapshotDto";
 import { ConcreteLevelBuilder } from "../level-build/ConcreteLevelBuilder";
 import type { ILevelStrategy } from "../level-build/ILevelStrategy";
+import type { LevelDefinition } from "../level-build/LevelDefinition";
 import { LevelDirector } from "../level-build/LevelDirector";
 import type { GameSnapshotDto } from "../use-cases/game/GameSnapshotDto";
 import { GameSession } from "../use-cases/game/GameSession";
 import { mapGameSnapshot } from "../use-cases/game/GameSnapshotMapper";
+import { GameplayStateError } from "../use-cases/game/errors";
 import { PauseGameUseCase } from "../use-cases/game/PauseGameUseCase";
 import { ResumeGameUseCase } from "../use-cases/game/ResumeGameUseCase";
 import { StartLevelUseCase } from "../use-cases/game/StartLevelUseCase";
@@ -29,9 +33,8 @@ type GameFacadeDependencies = {
  * Compact API for ViewModels that hides use-case wiring, `GameContext`, command
  * history, and level construction. It owns one `GameEventBridge` re-registered on
  * each level and fans domain events out to presentation listeners as UI-neutral
- * `GameEventDto`s. The static board layout (rendering snapshot) is a separate
- * presentation concern (mobile UI ticket), so it is intentionally not exposed
- * here. No React, navigation, storage, or HTTP imports.
+ * `GameEventDto`s. The static arrow layout for rendering is exposed via
+ * `getBoardSnapshot()`. No React, navigation, storage, or HTTP imports.
  */
 export class GameFacade {
   private readonly session: GameSession;
@@ -44,6 +47,7 @@ export class GameFacade {
   private readonly eventListeners = new Set<IGameEventListener>();
   private readonly bridge = new GameEventBridge({ onGameEvent: (event) => this.dispatch(event) });
   private subject: IObservable | undefined;
+  private currentDefinition: LevelDefinition | undefined;
 
   constructor(dependencies: GameFacadeDependencies = {}) {
     this.session = dependencies.session ?? new GameSession();
@@ -70,9 +74,19 @@ export class GameFacade {
   }
 
   startLevel(strategy: ILevelStrategy): GameSnapshotDto {
-    const snapshot = this.startLevelUseCase.execute(this.session, strategy);
+    const definition = strategy.createDefinition();
+    const snapshot = this.startLevelUseCase.execute(this.session, { createDefinition: () => definition });
+    this.currentDefinition = definition;
     this.attachBridgeToCurrentLevel();
     return snapshot;
+  }
+
+  /** UI-neutral static arrow layout for rendering; requires an active level. */
+  getBoardSnapshot(): BoardSnapshotDto {
+    if (this.currentDefinition === undefined) {
+      throw new GameplayStateError("Cannot read the board snapshot before a level is started.");
+    }
+    return mapBoardSnapshot(this.currentDefinition);
   }
 
   restartLevel(): GameSnapshotDto {
