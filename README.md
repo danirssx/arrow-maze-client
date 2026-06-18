@@ -96,13 +96,26 @@ npm run web            # run in browser
 
 ### Environment variables
 
-Create a `.env` file at the project root (never commit it):
+The app reads `process.env.EXPO_PUBLIC_API_BASE_URL` (resolved in
+`src/framework/config/env.ts`) for all HTTP calls. Expo inlines `EXPO_PUBLIC_*`
+at build time. If it is unset, the app falls back to the local backend
+(`http://localhost:3000`). Copy `.env.example` to `.env` (never commit `.env`):
 
-```
-EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
+```bash
+cp .env.example .env
 ```
 
-The app reads `process.env.EXPO_PUBLIC_API_BASE_URL` at runtime for all HTTP calls.
+Pick the environment by setting the URL:
+
+| Environment | `EXPO_PUBLIC_API_BASE_URL` |
+| --- | --- |
+| Local (simulator) | `http://localhost:3000` (default) |
+| Local (physical device) | `http://<your-machine-LAN-IP>:3000` (e.g. `http://192.168.1.50:3000`) |
+| Dev / production-demo | the deployed backend URL (e.g. `https://arrow-maze-api.<host>`) |
+
+For production/demo builds, set `EXPO_PUBLIC_API_BASE_URL` in the EAS build
+profile (or CI env) rather than committing it. The backend's `CORS_ORIGIN` must
+allow the Expo origin (default `http://localhost:8081`).
 
 ## Quality Commands
 

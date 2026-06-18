@@ -45,7 +45,8 @@
     "perfect": "Perfect run!",
     "playAgain": "Play again",
     "next": "Next level",
-    "home": "Home"
+    "home": "Home",
+    "leaderboard": "View leaderboard"
   },
   "defeat": {
     "title": "Out of attempts",

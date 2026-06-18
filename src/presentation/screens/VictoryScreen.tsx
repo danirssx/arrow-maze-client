@@ -6,6 +6,7 @@ interface VictoryScreenProps {
   onPlayAgain: () => void;
   onHome: () => void;
   onNextLevel?: (() => void) | undefined;
+  onViewLeaderboard?: (() => void) | undefined;
 }
 
 /**
@@ -15,7 +16,7 @@ interface VictoryScreenProps {
  * reachable as a standalone route. Presentation only: it shows the win state and
  * routing actions.
  */
-export function VictoryScreen({ onPlayAgain, onHome, onNextLevel }: VictoryScreenProps) {
+export function VictoryScreen({ onPlayAgain, onHome, onNextLevel, onViewLeaderboard }: VictoryScreenProps) {
   const { t } = useTranslation();
 
   return (
@@ -38,6 +39,14 @@ export function VictoryScreen({ onPlayAgain, onHome, onNextLevel }: VictoryScree
           variant="secondary"
           onPress={onPlayAgain}
         />
+        {onViewLeaderboard !== undefined ? (
+          <PrimaryButton
+            testID="victory-leaderboard"
+            label={t("victory.leaderboard")}
+            variant="secondary"
+            onPress={onViewLeaderboard}
+          />
+        ) : null}
         <PrimaryButton testID="victory-home" label={t("victory.home")} variant="secondary" onPress={onHome} />
       </View>
     </View>
