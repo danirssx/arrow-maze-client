@@ -1,10 +1,5 @@
-import { GameFacade, GameplayStateError } from "@/application/facades";
-import {
-  InvalidLevelDefinitionError,
-  LevelKind,
-  TutorialLevelStrategy,
-  type LevelDefinition
-} from "@/application/level-build";
+import { GameFacade } from "@/application/facades";
+import { InvalidLevelDefinitionError, LevelKind, TutorialLevelStrategy, type LevelDefinition } from "@/application/level-build";
 import {
   GameEventBridge,
   GameEventType,
@@ -14,11 +9,9 @@ import {
 import type { GameEventDto, IGameEventListener } from "@/application/dto";
 import { CellEscapedEvent, LevelFinishedEvent, MoveExecutedEvent } from "@/domain/observer";
 import { DefeatReason, LevelResult, LevelStatus } from "@/domain/level";
-import { CellSpec } from "@/domain/value-objects/CellSpec";
-import { CellType } from "@/domain/value-objects/CellType";
+import { ArrowSpec } from "@/domain/value-objects/ArrowSpec";
 import { Difficulty } from "@/domain/value-objects/Difficulty";
 import { Direction } from "@/domain/value-objects/Direction";
-import { LevelTemplate } from "@/domain/value-objects/LevelTemplate";
 import { Position } from "@/domain/value-objects/Position";
 
 class RecordingListener implements IGameEventListener {
@@ -35,18 +28,13 @@ class RecordingListener implements IGameEventListener {
 
 function tutorialDefinition(): LevelDefinition {
   return {
-    template: LevelTemplate.create({
-      id: "contract-board",
-      rows: 1,
-      cols: 3,
-      difficulty: Difficulty.Easy,
-      cells: [
-        CellSpec.of(Position.of(0, 0), CellType.Arrow, Direction.Right),
-        CellSpec.of(Position.of(0, 1), CellType.Empty),
-        CellSpec.of(Position.of(0, 2), CellType.Exit)
-      ]
-    }),
-    start: Position.of(0, 0),
+    id: "contract-board",
+    difficulty: Difficulty.Easy,
+    arrows: [
+      ArrowSpec.of("a", "blue", [Position.of(-1, -1), Position.of(-1, 0)], Direction.Right),
+      ArrowSpec.of("b", "green", [Position.of(0, 2), Position.of(-1, 2)], Direction.Up)
+    ],
+    attempts: 4,
     kind: LevelKind.Normal
   };
 }
@@ -95,30 +83,41 @@ describe("GameEventBridge", () => {
 });
 
 describe("mapBoardSnapshot", () => {
-  it("should_map_a_level_definition_to_a_ui_neutral_board", () => {
+  it("should_map_an_arrow_level_definition_to_a_ui_neutral_board", () => {
     const snapshot = mapBoardSnapshot(tutorialDefinition());
 
-    expect(snapshot.rows).toBe(1);
-    expect(snapshot.cols).toBe(3);
-    expect(snapshot.start).toEqual({ row: 0, column: 0 });
-    expect(snapshot.exit).toEqual({ row: 0, column: 2 });
-    expect(snapshot.cells).toContainEqual({ row: 0, column: 0, type: CellType.Arrow, direction: "RIGHT" });
-    expect(snapshot.cells).toContainEqual({ row: 0, column: 2, type: CellType.Exit });
+    expect(snapshot).toEqual({
+      levelId: "contract-board",
+      attempts: 4,
+      boundingBox: { minRow: -1, maxRow: 0, minColumn: -1, maxColumn: 2 },
+      arrows: [
+        {
+          id: "a",
+          color: "blue",
+          direction: "RIGHT",
+          path: [
+            { row: -1, column: -1 },
+            { row: -1, column: 0 }
+          ]
+        },
+        {
+          id: "b",
+          color: "green",
+          direction: "UP",
+          path: [
+            { row: 0, column: 2 },
+            { row: -1, column: 2 }
+          ]
+        }
+      ]
+    });
   });
 
-  it("should_reject_a_definition_without_an_exit_cell", () => {
+  it("should_reject_a_definition_without_arrows", () => {
     const definition: LevelDefinition = {
-      template: LevelTemplate.create({
-        id: "no-exit",
-        rows: 1,
-        cols: 2,
-        difficulty: Difficulty.Easy,
-        cells: [
-          CellSpec.of(Position.of(0, 0), CellType.Arrow, Direction.Right),
-          CellSpec.of(Position.of(0, 1), CellType.Empty)
-        ]
-      }),
-      start: Position.of(0, 0),
+      id: "no-arrows",
+      difficulty: Difficulty.Easy,
+      arrows: [],
       kind: LevelKind.Normal
     };
 
@@ -133,24 +132,24 @@ describe("GameFacade observer bridge", () => {
     facade.addEventListener(listener);
     facade.startLevel(new TutorialLevelStrategy());
 
-    facade.playTurn({ row: 0, column: 1 });
-    facade.playTurn({ row: 0, column: 2 });
+    facade.tapArrow("b");
+    facade.tapArrow("a");
 
     const finished = listener.typesOf(GameEventType.LevelFinished);
     expect(finished).toHaveLength(1);
     expect(finished[0]).toEqual({ type: GameEventType.LevelFinished, result: { status: LevelStatus.Won } });
   });
 
-  it("should_emit_move_and_escape_dtos_for_each_turn", () => {
+  it("should_expose_ui_neutral_gameplay_snapshots_after_arrow_taps", () => {
     const facade = GameFacade.createDefault();
-    const listener = new RecordingListener();
-    facade.addEventListener(listener);
-    facade.startLevel(new TutorialLevelStrategy());
+    const initial = facade.startLevel(new TutorialLevelStrategy());
 
-    facade.playTurn({ row: 0, column: 1 });
+    const afterFirstExtraction = facade.tapArrow("b");
 
-    expect(listener.typesOf(GameEventType.MoveExecuted)).toHaveLength(1);
-    expect(listener.typesOf(GameEventType.CellEscaped)).toHaveLength(1);
+    expect(initial.arrowsRemaining).toBe(2);
+    expect(initial.attemptsRemaining).toBe(5);
+    expect(afterFirstExtraction.arrowsRemaining).toBe(1);
+    expect(afterFirstExtraction.canUndo).toBe(true);
   });
 
   it("should_stop_notifying_after_listener_is_removed", () => {
@@ -160,24 +159,9 @@ describe("GameFacade observer bridge", () => {
     facade.startLevel(new TutorialLevelStrategy());
     facade.removeEventListener(listener);
 
-    facade.playTurn({ row: 0, column: 1 });
+    facade.tapArrow("b");
+    facade.tapArrow("a");
 
     expect(listener.received).toHaveLength(0);
-  });
-
-  it("should_expose_a_ui_neutral_board_snapshot_after_start", () => {
-    const facade = GameFacade.createDefault();
-    facade.startLevel(new TutorialLevelStrategy());
-
-    const board = facade.getBoardSnapshot();
-
-    expect(board.rows).toBe(1);
-    expect(board.cols).toBe(3);
-    expect(board.cells).toHaveLength(3);
-    expect(board.exit).toEqual({ row: 0, column: 2 });
-  });
-
-  it("should_throw_controlled_error_when_board_snapshot_is_requested_before_start", () => {
-    expect(() => GameFacade.createDefault().getBoardSnapshot()).toThrow(GameplayStateError);
   });
 });

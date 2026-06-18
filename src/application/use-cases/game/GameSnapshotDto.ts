@@ -1,6 +1,11 @@
 import type { DefeatReason, LevelStatus } from "../../../domain/level/LevelResult";
 import type { GamePhase } from "../../../domain/state/GamePhase";
 
+export type PositionDto = {
+  readonly row: number;
+  readonly column: number;
+};
+
 export type GameResultDto = {
   readonly status: LevelStatus;
   readonly reason?: DefeatReason;
