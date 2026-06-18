@@ -6,5 +6,29 @@
     "setupStatus": "Project setup is ready for feature slices, worktrees, and reviewed AI-assisted delivery.",
     "showDetails": "Show details",
     "title": "Arrow Maze"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageEn": "English",
+    "languageEs": "Spanish",
+    "sound": "Sound",
+    "soundOn": "On",
+    "soundOff": "Off (muted)",
+    "mute": "Mute",
+    "unmute": "Unmute"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "No internet connection. Check your network and retry.",
+    "notFound": "Content not found.",
+    "unauthorized": "Session expired. Please log in again.",
+    "retry": "Retry"
+  },
+  "states": {
+    "loading": "Loading…",
+    "empty": "Nothing here yet.",
+    "emptyProgress": "No levels completed yet. Start playing!",
+    "emptyLeaderboard": "No scores yet. Be the first!"
   }
 }

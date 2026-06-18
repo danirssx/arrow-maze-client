@@ -6,5 +6,29 @@
     "setupStatus": "La configuracion esta lista para slices de features, worktrees y entregas asistidas por IA con revision.",
     "showDetails": "Mostrar detalles",
     "title": "Arrow Maze"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "language": "Idioma",
+    "languageEn": "Ingles",
+    "languageEs": "Espanol",
+    "sound": "Sonido",
+    "soundOn": "Activado",
+    "soundOff": "Desactivado (silenciado)",
+    "mute": "Silenciar",
+    "unmute": "Activar sonido"
+  },
+  "errors": {
+    "generic": "Algo salio mal. Por favor intenta de nuevo.",
+    "network": "Sin conexion a internet. Revisa tu red e intenta de nuevo.",
+    "notFound": "Contenido no encontrado.",
+    "unauthorized": "Sesion expirada. Por favor inicia sesion de nuevo.",
+    "retry": "Reintentar"
+  },
+  "states": {
+    "loading": "Cargando…",
+    "empty": "Nada aqui todavia.",
+    "emptyProgress": "Aun no has completado niveles. ¡Empieza a jugar!",
+    "emptyLeaderboard": "Aun no hay puntuaciones. ¡Se el primero!"
   }
 }
