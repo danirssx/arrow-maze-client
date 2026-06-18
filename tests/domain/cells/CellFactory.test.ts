@@ -4,6 +4,7 @@ import { CellSpec } from "@/domain/value-objects/CellSpec";
 import { CellType } from "@/domain/value-objects/CellType";
 import { Direction } from "@/domain/value-objects/Direction";
 import { Position } from "@/domain/value-objects/Position";
+import { InvalidCellSpecError } from "@/domain/value-objects/errors";
 
 describe("CellFactory", () => {
   const factory = new CellFactory();
@@ -35,5 +36,25 @@ describe("CellFactory", () => {
 
     expect(cell).toBeInstanceOf(ExitCell);
     expect(cell.isExit()).toBe(true);
+  });
+
+  it("should_reject_arrow_spec_when_direction_is_missing", () => {
+    const spec = {
+      position: Position.of(0, 0),
+      type: CellType.Arrow,
+      direction: undefined
+    } as unknown as CellSpec;
+
+    expect(() => factory.create(spec)).toThrow(InvalidCellSpecError);
+  });
+
+  it("should_reject_unknown_cell_type_when_spec_is_malformed", () => {
+    const spec = {
+      position: Position.of(0, 0),
+      type: "PORTAL",
+      direction: undefined
+    } as unknown as CellSpec;
+
+    expect(() => factory.create(spec)).toThrow(InvalidCellSpecError);
   });
 });

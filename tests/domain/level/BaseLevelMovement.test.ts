@@ -1,4 +1,4 @@
-import { IllegalMoveError, InvalidLevelStartError, MissingExitError, NormalLevel } from "@/domain/level";
+import { IllegalMoveError, InvalidLevelStartError, InvalidMoveCountError, MissingExitError, NormalLevel } from "@/domain/level";
 import { CellSpec } from "@/domain/value-objects/CellSpec";
 import { CellType } from "@/domain/value-objects/CellType";
 import { Difficulty } from "@/domain/value-objects/Difficulty";
@@ -61,5 +61,18 @@ describe("BaseLevel movement constraints", () => {
     });
 
     expect(() => new NormalLevel(template, Position.of(0, 0))).toThrow(MissingExitError);
+  });
+
+  it("should_reject_restore_when_position_is_not_navigable", () => {
+    const level = new NormalLevel(buildSolvableTemplate(), Position.of(0, 0));
+
+    expect(() => level.restoreProgress(Position.of(1, 1), 0)).toThrow(InvalidLevelStartError);
+  });
+
+  it("should_reject_restore_when_move_count_is_negative_or_fractional", () => {
+    const level = new NormalLevel(buildSolvableTemplate(), Position.of(0, 0));
+
+    expect(() => level.restoreProgress(Position.of(0, 0), -1)).toThrow(InvalidMoveCountError);
+    expect(() => level.restoreProgress(Position.of(0, 0), 1.5)).toThrow(InvalidMoveCountError);
   });
 });
