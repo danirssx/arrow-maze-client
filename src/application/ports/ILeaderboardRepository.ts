@@ -19,7 +19,6 @@ export interface Leaderboard {
 export interface SubmitScoreInput {
   leaderboardId: string;
   entryId: string;
-  userId: string;
   levelId: string;
   usernameSnapshot: string;
   score: number;
@@ -29,5 +28,5 @@ export interface SubmitScoreInput {
 
 export interface ILeaderboardRepository {
   getTopScores(levelId: string): Promise<Leaderboard>;
-  submitScore(input: SubmitScoreInput): Promise<void>;
+  submitScore(input: SubmitScoreInput, accessToken: string): Promise<void>;
 }
