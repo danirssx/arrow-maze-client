@@ -16,7 +16,7 @@ export function EmptyState({ variant = 'default' }: EmptyStateProps) {
 
   return (
     <View testID="empty-state" className="flex-1 items-center justify-center px-6">
-      <Text className="text-center text-base text-maze-slate">{message}</Text>
+      <Text className="text-center text-base text-text-secondary">{message}</Text>
     </View>
   );
 }

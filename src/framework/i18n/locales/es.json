@@ -7,6 +7,60 @@
     "showDetails": "Mostrar detalles",
     "title": "Arrow Maze"
   },
+  "nav": {
+    "settings": "Ajustes"
+  },
+  "home": {
+    "greeting": "Bienvenido",
+    "title": "¡A Jugar!",
+    "play": "Jugar",
+    "challenges": "Desafíos",
+    "cardDailyTitle": "Desafíos diarios",
+    "cardDailySubtitle": "Nuevos niveles cada día",
+    "cardRewardsTitle": "Gana recompensas",
+    "cardRewardsSubtitle": "Juega y gana monedas",
+    "cardFollowTitle": "Sigue la flecha",
+    "cardFollowSubtitle": "Llega a la meta"
+  },
+  "levels": {
+    "title": "Niveles",
+    "subtitle": "Elige un nivel para jugar"
+  },
+  "game": {
+    "level": "Nivel {{order}}",
+    "moves": "Movimientos",
+    "optimal": "Óptimo",
+    "objective": "Objetivo",
+    "undo": "Deshacer",
+    "restart": "Reiniciar",
+    "invalidMove": "Solo puedes moverte siguiendo las flechas."
+  },
+  "victory": {
+    "title": "¡Lo lograste!",
+    "subtitle": "Nivel completado. ¡Buena ruta!",
+    "moves": "Movimientos",
+    "optimal": "Óptimo",
+    "perfect": "¡Ruta perfecta!",
+    "playAgain": "Jugar de nuevo",
+    "next": "Siguiente nivel",
+    "home": "Inicio"
+  },
+  "defeat": {
+    "title": "Se acabó el tiempo",
+    "subtitle": "Te quedaste sin tiempo. ¡Inténtalo de nuevo!",
+    "retry": "Intentar de nuevo",
+    "home": "Inicio"
+  },
+  "leaderboard": {
+    "title": "Tabla de líderes",
+    "score": "{{score}} pts"
+  },
+  "progress": {
+    "title": "Progreso",
+    "completed": "Niveles completados",
+    "pendingSync": "Sincronización pendiente",
+    "bestScore": "{{score}} pts"
+  },
   "settings": {
     "title": "Ajustes",
     "language": "Idioma",

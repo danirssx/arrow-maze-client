@@ -1361,6 +1361,22 @@ Created:
 
 ---
 
+# AI Log - AM-045 - Implement mobile MVVM screens and navigation
+
+## Task / problem
+Build the main mobile UI flow with MVVM boundaries: Expo routes, screens,
+ViewModels, UI states, UIController, translated visible text, and presentation
+tests. Resume and close the ticket after the previous agent stopped during
+validation.
+
+## Tool and model
+Codex - GPT-5
+
+## Prompt used
+Pre-checks: client and backend `AGENTS.md` reviewed, `MEMORY.md` reviewed,
+`Linear_MCP_Guideline.md` reviewed, and Linear MAZ-116 read before validation.
+Existing AM-031 observer contract and AM-044 facades were used as the boundary
+for the presentation layer.
 # AI Log - AM-046 - Implement mobile settings, i18n, audio and UX polish
 
 ## Task / problem
@@ -1379,6 +1395,58 @@ AM-042 files brought in from prior branch.
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
+| Spec Partner | Referenced | MAZ-116 scope and acceptance criteria defined the UI/MVVM behavior to validate | Linear MAZ-116 |
+| Planner/Slicer | Referenced | Work was kept inside the AM-045 slice: presentation routes/screens/ViewModels/controllers/tests | changed file list |
+| TDD Implementer | Referenced | Existing tests were validated and boundary fixes were made before rerunning checks | `tests/presentation` |
+| Judge | Referenced | Presentation imports were audited so screens/ViewModels do not depend directly on domain or infrastructure internals | `rg "@/domain|@/infrastructure" src/presentation` |
+| Mutation Tester | Not used | Mutation testing was not required for this ticket closeout | N/A |
+
+## Result obtained
+Created / validated the AM-045 presentation flow:
+- Expo routes for home, level select, game, victory, defeat, leaderboard,
+  progress, and settings.
+- MVVM screens and ViewModels for game, level select, leaderboard, progress,
+  settings, and home navigation.
+- `GameUIController` so cell taps call `GameViewModel.playTurn` instead of
+  invoking use cases or domain objects from the screen.
+- `GameViewModel` consumes the application observer DTO contract and updates
+  `GameUiState` to victory/defeat when level-finished events arrive.
+- Reusable presentation components for board rendering, cards, headers,
+  buttons, empty/error states, rewards, and screen layout.
+- EN/ES i18n keys for all visible text introduced by the new screens.
+
+Closeout fixes before PR:
+- Removed direct presentation imports from domain value objects/status types.
+- Removed direct presentation imports from infrastructure error/audio types.
+- Kept app route files as framework composition points that can wire concrete
+  dependencies into presentation screens.
+
+## Validation
+- `npm test -- --runInBand tests/presentation` passed: 9 suites, 29 tests.
+- `npm run typecheck` passed.
+- `npm run verify` passed: lint 0 errors, typecheck OK, coverage OK,
+  53 suites and 309 tests passed.
+
+## Team modifications pending human review
+- Lint still reports existing warnings in prior domain/application/infrastructure
+  files, but no lint errors and the verify script passes.
+- Some route-level wiring uses local/demo data until the remaining integration
+  flow is fully exercised against the deployed backend.
+
+## Lessons / limitations
+- Presentation must consume application DTOs/facades and not `BoardGraph`,
+  level classes, storage, HTTP adapters, or domain value objects directly.
+- The framework `app/` route layer is the accepted composition boundary for
+  concrete adapter/view-model construction.
+
+
+---
+
+# AI Log - AM-046 - Implement mobile settings, i18n, audio and UX polish
+
+## Task / problem
+Complete the visible user experience: language switch (EN/ES), sound mute,
+friendly error messages with i18n, and loading/error/empty state components.
 | Spec Partner | Referenced | Spec from MAZ-117 guided in-scope items | MAZ-117 |
 | Planner/Slicer | Referenced | locales → ports → infra → components → tests | file list |
 | TDD Implementer | Referenced | Fake IAudioPlayer; @testing-library/react-native for SettingsScreen | test files |
@@ -1434,6 +1502,8 @@ Claude Code - claude-sonnet-4-6
 
 ## Prompt used
 Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
+Existing i18n setup (i18n.ts, locales) and AppErrorBoundary studied.
+AM-042 files brought in from prior branch.
 AM-046 source files brought in from prior branch. Backend openApiSpec
 studied for all endpoint shapes. Existing README.md and CI workflow reviewed
 before updating to avoid duplication.
@@ -1442,6 +1512,9 @@ before updating to avoid duplication.
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec from MAZ-117 guided in-scope items | MAZ-117 |
+| Planner/Slicer | Referenced | locales → ports → infra → components → tests | file list |
+| TDD Implementer | Referenced | Fake IAudioPlayer; @testing-library/react-native for SettingsScreen | test files |
 | Spec Partner | Referenced | Spec from MAZ-118 guided contract scope and README DoD | MAZ-118 |
 | Planner/Slicer | Referenced | contract tests → README → docs/RELEASE.md order | file list |
 | TDD Implementer | Referenced | Static fixtures, no real network calls | test files |
@@ -1450,6 +1523,56 @@ before updating to avoid duplication.
 
 ## Result obtained
 Created / updated:
+- `src/framework/i18n/locales/en.json` + `es.json` — added settings/errors/states keys
+- `src/application/ports/ISettingsRepository.ts` — { language, muted } port
+- `src/application/ports/IAudioPlayer.ts` — SoundKey + play port
+- `src/infrastructure/storage/SettingsRepository.ts` — Pattern: Adapter; persists via ILocalStorage
+- `src/infrastructure/audio/AudioFacade.ts` — Pattern: Facade, Singleton; mute blocks all play()
+- `src/infrastructure/audio/ExpoAudioAdapter.ts` — Pattern: Adapter; wraps expo-av
+- `src/presentation/components/LoadingState.tsx` — uses t('states.loading')
+- `src/presentation/components/ErrorState.tsx` — maps HttpError codes to translated messages
+- `src/presentation/components/EmptyState.tsx` — variants: default/progress/leaderboard
+- `src/presentation/screens/SettingsScreen.tsx` — language toggle + mute Switch
+- `src/framework/errors/AppErrorBoundary.tsx` — updated hardcoded string to i18n key
+- `tests/infrastructure/audio/AudioFacade.test.ts` — 5 tests (mute/unmute/singleton)
+- `tests/infrastructure/storage2/SettingsRepository.test.ts` — 3 tests
+- `tests/presentation/screens/SettingsScreen.test.tsx` — 5 tests (i18n + interactions)
+
+57 tests passing. typecheck clean. 0 lint errors.
+
+## Team modifications pending human review
+- ExpoAudioAdapter requires sound asset files in assets/sounds/ — not bundled here
+- SettingsScreen is a pure presentational component; a ViewModel/hook to wire
+  ISettingsRepository is needed before connecting to navigation
+- i18n.changeLanguage() is called imperatively in SettingsScreen; team may prefer
+  a context/provider approach for persistence across navigation
+
+## Lessons / limitations
+- DoD "no hardcoded visible strings without translation": AppErrorBoundary was the
+  only existing hardcoded string — replaced with i18n.t('errors.generic')
+- Acceptance criterion "mute enabled → no sound plays": verified by
+  should_not_play_sound_when_muted in AudioFacade.test.ts
+- Acceptance criterion "language changes to Spanish → text is translated": verified by
+  should_show_spanish_labels_when_language_is_es in SettingsScreen.test.tsx
+
+
+---
+
+# AI Log - AM-047 - Complete mobile contract tests and release documentation
+
+## Task / problem
+Close client-backend compatibility with a complete contract test suite and
+provide release documentation so a new developer can run, test, and build
+the app from scratch.
+
+## Tool and model
+Claude Code - claude-sonnet-4-6
+
+## Prompt used
+Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
+AM-046 source files brought in from prior branch. Backend openApiSpec
+studied for all endpoint shapes. Existing README.md and CI workflow reviewed
+before updating to avoid duplication.
 - `tests/contract/levels.contract.test.ts` — 9 tests for GET /levels and GET /levels/:id
 - `tests/contract/auth.contract.test.ts` — 6 tests (LoginResponse, RegisterResponse)
 - `tests/contract/progress.contract.test.ts` — 5 tests (ProgressResponse + ProgressMapper)
@@ -1502,6 +1625,36 @@ The user asked to verify the M4 milestone port connections and implement the fro
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec from MAZ-118 guided contract scope and README DoD | MAZ-118 |
+| Planner/Slicer | Referenced | contract tests → README → docs/RELEASE.md order | file list |
+| TDD Implementer | Referenced | Static fixtures, no real network calls | test files |
+| Judge | Not used | No .agents/ directory configured | N/A |
+| Mutation Tester | Not used | No .agents/ directory configured | N/A |
+
+## Result obtained
+Created / updated:
+- `tests/contract/levels.contract.test.ts` — 9 tests for GET /levels and GET /levels/:id
+- `tests/contract/auth.contract.test.ts` — 6 tests (LoginResponse, RegisterResponse)
+- `tests/contract/progress.contract.test.ts` — 5 tests (ProgressResponse + ProgressMapper)
+- `tests/contract/leaderboard.contract.test.ts` — 4 tests (LeaderboardResponse)
+- `README.md` — added Prerequisites, env vars, detailed quality/build commands,
+  link to RELEASE.md
+- `docs/RELEASE.md` — full release guide: Expo Go, EAS preview/production,
+  web build, CI, contract test run command, versioning, screenshots placeholder
+- `docs/screenshots/.gitkeep` — placeholder for AM-048 screenshots
+
+68 tests passing. typecheck clean. 0 lint errors.
+
+## Team modifications pending human review
+- GET /levels and GET /levels/:id contract fixtures are based on domain model
+  (LevelDto shape); must be reconciled with actual backend spec when AM-013 lands
+- `eas.json` not created — EAS profile setup requires team EAS account credentials
+- Screenshots placeholder in docs/screenshots/ to be filled after AM-048 UI polish
+
+## Lessons / limitations
+- DoD "docs align with actual commands": all commands verified against package.json
+  scripts (start/android/ios/web/lint/typecheck/test/test:coverage/verify/build)
+- Contract tests make no real network calls — static fixtures only
 | Spec Partner | Referenced | Used the backend change description as the accepted spec and kept scope limited to the mobile integration contract. | User-provided Fix #8; backend `LeaderboardController`/routes inspection. |
 | Planner/Slicer | Referenced | Mapped the fix to application port, facade, repository, and contract-test updates without touching domain/gameplay. | `ILeaderboardRepository`, `LeaderboardFacade`, `HttpLeaderboardRepository`, contract tests. |
 | TDD Implementer | Referenced | Updated tests around expected behavior first, then adjusted the port/repository implementation to pass them. | Leaderboard facade, repository, and contract tests. |

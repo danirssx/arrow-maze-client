@@ -1,9 +1,10 @@
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import type { AppErrorCode } from '@/infrastructure/http/HttpError';
+
+type ErrorStateCode = 'NETWORK_ERROR' | 'NOT_FOUND' | 'UNAUTHORIZED' | 'UNKNOWN';
 
 interface ErrorStateProps {
-  code?: AppErrorCode;
+  code?: ErrorStateCode;
   onRetry?: () => void;
 }
 
@@ -19,14 +20,14 @@ export function ErrorState({ code, onRetry }: ErrorStateProps) {
 
   return (
     <View testID="error-state" className="flex-1 items-center justify-center gap-4 px-6">
-      <Text className="text-center text-base text-maze-slate">{message}</Text>
+      <Text className="text-center text-base text-text-secondary">{message}</Text>
       {onRetry !== undefined ? (
         <Pressable
           accessibilityRole="button"
           onPress={onRetry}
-          className="rounded-full bg-maze-ember px-5 py-3 active:opacity-80"
+          className="rounded-full bg-primary-700 px-5 py-3 active:opacity-80"
         >
-          <Text className="font-bold text-white">{t('errors.retry')}</Text>
+          <Text className="font-bold text-text-inverse">{t('errors.retry')}</Text>
         </Pressable>
       ) : null}
     </View>
