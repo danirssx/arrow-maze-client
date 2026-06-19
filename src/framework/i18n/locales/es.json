@@ -73,7 +73,23 @@
     "soundOn": "Activado",
     "soundOff": "Desactivado (silenciado)",
     "mute": "Silenciar",
-    "unmute": "Activar sonido"
+    "unmute": "Activar sonido",
+    "account": "Cuenta",
+    "manageAccount": "Gestionar"
+  },
+  "auth": {
+    "title": "Cuenta",
+    "login": "Iniciar sesion",
+    "register": "Crear cuenta",
+    "email": "Correo",
+    "username": "Usuario",
+    "password": "Contrasena",
+    "needAccount": "Necesitas una cuenta? Registrate",
+    "haveAccount": "Ya tienes cuenta? Inicia sesion",
+    "logout": "Cerrar sesion",
+    "signedInAs": "Sesion de {{username}}",
+    "errorLogin": "Fallo el inicio de sesion. Revisa tus credenciales.",
+    "errorRegister": "No se pudo crear la cuenta."
   },
   "errors": {
     "generic": "Algo salio mal. Por favor intenta de nuevo.",

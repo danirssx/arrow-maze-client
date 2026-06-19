@@ -120,6 +120,36 @@ scoring, and persistence are intentionally out of scope.
 
 ---
 
+# AI Usage Log: Branch Workflow Setup
+
+## Task / Problem
+
+Configure the repository branch workflow after `main` and `develop` were created.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked Codex to configure branches for the client and backend repositories and clarify what must be set in GitHub before starting the workflow.
+
+## Result Obtained
+
+Updated worktree scripts and agent/contribution documentation so feature work starts from `origin/develop`, feature PRs target `develop`, and only human-approved release PRs target `main`.
+
+## Team Modifications Pending Human Review
+
+- Confirm whether the team wants `develop` or `main` as the GitHub default branch.
+- Configure branch protection rules in GitHub for `main` and `develop`.
+
+## Lessons / Limitations
+
+When a project uses both `main` and `develop`, agent instructions must be explicit about PR targets to avoid accidental release-branch work.
+
+
+---
+
 # AI Usage Log: MAZ-123 Expo SDK 54 Upgrade
 
 ## Task / Problem
@@ -155,36 +185,6 @@ Updated Expo and related native/runtime packages to SDK 54-compatible versions, 
 ## Lessons / Limitations
 
 Expo SDK upgrades must be validated with `expo-doctor`, not only by changing the `expo` package version. Expo Router and Reanimated require direct peer dependencies under SDK 54.
-
-
----
-
-# AI Usage Log: Branch Workflow Setup
-
-## Task / Problem
-
-Configure the repository branch workflow after `main` and `develop` were created.
-
-## Tool and Model
-
-Codex / GPT-5.
-
-## Prompt Used
-
-The user asked Codex to configure branches for the client and backend repositories and clarify what must be set in GitHub before starting the workflow.
-
-## Result Obtained
-
-Updated worktree scripts and agent/contribution documentation so feature work starts from `origin/develop`, feature PRs target `develop`, and only human-approved release PRs target `main`.
-
-## Team Modifications Pending Human Review
-
-- Confirm whether the team wants `develop` or `main` as the GitHub default branch.
-- Configure branch protection rules in GitHub for `main` and `develop`.
-
-## Lessons / Limitations
-
-When a project uses both `main` and `develop`, agent instructions must be explicit about PR targets to avoid accidental release-branch work.
 
 
 ---
@@ -277,6 +277,50 @@ Updated `AGENTS.md` with a mandatory Section 6 and Section 7 compliance section,
 ## Lessons / Limitations
 
 Compliance rules should live where agents cannot miss them: `AGENTS.md`, with a README summary for human contributors and evaluators.
+
+
+---
+
+# AI Usage Log: Agent Role Traceability Documentation
+
+## Task / Problem
+
+Clarify whether ticket work has been following the configured `.agents/` workflow and update documentation so future `ai-log/` entries explicitly record which agent roles were used and how.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked whether each ticket has used the configured agents from each repo and requested documentation changes so every `ai-log/` records why and how each agent was used.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Reviewed the role boundary to distinguish actual spec alignment from referencing an approved Linear spec. | `.agents/spec-partner.md`, `AGENTS.md` |
+| Planner/Slicer | Referenced | Reviewed planner responsibilities and documented when existing Linear tickets count as referenced planning rather than a new planner run. | `.agents/planner.md`, `docs/zed-worktree-agents.md` |
+| TDD Implementer | Referenced | Updated logging requirements for implementation tickets that use test-guided or TDD-style work. | `.agents/tdd-implementer.md`, `docs/ai-log-template.md` |
+| Judge | Referenced | Added guidance for recording self-audit versus a separate judge review. | `.agents/judge.md`, `docs/zed-worktree-agents.md` |
+| Mutation Tester | Referenced | Added explicit `Not used` / future `Used` guidance until mutation tooling is configured. | `.agents/mutation.md`, `docs/ai-log-template.md` |
+
+## Result Obtained
+
+Updated client documentation so future logs must include an `Agent Roles Used` table with `Used`, `Referenced`, or `Not used` status for every configured role. Added `docs/ai-log-template.md` as the source template for future logs.
+
+## Verification
+
+- Documentation-only change; reviewed modified Markdown files.
+
+## Team Modifications Pending Human Review
+
+- Decide whether prior historical `ai-log/` entries should be retroactively annotated or left as-is to avoid overstating past agent usage.
+- Decide whether future PR templates should also require checking the `Agent Roles Used` section.
+
+## Lessons / Limitations
+
+Past work followed `AGENTS.md` constraints and role intent, but logs did not make the distinction between literal agent execution and same-session referenced roles. Future logs must be explicit and auditable.
 
 
 ---
@@ -1196,50 +1240,6 @@ All 44 tests pass. typecheck clean.
 
 ---
 
-# AI Usage Log: Agent Role Traceability Documentation
-
-## Task / Problem
-
-Clarify whether ticket work has been following the configured `.agents/` workflow and update documentation so future `ai-log/` entries explicitly record which agent roles were used and how.
-
-## Tool and Model
-
-Codex / GPT-5.
-
-## Prompt Used
-
-The user asked whether each ticket has used the configured agents from each repo and requested documentation changes so every `ai-log/` records why and how each agent was used.
-
-## Agent Roles Used
-
-| Agent | Status | How it was used | Evidence |
-| --- | --- | --- | --- |
-| Spec Partner | Referenced | Reviewed the role boundary to distinguish actual spec alignment from referencing an approved Linear spec. | `.agents/spec-partner.md`, `AGENTS.md` |
-| Planner/Slicer | Referenced | Reviewed planner responsibilities and documented when existing Linear tickets count as referenced planning rather than a new planner run. | `.agents/planner.md`, `docs/zed-worktree-agents.md` |
-| TDD Implementer | Referenced | Updated logging requirements for implementation tickets that use test-guided or TDD-style work. | `.agents/tdd-implementer.md`, `docs/ai-log-template.md` |
-| Judge | Referenced | Added guidance for recording self-audit versus a separate judge review. | `.agents/judge.md`, `docs/zed-worktree-agents.md` |
-| Mutation Tester | Referenced | Added explicit `Not used` / future `Used` guidance until mutation tooling is configured. | `.agents/mutation.md`, `docs/ai-log-template.md` |
-
-## Result Obtained
-
-Updated client documentation so future logs must include an `Agent Roles Used` table with `Used`, `Referenced`, or `Not used` status for every configured role. Added `docs/ai-log-template.md` as the source template for future logs.
-
-## Verification
-
-- Documentation-only change; reviewed modified Markdown files.
-
-## Team Modifications Pending Human Review
-
-- Decide whether prior historical `ai-log/` entries should be retroactively annotated or left as-is to avoid overstating past agent usage.
-- Decide whether future PR templates should also require checking the `Agent Roles Used` section.
-
-## Lessons / Limitations
-
-Past work followed `AGENTS.md` constraints and role intent, but logs did not make the distinction between literal agent execution and same-session referenced roles. Future logs must be explicit and auditable.
-
-
----
-
 # AI Log - AM-043 - Implement mobile auth session and backend contract tests
 
 ## Task / problem
@@ -1540,6 +1540,60 @@ Created / updated:
 - DoD "docs align with actual commands": all commands verified against package.json
   scripts (start/android/ios/web/lint/typecheck/test/test:coverage/verify/build)
 - Contract tests make no real network calls — static fixtures only
+
+
+---
+
+# AI Log - Fix Leaderboard Authenticated Score Submit
+
+## Task / Problem
+
+Update the mobile client after the backend changed `POST /leaderboard/scores` to require JWT authentication and to read `userId` from the token instead of accepting it in the request body.
+
+Also verify the M4 mobile integration ports around HTTP, auth/session, progress, leaderboard, storage, and contract tests.
+
+## Tool and Model
+
+- Tool: Codex CLI coding agent.
+- Model: GPT-5 based Codex session.
+
+## Prompt Used
+
+The user asked to verify the M4 milestone port connections and implement the frontend fix for `POST /leaderboard/scores`:
+
+- Remove `userId` from the request body.
+- Add `Authorization: Bearer <token>` to the request.
+- Keep `GET /leaderboard/:levelId` unauthenticated.
+- Validate the integration.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Used the backend change description as the accepted spec and kept scope limited to the mobile integration contract. | User-provided Fix #8; backend `LeaderboardController`/routes inspection. |
+| Planner/Slicer | Referenced | Mapped the fix to application port, facade, repository, and contract-test updates without touching domain/gameplay. | `ILeaderboardRepository`, `LeaderboardFacade`, `HttpLeaderboardRepository`, contract tests. |
+| TDD Implementer | Referenced | Updated tests around expected behavior first, then adjusted the port/repository implementation to pass them. | Leaderboard facade, repository, and contract tests. |
+| Judge | Referenced | Checked dependency direction and verified that M4 integration tests pass without React Native, UI, or backend runtime coupling. | `npm run verify`; M4 targeted Jest suites. |
+| Mutation Tester | Not used | Mutation testing is not configured in this repository. | N/A |
+
+## Result Obtained
+
+- `SubmitScoreInput` no longer includes `userId`.
+- `ILeaderboardRepository.submitScore` and `LeaderboardFacade.submitScore` now require an `accessToken` argument.
+- `HttpLeaderboardRepository.submitScore` sends `Authorization: Bearer <token>` and posts a body without `userId`.
+- `GET /leaderboard/:levelId` remains unauthenticated.
+- Contract tests now represent authenticated score submission without spoofable `userId`.
+- M4 integration tests for auth, progress, leaderboard, HTTP, storage, session, and contracts pass.
+
+## Team Modifications Pending Human Review
+
+- Backend Swagger/OpenAPI currently still documents `userId` inside `SubmitScoreRequest` and does not mark `POST /leaderboard/scores` with bearer auth in `origin/develop`; that should be fixed in the backend docs/contract.
+- Future UI/ViewModel callers must pass the stored session token when submitting leaderboard scores.
+
+## Lessons / Limitations
+
+- The fix is compile-time enforced by removing `userId` from `SubmitScoreInput`.
+- No real network request was executed; validation used repository and contract tests with mocked HTTP clients.
 
 
 ---
@@ -1855,56 +1909,52 @@ A snapshot-driven ViewModel (read the `GameSnapshotDto` returned by each facade 
 
 ---
 
-# AI Log - Fix Leaderboard Authenticated Score Submit
+# AI Usage Log: MAZ-139 Wire mobile auth login flow (populate session)
 
 ## Task / Problem
 
-Update the mobile client after the backend changed `POST /leaderboard/scores` to require JWT authentication and to read `userId` from the token instead of accepting it in the request body.
-
-Also verify the M4 mobile integration ports around HTTP, auth/session, progress, leaderboard, storage, and contract tests.
+Resolve `MAZ-139`: build the missing login flow so an `AuthSession` is populated in the app. The auth use cases (`LoginUseCase` saves the session), `HttpAuthRepository`, `SessionManager`, and the backend JWT endpoints already existed, but there was no login screen/route — so no session, which blocked the leaderboard write path (MAZ-138 no-ops without a session). Based on `develop`.
 
 ## Tool and Model
 
-- Tool: Codex CLI coding agent.
-- Model: GPT-5 based Codex session.
+Claude Code / Claude Opus 4.8.
 
 ## Prompt Used
 
-The user asked to verify the M4 milestone port connections and implement the frontend fix for `POST /leaderboard/scores`:
-
-- Remove `userId` from the request body.
-- Add `Authorization: Bearer <token>` to the request.
-- Keep `GET /leaderboard/:levelId` unauthenticated.
-- Validate the integration.
+The user asked to do the full auth wiring directly and to be told what to run to test end-to-end, following both repos' `AGENTS.md`, `MEMORY.md`, `Linear_MCP_Guideline.md`, AI logging, validation, MEMORY/AGENTS updates, commit/push/PR, Linear.
 
 ## Agent Roles Used
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
-| Spec Partner | Referenced | Used the backend change description as the accepted spec and kept scope limited to the mobile integration contract. | User-provided Fix #8; backend `LeaderboardController`/routes inspection. |
-| Planner/Slicer | Referenced | Mapped the fix to application port, facade, repository, and contract-test updates without touching domain/gameplay. | `ILeaderboardRepository`, `LeaderboardFacade`, `HttpLeaderboardRepository`, contract tests. |
-| TDD Implementer | Referenced | Updated tests around expected behavior first, then adjusted the port/repository implementation to pass them. | Leaderboard facade, repository, and contract tests. |
-| Judge | Referenced | Checked dependency direction and verified that M4 integration tests pass without React Native, UI, or backend runtime coupling. | `npm run verify`; M4 targeted Jest suites. |
-| Mutation Tester | Not used | Mutation testing is not configured in this repository. | N/A |
+| Spec Partner | Used | Created MAZ-139 from the discovered gap (use cases + repo + backend exist; no login UI) and confirmed the contract (`/auth/login` `{email, rawPassword}` → session; backend derives userId from the token). | MAZ-139 |
+| Planner/Slicer | Used | Scoped to a composition + `AuthViewModel` + login/register screen + route + a backward-compatible Settings entry; backend untouched. | this log |
+| TDD Implementer | Used | Wrote `AuthViewModel` tests (login success/failure, register-then-login, logout) then implemented to green. | `tests/presentation/view-models/AuthViewModel.test.ts` |
+| Judge | Referenced | Pre-PR self-audit: full `npm run verify`; the new Settings prop is optional (existing tests unchanged); AuthViewModel stays pure. | `npm run verify` |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
 
 ## Result Obtained
 
-- `SubmitScoreInput` no longer includes `userId`.
-- `ILeaderboardRepository.submitScore` and `LeaderboardFacade.submitScore` now require an `accessToken` argument.
-- `HttpLeaderboardRepository.submitScore` sends `Authorization: Bearer <token>` and posts a body without `userId`.
-- `GET /leaderboard/:levelId` remains unauthenticated.
-- Contract tests now represent authenticated score submission without spoofable `userId`.
-- M4 integration tests for auth, progress, leaderboard, HTTP, storage, session, and contracts pass.
+- **`AuthViewModel`** (presentation): `login`/`register`/`logout`/`loadSession` with `AuthUiState` (status + session + errorKey). Successful login persists the session via `LoginUseCase` (saved in `SessionManager`); failures surface a controlled i18n error key and save nothing.
+- **Composition** `createAuthViewModel()` (framework): `HttpAuthRepository(createHttpClient())` + `SessionManager` → the four auth use cases → `AuthViewModel`.
+- **`AuthScreen`** (presentation): login/register form (email/username/password, toggle, error) and, when signed in, the username + a logout action.
+- **`app/login.tsx`** route + a backward-compatible **Settings → Account** entry (`onAccount` optional prop) navigating to `/login`. i18n keys added (en/es).
+- Once logged in, `SessionManager` holds the token, so `SubmitScoreUseCase` (MAZ-138) and any authed request go live.
+
+## Verification
+
+- `npx jest tests/presentation/view-models/AuthViewModel.test.ts` → 4 passing.
+- `npm run verify` (lint + typecheck + coverage) → **50 suites / 231 tests passing**.
 
 ## Team Modifications Pending Human Review
 
-- Backend Swagger/OpenAPI currently still documents `userId` inside `SubmitScoreRequest` and does not mark `POST /leaderboard/scores` with bearer auth in `origin/develop`; that should be fixed in the backend docs/contract.
-- Future UI/ViewModel callers must pass the stored session token when submitting leaderboard scores.
+- **End-to-end requires the backend running + a registered user** (Postgres + migrations). README "Running the full stack locally" documents it.
+- The real score submission also needs **MAZ-138** merged (it is stacked separately); auth + MAZ-138 together complete the loop.
+- Token refresh / expiry handling and a proper auth gate are future work (out of scope here).
 
 ## Lessons / Limitations
 
-- The fix is compile-time enforced by removing `userId` from `SubmitScoreInput`.
-- No real network request was executed; validation used repository and contract tests with mocked HTTP clients.
+Keeping `AuthViewModel` dependent only on the auth use cases made it unit-testable with a fake `IAuthRepository` + `ISessionManager` and kept AsyncStorage/HTTP out of the test path (they live only in the framework composition). Making the Settings entry an optional prop avoided touching the existing SettingsScreen tests.
 
 
 <!-- AI_LOG_ENTRIES_END -->

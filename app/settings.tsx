@@ -29,6 +29,7 @@ export default function SettingsRoute() {
       onLanguageChange={(language) => void viewModel.setLanguage(language)}
       onMuteChange={(muted) => void viewModel.setMuted(muted)}
       onBack={() => router.back()}
+      onAccount={() => router.push("/login")}
     />
   );
 }

@@ -10,6 +10,7 @@ interface SettingsScreenProps {
   onLanguageChange: (lang: 'en' | 'es') => void;
   onMuteChange: (muted: boolean) => void;
   onBack?: () => void;
+  onAccount?: () => void;
 }
 
 /**
@@ -19,7 +20,7 @@ interface SettingsScreenProps {
  * live in `SettingsViewModel`; this screen only renders settings and emits
  * intents through the injected callbacks.
  */
-export function SettingsScreen({ settings, onLanguageChange, onMuteChange, onBack }: SettingsScreenProps) {
+export function SettingsScreen({ settings, onLanguageChange, onMuteChange, onBack, onAccount }: SettingsScreenProps) {
   const { t } = useTranslation();
 
   const handleLanguageToggle = () => {
@@ -54,6 +55,20 @@ export function SettingsScreen({ settings, onLanguageChange, onMuteChange, onBac
             accessibilityLabel={settings.muted ? t('settings.unmute') : t('settings.mute')}
           />
         </View>
+
+        {onAccount !== undefined ? (
+          <View className="flex-row items-center justify-between rounded-2xl bg-background-card border border-border-soft p-4">
+            <Text className="text-base text-text-primary">{t('settings.account')}</Text>
+            <Text
+              testID="settings-account"
+              accessibilityRole="button"
+              onPress={onAccount}
+              className="font-semibold text-primary-700"
+            >
+              {t('settings.manageAccount')}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </ScreenContainer>
   );
