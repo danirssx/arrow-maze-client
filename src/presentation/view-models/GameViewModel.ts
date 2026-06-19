@@ -20,9 +20,15 @@ import { ObservableViewModel } from "./ObservableViewModel";
  */
 export class GameViewModel extends ObservableViewModel<GameUiState> implements IGameEventListener {
   private extractionStack: string[] = [];
+  private startedAtMs = 0;
 
   constructor(private readonly facade: GameFacade) {
     super(initialGameUiState);
+  }
+
+  /** Wall-clock milliseconds since the current level started (for scoring). */
+  elapsedMs(): number {
+    return this.startedAtMs === 0 ? 0 : Date.now() - this.startedAtMs;
   }
 
   /** Subscribe to the facade event bridge. Call once when the screen mounts. */
@@ -39,6 +45,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
     const snapshot = this.facade.startLevel({ createDefinition: () => definition });
     const board = this.facade.getBoardSnapshot();
     this.extractionStack = [];
+    this.startedAtMs = Date.now();
     this.setState({
       ...initialGameUiState,
       levelId,
@@ -97,6 +104,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
     const levelId = this.getState().levelId;
     const snapshot = this.facade.restartLevel();
     this.extractionStack = [];
+    this.startedAtMs = Date.now();
     this.setState({
       ...this.getState(),
       levelId,
