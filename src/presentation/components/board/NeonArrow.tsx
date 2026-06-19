@@ -1,15 +1,12 @@
-import { useEffect } from "react";
-import Animated, {
-  Easing,
-  runOnJS,
-  useAnimatedProps,
-  useSharedValue,
-  withTiming
-} from "react-native-reanimated";
+import { useEffect, useRef } from "react";
+import { Animated, Easing } from "react-native";
 import { Path, Polygon } from "react-native-svg";
 import { buildArrowExtraction, headTrianglePoints, polylinePath } from "./arrowSvgGeometry";
 import type { Point } from "./arrowSvgGeometry";
 
+// react-native-svg primitives driven by RN `Animated` (not Reanimated): `Animated`
+// reliably animates SVG props like `strokeDashoffset` on device with a dependable
+// completion callback, which is what actually retires the exiting arrow.
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 /** Core body thickness of an arrow stroke (px). */
@@ -76,9 +73,9 @@ interface ExitingNeonArrowProps {
 
 /**
  * An extracted arrow streaming off-board. A body-length dash window slides along the
- * extended path (body + off-board exit ray) by animating `strokeDashoffset` on the
- * UI thread (Reanimated), so the snake unspools along its own curve and trails
- * straight out in the head direction — the reference exit animation.
+ * extended path (body + off-board exit ray) by animating `strokeDashoffset`, so the
+ * snake unspools along its own curve and trails straight out in the head direction.
+ * On completion the arrow retires (`onDone`) so the parent unmounts it.
  */
 export function ExitingNeonArrow({
   points,
@@ -91,23 +88,25 @@ export function ExitingNeonArrow({
 }: ExitingNeonArrowProps) {
   const geometry = buildArrowExtraction(points, direction, exitClearance);
   const totalLength = geometry.totalLength;
-  const progress = useSharedValue(0);
+  const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    progress.value = withTiming(
-      1,
-      { duration: EXIT_DURATION_MS, easing: Easing.in(Easing.cubic) },
-      (finished) => {
-        if (finished) runOnJS(onDone)(exitKey);
-      }
-    );
+    const animation = Animated.timing(progress, {
+      toValue: 1,
+      duration: EXIT_DURATION_MS,
+      easing: Easing.in(Easing.cubic),
+      // strokeDashoffset is not a transform/opacity, so it can't use the native driver.
+      useNativeDriver: false
+    });
+    animation.start(({ finished }) => {
+      if (finished) onDone(exitKey);
+    });
+    return () => animation.stop();
   }, [progress, onDone, exitKey]);
 
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: -progress.value * totalLength
-  }));
-
   if (geometry.totalPath === "") return null;
+
+  const strokeDashoffset = progress.interpolate({ inputRange: [0, 1], outputRange: [0, -totalLength] });
   const dash: number[] = [geometry.bodyLength, geometry.totalLength];
 
   return (
@@ -123,7 +122,7 @@ export function ExitingNeonArrow({
           strokeLinejoin="round"
           fill="none"
           strokeDasharray={dash}
-          animatedProps={animatedProps}
+          strokeDashoffset={strokeDashoffset}
         />
       ))}
     </>
