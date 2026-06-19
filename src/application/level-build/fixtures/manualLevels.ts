@@ -8,17 +8,27 @@ import { LevelKind } from "../LevelDefinition";
 /**
  * Builder-compatible manual level fixtures (Arrow Untangle puzzle).
  *
- * Each level is a set of straight 1-cell-wide arrows that point only UP or RIGHT
- * and cross each other to form a "knot". This family is provably solvable: with
- * only UP/RIGHT straight arrows the blocking graph is always acyclic (a blocker
- * always has a strictly smaller `row - col` than the arrow it blocks), so a valid
- * removal order always exists — guaranteed by the solvability test, not assumed.
- * Difficulty scales with arrow count, body length, and the number of crossings.
- * These are baseline layouts; visual art-direction (curved bodies) can refine
- * them later without changing the contract.
+ * Each level is a set of 1-cell-wide arrows whose BODIES can bend — "snakes" in
+ * L, zigzag and staircase shapes — that cross each other to form a "knot". Only
+ * the straight ray in front of each head decides blocking (see CollisionService),
+ * so a curved body is free to weave through the knot without changing the puzzle
+ * contract.
+ *
+ * The family is provably solvable by construction, regardless of how the bodies
+ * bend, because every fixture obeys two rules:
+ *   1. every head points UP or RIGHT, and
+ *   2. every body extends only DOWN and/or LEFT away from its head.
+ * Under those rules an arrow's head has a strictly smaller `row - col` than any
+ * cell that could block it, so a blocker's head always has a smaller `row - col`
+ * than the arrow it blocks. The blocking graph is therefore acyclic (a DAG) and a
+ * valid removal order always exists — verified by the solvability test, not
+ * assumed. Difficulty scales with arrow count, body length, and crossings.
  */
 
 type Axis = "UP" | "RIGHT";
+
+/** A body step taken AWAY from the head (tail-ward). Only DOWN/LEFT keep the set solvable. */
+type BodyStep = "DOWN" | "LEFT";
 
 type ArrowDraft = {
   readonly id: string;
@@ -26,7 +36,8 @@ type ArrowDraft = {
   readonly headRow: number;
   readonly headCol: number;
   readonly axis: Axis;
-  readonly length: number;
+  /** Body cells described from the head outward; empty means a single-cell arrow. */
+  readonly body: readonly BodyStep[];
 };
 
 type LevelDraft = {
@@ -55,53 +66,80 @@ function letter(index: number): string {
   return String.fromCharCode(97 + index); // a, b, c, ...
 }
 
-/** Build a straight arrow (head points outward along its single axis). */
-function straight(draft: ArrowDraft): ArrowSpec {
-  const cells: Position[] = [];
-  if (draft.axis === "UP") {
-    // Body hangs below the head; path runs tail (bottom) -> head (top).
-    for (let i = draft.length - 1; i >= 0; i -= 1) {
-      cells.push(Position.of(draft.headRow + i, draft.headCol));
-    }
-    return ArrowSpec.of(draft.id, draft.color, cells, Direction.Up);
-  }
-  // RIGHT: body extends left; path runs tail (left) -> head (right).
-  for (let i = draft.length - 1; i >= 0; i -= 1) {
-    cells.push(Position.of(draft.headRow, draft.headCol - i));
-  }
-  return ArrowSpec.of(draft.id, draft.color, cells, Direction.Right);
+/** Straight run of `length` body cells in one direction. */
+function run(length: number, step: BodyStep): BodyStep[] {
+  return Array.from({ length: Math.max(0, length) }, () => step);
+}
+
+/** One-bend "L" body: `first` for the first half, the other axis for the rest. */
+function lShape(length: number, first: BodyStep): BodyStep[] {
+  const second: BodyStep = first === "DOWN" ? "LEFT" : "DOWN";
+  const head = Math.ceil(length / 2);
+  return [...run(head, first), ...run(length - head, second)];
+}
+
+/** Staircase / zigzag body: alternate axes starting with `first`. */
+function zigzag(length: number, first: BodyStep): BodyStep[] {
+  const second: BodyStep = first === "DOWN" ? "LEFT" : "DOWN";
+  return Array.from({ length: Math.max(0, length) }, (_, i) => (i % 2 === 0 ? first : second));
 }
 
 /**
- * Deterministically lay out `n` crossing arrows: one RIGHT "top bar" on row 0
- * plus UP arrows hanging under it (blocked by the bar until it leaves) and a few
- * extra RIGHT arrows on lower rows. Every arrow points UP or RIGHT, so the set
- * is always solvable while still requiring the player to find the order.
+ * Build an arrow whose head sits at (headRow, headCol) and whose body bends away
+ * from the head using only DOWN/LEFT steps. Path runs tail -> head (head last).
+ */
+function snake(draft: ArrowDraft): ArrowSpec {
+  let row = draft.headRow;
+  let col = draft.headCol;
+  const fromHead: Position[] = [Position.of(row, col)];
+  for (const step of draft.body) {
+    if (step === "DOWN") {
+      row += 1;
+    } else {
+      col -= 1;
+    }
+    fromHead.push(Position.of(row, col));
+  }
+  const path = [...fromHead].reverse(); // tail (last body cell) -> head
+  const direction = draft.axis === "UP" ? Direction.Up : Direction.Right;
+  return ArrowSpec.of(draft.id, draft.color, path, direction);
+}
+
+/**
+ * Deterministically lay out `n` crossing snake-arrows: one straight RIGHT "top
+ * bar" on row 0 plus UP snakes hanging under it (blocked by the bar until it
+ * leaves) and a few RIGHT snakes on lower rows. Every head points UP or RIGHT and
+ * every body bends only DOWN/LEFT, so the set is always solvable while still
+ * requiring the player to find the order.
  */
 function knot(n: number): ArrowDraft[] {
   const width = Math.max(4, Math.ceil(n / 2) + 2);
+  // Top bar stays straight so it blocks every UP head hanging beneath it.
   const arrows: ArrowDraft[] = [
-    { id: letter(0), color: color(0), headRow: 0, headCol: width, axis: "RIGHT", length: width + 1 }
+    { id: letter(0), color: color(0), headRow: 0, headCol: width, axis: "RIGHT", body: run(width, "LEFT") }
   ];
 
   for (let i = 1; i < n; i += 1) {
+    const bodyLength = 2 + (i % 3); // 2..4 body cells
     if (i % 2 === 1) {
+      // UP snake: hangs down from under the bar, then curls left.
       arrows.push({
         id: letter(i),
         color: color(i),
-        headRow: 1 + (i % 3),
+        headRow: 1,
         headCol: (i * 2) % width,
         axis: "UP",
-        length: 2 + (i % 3)
+        body: (i % 3 === 0 ? zigzag : lShape)(bodyLength, "DOWN")
       });
     } else {
+      // RIGHT snake: reaches left across the lower rows, then steps down.
       arrows.push({
         id: letter(i),
         color: color(i),
         headRow: 1 + (i % 4),
         headCol: width + 1 + (i % 3),
         axis: "RIGHT",
-        length: 2 + (i % 3)
+        body: (i % 3 === 0 ? zigzag : lShape)(bodyLength, "LEFT")
       });
     }
   }
@@ -110,7 +148,7 @@ function knot(n: number): ArrowDraft[] {
 }
 
 function toDefinition(draft: LevelDraft): LevelDefinition {
-  const arrows = knot(draft.arrowCount).map(straight);
+  const arrows = knot(draft.arrowCount).map(snake);
   const timed = draft.timeLimitSeconds !== undefined;
 
   return {
