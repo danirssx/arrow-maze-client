@@ -17,6 +17,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@expo-google-fonts/outfit": "^0.4.3",
     "@react-native-async-storage/async-storage": "^3.1.1",
     "@react-navigation/native": "^7.0.0",
     "axios": "^1.18.0",
