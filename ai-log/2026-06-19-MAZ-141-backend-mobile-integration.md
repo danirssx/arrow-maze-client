@@ -22,6 +22,7 @@
 - Wired `app/progress.tsx` to `ProgressViewModel` with `LocalProgressRepository` + `HttpProgressRepository`.
 - Added remote `completeLevel` support for `/progress/levels/:levelId/complete`.
 - Added backend level catalog repository and DTO mapper for `/levels` and `/levels/:id`.
+- Kept the client level DTO contract aligned with the Arrow Untangle catalog by removing `moveCount` from level detail DTOs.
 - Updated levels, game, and leaderboard routes to prefer backend level data with local fixtures as fallback.
 - Added victory-side effects to save progress and submit leaderboard score once per win.
 

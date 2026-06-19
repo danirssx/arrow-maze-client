@@ -34,7 +34,6 @@ export interface LevelDetailDto {
     arrows: LevelArrowDto[];
   };
   timeLimitSeconds?: number;
-  moveCount?: number;
   createdAt: string;
   updatedAt: string;
 }

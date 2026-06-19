@@ -9,7 +9,7 @@ export default function LeaderboardRoute() {
   const router = useRouter();
   const params = useLocalSearchParams<{ levelId?: string }>();
   const catalog = useMemo(() => createLevelSelectViewModel(), []);
-  const [defaultLevelId, setDefaultLevelId] = useState<string | null>(() => catalog.getLevels()[0]?.id ?? null);
+  const [defaultLevelId, setDefaultLevelId] = useState<string | null>(null);
 
   const viewModel = useMemo(() => createLeaderboardViewModel(), []);
   const levelId =
