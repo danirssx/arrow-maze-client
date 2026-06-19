@@ -32,7 +32,6 @@ type LevelDetailDto = {
     arrows: ArrowSpecDto[];
   };
   timeLimitSeconds?: number;
-  moveCount?: number;
   createdAt: string;
   updatedAt: string;
 };
