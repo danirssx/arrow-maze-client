@@ -30,6 +30,7 @@ Ningún agente podrá generar, modificar o cerrar una tarea sin dejar trazabilid
 - `app` and `src/framework` wire Expo, navigation, i18next, dependency injection, and global providers.
 - NativeWind may be used only in `app`, `src/presentation`, and framework-level UI wiring. It must never be imported or referenced by domain, application, or game-rule logic.
 - Zustand may be used only for presentation/view-model/UI state. It must never own domain rules, board movement rules, scoring rules, persistence rules, or use-case orchestration.
+- `react-native-svg` and `react-native-reanimated` are presentation-layer graphics/animation libraries (board rendering, arrow neon + extraction animations). Use them only in `app`, `src/presentation`, and `src/framework`, never in `src/domain` or `src/application`. Reanimated's worklets plugin is auto-added by `babel-preset-expo`; `babel.config.js` disables it only under Jest (`api.env("test")`), where both libraries are mocked in `__mocks__/`. Keep any reusable, framework-free geometry/math in a plain pure module so it can be unit-tested.
 
 ## 2. Design Patterns
 
