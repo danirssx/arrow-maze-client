@@ -1,29 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, View } from "react-native";
+import Svg from "react-native-svg";
 import type { ArrowDto, CoordinateDto } from "@/application/dto/BoardSnapshotDto";
 import type { GameUiState } from "@/presentation/state/GameUiState";
+import { ExitingNeonArrow, NeonArrowBody } from "./board/NeonArrow";
+import type { Point } from "./board/arrowSvgGeometry";
 
 /**
- * Board canvas (arrow untangle) — art-directed render.
+ * Board canvas (arrow untangle) — SVG neon render.
  *
- * Draws every active arrow as a continuous rounded "snake" (rounded nodes + thick
- * edges + a triangular head) sitting on a dark dotted lattice, scrollable in both
- * axes. The dotted field is extended past the arrow bounds so the board reads as an
- * unbounded canvas with an organic, non-square silhouette. Tapping any cell of an
- * arrow reports that arrow id upward — the view holds no game rules. When an arrow
- * leaves the active set it is animated flying off in its head direction (extraction
- * feedback); a blocked tap shakes the arrow in place.
+ * Every active arrow is drawn as a continuous neon "snake" (layered SVG strokes +
+ * a filled head) over a dark dotted lattice, scrollable in both axes. Tapping any
+ * cell of an arrow reports that arrow id upward — the view holds no game rules.
+ * When an arrow leaves the active set it animates extracting: its body unspools
+ * along its own curve and streams off-board in the head direction (Reanimated
+ * `strokeDashoffset` on the extended path). A blocked tap shakes the arrow in place.
  */
 
 const CELL = 34; // lattice spacing (px)
-const THICK = 12; // arrow body thickness
-const HEAD = 15; // arrowhead length — kept <= CELL/2 so a head never spills into a neighbour cell
+const HEAD_HALF_CELL = CELL / 2; // a head never spills past its own cell
 const DOT = 3; // dotted-lattice dot diameter
 const PAD_CELLS = 3; // dotted margin around the arrows (unbounded feel)
 
 const BG = "#11142A";
 const DOT_COLOR = "#262C4E";
-const FLY = 900; // px an extracted arrow travels off-board
 const PRESS_NUDGE = 7; // px an arrow lurches toward its head on tap (press feedback)
 
 const COLOR_HEX: Record<string, string> = {
@@ -52,102 +52,40 @@ function hexFor(color: string): string {
   return COLOR_HEX[color] ?? "#9DA6FB";
 }
 
-type Center = (cell: CoordinateDto) => { cx: number; cy: number };
-
-/** Pure geometry of an arrow's snake body (nodes + edges + head), no interaction. */
-function arrowShapes(arrow: ArrowDto, hex: string, center: Center): React.ReactNode[] {
-  const shapes: React.ReactNode[] = [];
-  const headKey = `${arrow.head.row},${arrow.head.column}`;
-
-  // Rounded nodes at every cell except the head (rounded corners + tail cap).
-  arrow.cells.forEach((cell, index) => {
-    if (`${cell.row},${cell.column}` === headKey) return;
-    const { cx, cy } = center(cell);
-    shapes.push(
-      <View
-        key={`n-${arrow.id}-${index}`}
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          left: cx - THICK / 2,
-          top: cy - THICK / 2,
-          width: THICK,
-          height: THICK,
-          borderRadius: THICK / 2,
-          backgroundColor: hex
-        }}
-      />
-    );
-  });
-
-  // Thick edges between consecutive cells.
-  for (let i = 0; i < arrow.cells.length - 1; i += 1) {
-    const a = center(arrow.cells[i]!);
-    const b = center(arrow.cells[i + 1]!);
-    const horizontal = a.cy === b.cy;
-    shapes.push(
-      <View
-        key={`e-${arrow.id}-${i}`}
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          left: horizontal ? Math.min(a.cx, b.cx) : a.cx - THICK / 2,
-          top: horizontal ? a.cy - THICK / 2 : Math.min(a.cy, b.cy),
-          width: horizontal ? Math.abs(b.cx - a.cx) : THICK,
-          height: horizontal ? THICK : Math.abs(b.cy - a.cy),
-          backgroundColor: hex
-        }}
-      />
-    );
-  }
-
-  shapes.push(headTriangle(arrow, hex, center));
-  return shapes;
+/** Blend a hex color toward white for the bright neon core highlight. */
+function lighten(hex: string, amount = 0.5): string {
+  const value = hex.replace("#", "");
+  const channel = (start: number): number => {
+    const base = parseInt(value.slice(start, start + 2), 16);
+    return Math.round(base + (255 - base) * amount);
+  };
+  const toHex = (n: number): string => n.toString(16).padStart(2, "0");
+  return `#${toHex(channel(0))}${toHex(channel(2))}${toHex(channel(4))}`;
 }
 
-/** Filled triangular arrowhead at the head cell, pointing in the arrow direction. */
-function headTriangle(arrow: ArrowDto, hex: string, center: Center): React.ReactNode {
-  const { cx, cy } = center(arrow.head);
-  const half = HEAD - 3;
-  const len = HEAD;
-  const base = {
-    position: "absolute" as const,
-    width: 0,
-    height: 0,
-    borderStyle: "solid" as const,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderTopColor: "transparent",
-    borderBottomColor: "transparent"
-  };
-  let style: object;
-  switch (arrow.direction) {
-    case "UP":
-      style = { ...base, left: cx - half, top: cy - len, borderLeftWidth: half, borderRightWidth: half, borderBottomWidth: len, borderBottomColor: hex };
-      break;
-    case "DOWN":
-      style = { ...base, left: cx - half, top: cy, borderLeftWidth: half, borderRightWidth: half, borderTopWidth: len, borderTopColor: hex };
-      break;
-    case "LEFT":
-      style = { ...base, left: cx - len, top: cy - half, borderTopWidth: half, borderBottomWidth: half, borderRightWidth: len, borderRightColor: hex };
-      break;
-    default: // RIGHT
-      style = { ...base, left: cx, top: cy - half, borderTopWidth: half, borderBottomWidth: half, borderLeftWidth: len, borderLeftColor: hex };
-      break;
-  }
-  return <View key={`h-${arrow.id}`} pointerEvents="none" style={style} />;
+type Center = (cell: CoordinateDto) => { cx: number; cy: number };
+
+function centersOf(arrow: ArrowDto, center: Center): Point[] {
+  return arrow.cells.map((cell) => {
+    const { cx, cy } = center(cell);
+    return { x: cx, y: cy };
+  });
 }
 
 interface ArrowShapeProps {
   arrow: ArrowDto;
   center: Center;
+  width: number;
+  height: number;
   shaking: boolean;
   onTap: (arrowId: string) => void;
 }
 
-/** An active arrow: snake body + per-cell tap targets + tap-pulse & shake feedback. */
-function ArrowShape({ arrow, center, shaking, onTap }: ArrowShapeProps) {
+/** An active arrow: neon SVG snake + per-cell tap targets + shake/press feedback. */
+function ArrowShape({ arrow, center, width, height, shaking, onTap }: ArrowShapeProps) {
   const hex = hexFor(arrow.color);
+  const highlight = useMemo(() => lighten(hex), [hex]);
+  const points = useMemo(() => centersOf(arrow, center), [arrow, center]);
   const shake = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
   const headKey = `${arrow.head.row},${arrow.head.column}`;
@@ -166,8 +104,8 @@ function ArrowShape({ arrow, center, shaking, onTap }: ArrowShapeProps) {
     return () => animation.stop();
   }, [shaking, shake]);
 
-  // Immediate tap feedback: a quick dim + lurch toward the head direction, so
-  // every tap reacts even before the snapshot round-trip decides extract vs block.
+  // Immediate tap feedback: a quick dim + lurch toward the head direction, so every
+  // tap reacts even before the snapshot round-trip decides extract vs block.
   const handlePress = (): void => {
     pulse.stopAnimation();
     Animated.sequence([
@@ -188,7 +126,9 @@ function ArrowShape({ arrow, center, shaking, onTap }: ArrowShapeProps) {
       pointerEvents="box-none"
       style={{ ...ABSOLUTE_FILL, opacity, transform: [{ translateX }, { translateY: pulseY }] }}
     >
-      {arrowShapes(arrow, hex, center)}
+      <Svg pointerEvents="none" width={width} height={height} style={ABSOLUTE_FILL}>
+        <NeonArrowBody points={points} direction={arrow.direction} color={hex} highlight={highlight} />
+      </Svg>
       {arrow.cells.map((cell, index) => {
         const { cx, cy } = center(cell);
         const isHead = `${cell.row},${cell.column}` === headKey;
@@ -198,7 +138,7 @@ function ArrowShape({ arrow, center, shaking, onTap }: ArrowShapeProps) {
             testID={isHead ? `arrow-${arrow.id}` : undefined}
             accessibilityRole="button"
             onPress={handlePress}
-            style={{ position: "absolute", left: cx - CELL / 2, top: cy - CELL / 2, width: CELL, height: CELL }}
+            style={{ position: "absolute", left: cx - HEAD_HALF_CELL, top: cy - HEAD_HALF_CELL, width: CELL, height: CELL }}
           />
         );
       })}
@@ -209,37 +149,31 @@ function ArrowShape({ arrow, center, shaking, onTap }: ArrowShapeProps) {
 interface ExitingArrowProps {
   arrow: ArrowDto;
   center: Center;
-  onDone: (key: number) => void;
+  width: number;
+  height: number;
+  exitClearance: number;
   exitKey: number;
+  onDone: (key: number) => void;
 }
 
-/** A just-extracted arrow flying off-board in its head direction, then unmounts. */
-function ExitingArrow({ arrow, center, onDone, exitKey }: ExitingArrowProps) {
+/** A just-extracted arrow streaming off-board, then unmounting. */
+function ExitingArrow({ arrow, center, width, height, exitClearance, exitKey, onDone }: ExitingArrowProps) {
   const hex = hexFor(arrow.color);
-  const progress = useRef(new Animated.Value(0)).current;
-  const delta = DIR_DELTA[arrow.direction] ?? DIR_DELTA["RIGHT"]!;
-
-  useEffect(() => {
-    const animation = Animated.timing(progress, {
-      toValue: 1,
-      duration: 360,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true
-    });
-    animation.start(({ finished }) => {
-      if (finished) onDone(exitKey);
-    });
-    return () => animation.stop();
-  }, [progress, onDone, exitKey]);
-
-  const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [0, delta.dx * FLY] });
-  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [0, delta.dy * FLY] });
-  const opacity = progress.interpolate({ inputRange: [0, 0.85, 1], outputRange: [1, 1, 0] });
+  const highlight = lighten(hex);
+  const points = centersOf(arrow, center);
 
   return (
-    <Animated.View pointerEvents="none" style={{ ...ABSOLUTE_FILL, opacity, transform: [{ translateX }, { translateY }] }}>
-      {arrowShapes(arrow, hex, center)}
-    </Animated.View>
+    <Svg pointerEvents="none" width={width} height={height} style={ABSOLUTE_FILL}>
+      <ExitingNeonArrow
+        points={points}
+        direction={arrow.direction}
+        color={hex}
+        highlight={highlight}
+        exitClearance={exitClearance}
+        exitKey={exitKey}
+        onDone={onDone}
+      />
+    </Svg>
   );
 }
 
@@ -257,10 +191,14 @@ export function BoardView({ state, onArrowTap }: BoardViewProps) {
     return map;
   }, [state.arrows]);
 
-  // Track arrows that just left the active set and animate them flying off.
+  // Track arrows that just left the active set and animate them streaming off.
   const seenExtracted = useRef<Set<string>>(new Set());
   const exitSeq = useRef(0);
   const [exiting, setExiting] = useState<{ key: number; arrow: ArrowDto }[]>([]);
+
+  const handleExitDone = useCallback((doneKey: number) => {
+    setExiting((prev) => prev.filter((item) => item.key !== doneKey));
+  }, []);
 
   useEffect(() => {
     const current = new Set(state.extractedArrowIds);
@@ -288,6 +226,8 @@ export function BoardView({ state, onArrowTap }: BoardViewProps) {
   const gCols = bounds.maxCol + PAD_CELLS - gMinCol + 1;
   const width = gCols * CELL;
   const height = gRows * CELL;
+  // Exit ray long enough that a body clears the clipped board from any interior cell.
+  const exitClearance = Math.max(width, height);
 
   const center: Center = (cell) => ({
     cx: (cell.column - gMinCol) * CELL + CELL / 2,
@@ -334,6 +274,8 @@ export function BoardView({ state, onArrowTap }: BoardViewProps) {
                 key={arrow.id}
                 arrow={arrow}
                 center={center}
+                width={width}
+                height={height}
                 shaking={state.shakeArrowId === arrow.id}
                 onTap={onArrowTap}
               />
@@ -345,7 +287,10 @@ export function BoardView({ state, onArrowTap }: BoardViewProps) {
                 exitKey={key}
                 arrow={arrow}
                 center={center}
-                onDone={(doneKey) => setExiting((prev) => prev.filter((item) => item.key !== doneKey))}
+                width={width}
+                height={height}
+                exitClearance={exitClearance}
+                onDone={handleExitDone}
               />
             ))}
           </View>
