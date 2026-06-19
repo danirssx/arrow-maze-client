@@ -15,6 +15,17 @@ export class HttpProgressRepository implements IRemoteProgressRepository {
     return ProgressMapper.toLocal(res.data);
   }
 
+  async completeLevel(accessToken: string, completedLevel: CompletedLevelData): Promise<void> {
+    await this.http.post(`/progress/levels/${completedLevel.levelId}/complete`, {
+      score: completedLevel.score,
+      timeSeconds: completedLevel.timeSeconds,
+      movesCount: completedLevel.movesCount,
+      completedAt: completedLevel.completedAt,
+    }, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  }
+
   async sync(accessToken: string, completedLevels: CompletedLevelData[]): Promise<LocalProgress> {
     const res = await this.http.put<ProgressResponseDto>('/progress/sync', { completedLevels }, {
       headers: { Authorization: `Bearer ${accessToken}` },

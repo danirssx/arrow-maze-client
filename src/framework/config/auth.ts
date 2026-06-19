@@ -3,10 +3,9 @@ import { LoginUseCase } from "@/application/auth/LoginUseCase";
 import { LogoutUseCase } from "@/application/auth/LogoutUseCase";
 import { RegisterUseCase } from "@/application/auth/RegisterUseCase";
 import { HttpAuthRepository } from "@/infrastructure/repositories/HttpAuthRepository";
-import { AsyncStorageAdapter } from "@/infrastructure/storage/AsyncStorageAdapter";
-import { SessionManager } from "@/framework/session/SessionManager";
 import { AuthViewModel } from "@/presentation/view-models/AuthViewModel";
 import { createHttpClient } from "./httpClient";
+import { createSessionManager } from "./session";
 
 /**
  * Composition root (framework) for the auth flow: wires the HTTP auth repository
@@ -15,7 +14,7 @@ import { createHttpClient } from "./httpClient";
  */
 export function createAuthViewModel(): AuthViewModel {
   const authRepository = new HttpAuthRepository(createHttpClient());
-  const sessionManager = SessionManager.getInstance(new AsyncStorageAdapter());
+  const sessionManager = createSessionManager();
   return new AuthViewModel(
     new LoginUseCase(authRepository, sessionManager),
     new RegisterUseCase(authRepository),

@@ -1,5 +1,5 @@
 import { ProgressFacade } from '@/application/facades/ProgressFacade';
-import type { IProgressRepository, LocalProgress } from '@/application/ports/IProgressRepository';
+import type { CompletedLevelData, IProgressRepository, LocalProgress } from '@/application/ports/IProgressRepository';
 import type { IRemoteProgressRepository } from '@/application/ports/IRemoteProgressRepository';
 
 const REMOTE_PROGRESS: LocalProgress = {
@@ -33,8 +33,12 @@ class FakeLocalRepo implements IProgressRepository {
 class FakeHttpProgressRepo implements IRemoteProgressRepository {
   fetchResult = REMOTE_PROGRESS;
   syncResult = REMOTE_PROGRESS;
+  completed: CompletedLevelData | null = null;
   async fetchRemote(_token: string): Promise<LocalProgress> { return this.fetchResult; }
-  async sync(_token: string, _levels: unknown[]): Promise<LocalProgress> { return this.syncResult; }
+  async completeLevel(_token: string, completedLevel: CompletedLevelData): Promise<void> {
+    this.completed = completedLevel;
+  }
+  async sync(_token: string, _levels: CompletedLevelData[]): Promise<LocalProgress> { return this.syncResult; }
 }
 
 describe('ProgressFacade', () => {
@@ -71,6 +75,21 @@ describe('ProgressFacade', () => {
     await local.save({ ...LOCAL_PROGRESS, pendingSync: true });
     const merged = await facade.sync('user-1', 'token-placeholder');
     expect(merged.pendingSync).toBe(false);
+    const stored = await local.load('user-1');
+    expect(stored?.pendingSync).toBe(false);
+  });
+
+  it('should_complete_level_remotely_and_cache_latest_progress', async () => {
+    const completedLevel: CompletedLevelData = {
+      levelId: 'level-2',
+      score: 900,
+      timeSeconds: 10,
+      movesCount: 2,
+      completedAt: '2026-06-18T00:00:00.000Z',
+    };
+    const result = await facade.completeLevel('user-1', 'token-placeholder', completedLevel);
+    expect(remote.completed).toEqual(completedLevel);
+    expect(result.progressId).toBe('p-remote');
     const stored = await local.load('user-1');
     expect(stored?.pendingSync).toBe(false);
   });
