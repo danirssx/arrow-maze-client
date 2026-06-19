@@ -15,15 +15,16 @@ import type { GameUiState } from "@/presentation/state/GameUiState";
  * feedback); a blocked tap shakes the arrow in place.
  */
 
-const CELL = 30; // lattice spacing (px)
+const CELL = 34; // lattice spacing (px)
 const THICK = 12; // arrow body thickness
-const HEAD = 17; // arrowhead length / half-base reference
+const HEAD = 15; // arrowhead length — kept <= CELL/2 so a head never spills into a neighbour cell
 const DOT = 3; // dotted-lattice dot diameter
 const PAD_CELLS = 3; // dotted margin around the arrows (unbounded feel)
 
 const BG = "#11142A";
 const DOT_COLOR = "#262C4E";
-const FLY = 720; // px an extracted arrow travels off-board
+const FLY = 900; // px an extracted arrow travels off-board
+const PRESS_NUDGE = 7; // px an arrow lurches toward its head on tap (press feedback)
 
 const COLOR_HEX: Record<string, string> = {
   blue: "#4B6BFB",
@@ -144,11 +145,13 @@ interface ArrowShapeProps {
   onTap: (arrowId: string) => void;
 }
 
-/** An active arrow: snake body + per-cell tap targets + shake feedback. */
+/** An active arrow: snake body + per-cell tap targets + tap-pulse & shake feedback. */
 function ArrowShape({ arrow, center, shaking, onTap }: ArrowShapeProps) {
   const hex = hexFor(arrow.color);
   const shake = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
   const headKey = `${arrow.head.row},${arrow.head.column}`;
+  const delta = DIR_DELTA[arrow.direction] ?? DIR_DELTA["RIGHT"]!;
 
   useEffect(() => {
     if (!shaking) return undefined;
@@ -163,10 +166,28 @@ function ArrowShape({ arrow, center, shaking, onTap }: ArrowShapeProps) {
     return () => animation.stop();
   }, [shaking, shake]);
 
-  const translateX = shake.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] });
+  // Immediate tap feedback: a quick dim + lurch toward the head direction, so
+  // every tap reacts even before the snapshot round-trip decides extract vs block.
+  const handlePress = (): void => {
+    pulse.stopAnimation();
+    Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 150, easing: Easing.in(Easing.quad), useNativeDriver: true })
+    ]).start();
+    onTap(arrow.id);
+  };
+
+  const shakeX = shake.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] });
+  const pulseX = pulse.interpolate({ inputRange: [0, 1], outputRange: [0, delta.dx * PRESS_NUDGE] });
+  const pulseY = pulse.interpolate({ inputRange: [0, 1], outputRange: [0, delta.dy * PRESS_NUDGE] });
+  const translateX = Animated.add(shakeX, pulseX);
+  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.5] });
 
   return (
-    <Animated.View pointerEvents="box-none" style={{ ...ABSOLUTE_FILL, transform: [{ translateX }] }}>
+    <Animated.View
+      pointerEvents="box-none"
+      style={{ ...ABSOLUTE_FILL, opacity, transform: [{ translateX }, { translateY: pulseY }] }}
+    >
       {arrowShapes(arrow, hex, center)}
       {arrow.cells.map((cell, index) => {
         const { cx, cy } = center(cell);
@@ -176,7 +197,7 @@ function ArrowShape({ arrow, center, shaking, onTap }: ArrowShapeProps) {
             key={`hit-${arrow.id}-${index}`}
             testID={isHead ? `arrow-${arrow.id}` : undefined}
             accessibilityRole="button"
-            onPress={() => onTap(arrow.id)}
+            onPress={handlePress}
             style={{ position: "absolute", left: cx - CELL / 2, top: cy - CELL / 2, width: CELL, height: CELL }}
           />
         );
@@ -213,7 +234,7 @@ function ExitingArrow({ arrow, center, onDone, exitKey }: ExitingArrowProps) {
 
   const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [0, delta.dx * FLY] });
   const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [0, delta.dy * FLY] });
-  const opacity = progress.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] });
+  const opacity = progress.interpolate({ inputRange: [0, 0.85, 1], outputRange: [1, 1, 0] });
 
   return (
     <Animated.View pointerEvents="none" style={{ ...ABSOLUTE_FILL, opacity, transform: [{ translateX }, { translateY }] }}>
