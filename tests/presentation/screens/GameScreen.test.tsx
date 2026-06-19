@@ -1,6 +1,10 @@
 import { fireEvent } from "@testing-library/react-native";
 import { GameFacade } from "@/application/facades/GameFacade";
 import { manualLevels } from "@/application/level-build/fixtures";
+import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
+import { ArrowEntity } from "@/domain/board/ArrowEntity";
+import { BoardGroup } from "@/domain/board/BoardGroup";
+import { CollisionService } from "@/domain/board/CollisionService";
 import { GameUIController } from "@/presentation/controllers/GameUIController";
 import { GameScreen } from "@/presentation/screens/GameScreen";
 import { GameViewModel } from "@/presentation/view-models/GameViewModel";
@@ -9,6 +13,27 @@ import { renderWithProviders } from "../testUtils";
 // Subject to human review — presentation screen test
 
 const firstLevel = manualLevels[0]!;
+const collision = new CollisionService();
+
+function solutionOrder(definition: LevelDefinition): string[] {
+  const board = new BoardGroup(definition.arrows.map((spec) => new ArrowEntity(spec)));
+  const order: string[] = [];
+
+  let progressed = true;
+  while (progressed) {
+    progressed = false;
+    for (const arrow of board.activeArrows()) {
+      if (collision.canExtract(board, arrow.id)) {
+        arrow.extract();
+        order.push(arrow.id);
+        progressed = true;
+      }
+    }
+  }
+
+  if (board.activeArrowCount() !== 0) throw new Error("Fixture is not fully solvable");
+  return order;
+}
 
 function setup() {
   const viewModel = new GameViewModel(GameFacade.createDefault());
@@ -41,8 +66,9 @@ describe("GameScreen", () => {
 
     expect(queryByTestId("victory-screen")).toBeNull();
 
-    fireEvent.press(getByTestId("arrow-a"));
-    fireEvent.press(getByTestId("arrow-b"));
+    for (const arrowId of solutionOrder(firstLevel.definition)) {
+      fireEvent.press(getByTestId(`arrow-${arrowId}`));
+    }
 
     expect(getByTestId("victory-screen")).toBeTruthy();
   });
