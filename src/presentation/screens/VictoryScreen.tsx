@@ -20,13 +20,13 @@ export function VictoryScreen({ onPlayAgain, onHome, onNextLevel, onViewLeaderbo
   const { t } = useTranslation();
 
   return (
-    <View testID="victory-screen" className="flex-1 items-center justify-center gap-6 bg-background px-8">
+    <View testID="victory-screen" className="flex-1 items-center justify-center gap-6 bg-[#0B0E1F] px-8">
       <View className="h-20 w-20 items-center justify-center rounded-full bg-reward-green">
         <Text className="text-4xl">🏆</Text>
       </View>
       <View className="items-center gap-1">
-        <Text className="text-3xl font-black text-text-primary">{t("victory.title")}</Text>
-        <Text className="text-center text-base text-text-secondary">{t("victory.subtitle")}</Text>
+        <Text className="text-3xl font-black text-white">{t("victory.title")}</Text>
+        <Text className="text-center text-base text-[#9AA3D8]">{t("victory.subtitle")}</Text>
       </View>
 
       <View className="w-full gap-3">
