@@ -11,7 +11,10 @@ import { createHttpClient } from "./httpClient";
  * single place infrastructure is assembled for the leaderboard path.
  */
 export function createLeaderboardViewModel(): LeaderboardViewModel {
+  return new LeaderboardViewModel(createLeaderboardFacade());
+}
+
+export function createLeaderboardFacade(): LeaderboardFacade {
   const repository = new HttpLeaderboardRepository(createHttpClient());
-  const facade = new LeaderboardFacade(repository);
-  return new LeaderboardViewModel(facade);
+  return new LeaderboardFacade(repository);
 }

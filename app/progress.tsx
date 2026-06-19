@@ -1,14 +1,21 @@
+import { useMemo } from "react";
 import { useRouter } from "expo-router";
 
+import { createProgressViewModel } from "@/framework/config/progress";
+import { useCurrentSession } from "@/framework/hooks/useCurrentSession";
 import { ProgressScreen } from "@/presentation/screens/ProgressScreen";
 
 export default function ProgressRoute() {
   const router = useRouter();
+  const viewModel = useMemo(() => createProgressViewModel(), []);
+  const { session } = useCurrentSession();
 
-  // No authenticated session is wired in this milestone, so the screen renders
-  // its empty state. The MVVM data path through ProgressViewModel →
-  // ProgressFacade is covered by unit tests.
   return (
-    <ProgressScreen viewModel={null} userId={null} accessToken={null} onBack={() => router.back()} />
+    <ProgressScreen
+      viewModel={viewModel}
+      userId={session?.userId ?? null}
+      accessToken={session?.accessToken ?? null}
+      onBack={() => router.back()}
+    />
   );
 }

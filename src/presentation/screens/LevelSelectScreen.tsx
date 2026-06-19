@@ -1,7 +1,9 @@
 import { ScrollView, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Header } from "@/presentation/components/Header";
+import { ErrorState } from "@/presentation/components/ErrorState";
 import { LevelCard } from "@/presentation/components/LevelCard";
+import { LoadingState } from "@/presentation/components/LoadingState";
 import { ScreenContainer } from "@/presentation/components/ScreenContainer";
 import type { LevelListItem } from "@/presentation/view-models/LevelSelectViewModel";
 
@@ -9,6 +11,9 @@ interface LevelSelectScreenProps {
   levels: readonly LevelListItem[];
   onSelect: (levelId: string) => void;
   onBack: () => void;
+  loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
 }
 
 function chunk<T>(items: readonly T[], size: number): T[][] {
@@ -25,7 +30,14 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
  * Renders the level catalog the `LevelSelectViewModel` provides as a tappable
  * grid and reports the chosen level id upward. No level building happens here.
  */
-export function LevelSelectScreen({ levels, onSelect, onBack }: LevelSelectScreenProps) {
+export function LevelSelectScreen({
+  levels,
+  onSelect,
+  onBack,
+  loading = false,
+  error = false,
+  onRetry,
+}: LevelSelectScreenProps) {
   const { t } = useTranslation();
   const rows = chunk(levels, 3);
 
@@ -33,6 +45,9 @@ export function LevelSelectScreen({ levels, onSelect, onBack }: LevelSelectScree
     <ScreenContainer testID="level-select-screen">
       <Header title={t("levels.title")} onBack={onBack} />
       <Text className="mb-4 mt-2 text-sm text-text-secondary">{t("levels.subtitle")}</Text>
+      {loading ? <LoadingState /> : null}
+      {!loading && error && onRetry !== undefined ? <ErrorState onRetry={onRetry} /> : null}
+      {!loading && !error ? (
       <ScrollView showsVerticalScrollIndicator={false}>
         <View className="gap-3 pb-8">
           {rows.map((row, rowIndex) => (
@@ -47,6 +62,7 @@ export function LevelSelectScreen({ levels, onSelect, onBack }: LevelSelectScree
           ))}
         </View>
       </ScrollView>
+      ) : null}
     </ScreenContainer>
   );
 }
