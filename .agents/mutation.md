@@ -28,10 +28,11 @@ mutante que sobrevive es un agujero en la red.
    juego puras).
 3. Ejecuta StrykerJS sobre esos archivos (mutate restringido al diff):
    ```bash
-   npx stryker run
+   npm run mutation -- --mutate "src/domain/<archivo>.ts,src/application/<archivo>.ts"
    ```
-   Si StrykerJS aún no está configurado en el repo, repórtalo como bloqueo:
-   no inventes scores.
+   El config vive en `stryker.conf.json` (break threshold 80; svg/reanimated
+   mockeados vía `__mocks__/`). Si por algún motivo la herramienta no corre,
+   repórtalo como bloqueo: no inventes scores.
 4. **Umbral**: el mutation score de las líneas nuevas/tocadas DEBE ser ≥ el
    umbral de `docs/mutation-testing.md`.
 5. Por cada mutante **sobreviviente**, anota en
@@ -69,7 +70,7 @@ FAIL -> ai-log/<fecha>-<ticket>-mutation.md (score N%, K sobrevivientes)
 ```
 o
 ```
-blocked -> StrykerJS no configurado
+blocked -> <motivo> (p. ej. StrykerJS no corre en el entorno)
 ```
 
 ## Reglas duras

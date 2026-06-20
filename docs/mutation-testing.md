@@ -11,25 +11,22 @@ es la quinta puerta del [workflow](./workflow.md) y corre **después** del
 
 ## Herramienta
 
-[StrykerJS](https://stryker-mutator.io/) sobre TypeScript con el runner de
-Jest. Estado actual: **pendiente de configurar** (`stryker.conf.json`). Hasta
-entonces el `mutation` reporta `blocked -> StrykerJS no configurado`; no se
-inventan scores.
-
-Configuración objetivo cuando se habilite:
-
-```jsonc
-// stryker.conf.json
-{
-  "testRunner": "jest",
-  "coverageAnalysis": "perTest",
-  "mutate": ["src/domain/**/*.ts", "src/application/**/*.ts"]
-}
-```
+[StrykerJS](https://stryker-mutator.io/) 9.x sobre TypeScript con el runner de
+Jest (`jest-expo`, babel). Estado actual: **configurado** en `stryker.conf.json`.
+La mutación se restringe a las reglas de juego puras (`domain`/`application`);
+`react-native-svg` y `react-native-reanimated` siguen mockeados vía `__mocks__/`.
 
 ```bash
-npx stryker run
+# Auditoría completa de domain + application (el mutate por defecto del config)
+npm run mutation
+
+# Restringido al diff de la feature (lo que hace el agente `mutation`)
+npm run mutation -- --mutate "src/domain/<archivo>.ts"
 ```
+
+El reporte HTML queda en `reports/mutation/index.html` (gitignored). El
+`break threshold` está en 80: Stryker devuelve exit ≠ 0 si el score cae por
+debajo, así que sirve como puerta de CI/PR.
 
 ## Alcance
 
