@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, Pressable, ScrollView, View } from "react-native";
+import { Animated, Pressable, ScrollView, View } from "react-native";
 import Svg from "react-native-svg";
 import type { ArrowDto, CoordinateDto } from "@/application/dto/BoardSnapshotDto";
 import type { GameUiState } from "@/presentation/state/GameUiState";
@@ -10,11 +10,16 @@ import type { Point } from "./board/arrowSvgGeometry";
  * Board canvas (arrow untangle) — SVG neon render.
  *
  * Every active arrow is drawn as a continuous neon "snake" (layered SVG strokes +
- * a filled head) over a dark dotted lattice, scrollable in both axes. Tapping any
- * cell of an arrow reports that arrow id upward — the view holds no game rules.
- * When an arrow leaves the active set it animates extracting: its body unspools
- * along its own curve and streams off-board in the head direction (Reanimated
- * `strokeDashoffset` on the extended path). A blocked tap shakes the arrow in place.
+ * a filled head) over a dark dotted lattice, scrollable in both axes. Extraction
+ * streams the arrow off-board.
+ *
+ * Hit-testing is deliberately split into two layers: the SVG visuals (one `<Svg>`
+ * per arrow, all `pointerEvents="none"`) render at the bottom, and ALL per-cell
+ * `Pressable` tap targets render in a single layer ON TOP of every `<Svg>`. This is
+ * required because a board-sized react-native-svg `<Svg>` swallows touches on the
+ * New Architecture even with `pointerEvents="none"`, so per-arrow `<Svg>` overlays
+ * would otherwise block taps on the arrows beneath them. The view holds no game
+ * rules — a tap just reports the arrow id upward.
  */
 
 const CELL = 34; // lattice spacing (px)
@@ -24,7 +29,6 @@ const PAD_CELLS = 3; // dotted margin around the arrows (unbounded feel)
 
 const BG = "#11142A";
 const DOT_COLOR = "#262C4E";
-const PRESS_NUDGE = 7; // px an arrow lurches toward its head on tap (press feedback)
 
 const COLOR_HEX: Record<string, string> = {
   blue: "#4B6BFB",
@@ -37,13 +41,6 @@ const COLOR_HEX: Record<string, string> = {
   white: "#EEF1FF",
   orange: "#FF9F1C",
   teal: "#22C9B6"
-};
-
-const DIR_DELTA: Record<string, { dx: number; dy: number }> = {
-  UP: { dx: 0, dy: -1 },
-  DOWN: { dx: 0, dy: 1 },
-  LEFT: { dx: -1, dy: 0 },
-  RIGHT: { dx: 1, dy: 0 }
 };
 
 const ABSOLUTE_FILL = { position: "absolute" as const, left: 0, top: 0, right: 0, bottom: 0 };
@@ -72,24 +69,20 @@ function centersOf(arrow: ArrowDto, center: Center): Point[] {
   });
 }
 
-interface ArrowShapeProps {
+interface ArrowVisualProps {
   arrow: ArrowDto;
   center: Center;
   width: number;
   height: number;
   shaking: boolean;
-  onTap: (arrowId: string) => void;
 }
 
-/** An active arrow: neon SVG snake + per-cell tap targets + shake/press feedback. */
-function ArrowShape({ arrow, center, width, height, shaking, onTap }: ArrowShapeProps) {
+/** An active arrow's neon snake (visual only). Shakes in place on a blocked tap. */
+function ArrowVisual({ arrow, center, width, height, shaking }: ArrowVisualProps) {
   const hex = hexFor(arrow.color);
   const highlight = useMemo(() => lighten(hex), [hex]);
   const points = useMemo(() => centersOf(arrow, center), [arrow, center]);
   const shake = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
-  const headKey = `${arrow.head.row},${arrow.head.column}`;
-  const delta = DIR_DELTA[arrow.direction] ?? DIR_DELTA["RIGHT"]!;
 
   useEffect(() => {
     if (!shaking) return undefined;
@@ -104,45 +97,50 @@ function ArrowShape({ arrow, center, width, height, shaking, onTap }: ArrowShape
     return () => animation.stop();
   }, [shaking, shake]);
 
-  // Immediate tap feedback: a quick dim + lurch toward the head direction, so every
-  // tap reacts even before the snapshot round-trip decides extract vs block.
-  const handlePress = (): void => {
-    pulse.stopAnimation();
-    Animated.sequence([
-      Animated.timing(pulse, { toValue: 1, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 0, duration: 150, easing: Easing.in(Easing.quad), useNativeDriver: true })
-    ]).start();
-    onTap(arrow.id);
-  };
-
-  const shakeX = shake.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] });
-  const pulseX = pulse.interpolate({ inputRange: [0, 1], outputRange: [0, delta.dx * PRESS_NUDGE] });
-  const pulseY = pulse.interpolate({ inputRange: [0, 1], outputRange: [0, delta.dy * PRESS_NUDGE] });
-  const translateX = Animated.add(shakeX, pulseX);
-  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.5] });
+  const translateX = shake.interpolate({ inputRange: [-1, 1], outputRange: [-6, 6] });
 
   return (
-    <Animated.View
-      pointerEvents="box-none"
-      style={{ ...ABSOLUTE_FILL, opacity, transform: [{ translateX }, { translateY: pulseY }] }}
-    >
+    <Animated.View pointerEvents="none" style={{ ...ABSOLUTE_FILL, transform: [{ translateX }] }}>
       <Svg pointerEvents="none" width={width} height={height} style={ABSOLUTE_FILL}>
         <NeonArrowBody points={points} direction={arrow.direction} color={hex} highlight={highlight} />
       </Svg>
-      {arrow.cells.map((cell, index) => {
-        const { cx, cy } = center(cell);
-        const isHead = `${cell.row},${cell.column}` === headKey;
-        return (
-          <Pressable
-            key={`hit-${arrow.id}-${index}`}
-            testID={isHead ? `arrow-${arrow.id}` : undefined}
-            accessibilityRole="button"
-            onPress={handlePress}
-            style={{ position: "absolute", left: cx - HEAD_HALF_CELL, top: cy - HEAD_HALF_CELL, width: CELL, height: CELL }}
-          />
-        );
-      })}
     </Animated.View>
+  );
+}
+
+interface ArrowHitTargetsProps {
+  arrows: readonly ArrowDto[];
+  center: Center;
+  onTap: (arrowId: string) => void;
+}
+
+/** Single top layer of per-cell tap targets for every active arrow. */
+function ArrowHitTargets({ arrows, center, onTap }: ArrowHitTargetsProps) {
+  return (
+    <View pointerEvents="box-none" style={ABSOLUTE_FILL}>
+      {arrows.map((arrow) => {
+        const headKey = `${arrow.head.row},${arrow.head.column}`;
+        return arrow.cells.map((cell, index) => {
+          const { cx, cy } = center(cell);
+          const isHead = `${cell.row},${cell.column}` === headKey;
+          return (
+            <Pressable
+              key={`hit-${arrow.id}-${index}`}
+              testID={isHead ? `arrow-${arrow.id}` : undefined}
+              accessibilityRole="button"
+              onPress={() => onTap(arrow.id)}
+              style={{
+                position: "absolute",
+                left: cx - HEAD_HALF_CELL,
+                top: cy - HEAD_HALF_CELL,
+                width: CELL,
+                height: CELL
+              }}
+            />
+          );
+        });
+      })}
+    </View>
   );
 }
 
@@ -269,15 +267,15 @@ export function BoardView({ state, onArrowTap }: BoardViewProps) {
               );
             })}
 
+            {/* Visual layer — neon snakes (non-interactive). */}
             {activeArrows.map((arrow) => (
-              <ArrowShape
+              <ArrowVisual
                 key={arrow.id}
                 arrow={arrow}
                 center={center}
                 width={width}
                 height={height}
                 shaking={state.shakeArrowId === arrow.id}
-                onTap={onArrowTap}
               />
             ))}
 
@@ -293,6 +291,9 @@ export function BoardView({ state, onArrowTap }: BoardViewProps) {
                 onDone={handleExitDone}
               />
             ))}
+
+            {/* Interaction layer — all tap targets, above every SVG. */}
+            <ArrowHitTargets arrows={activeArrows} center={center} onTap={onArrowTap} />
           </View>
         </ScrollView>
       </ScrollView>
