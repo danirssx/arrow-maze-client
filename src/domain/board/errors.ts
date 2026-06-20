@@ -2,16 +2,16 @@
 import { DomainError } from "../value-objects/errors";
 
 /**
- * Board-specific domain errors. Extends the shared domain `DomainError` so all
- * board failures share a single base type while staying UI-agnostic.
+ * Board-specific domain errors for the arrow untangle engine. They extend the
+ * shared `DomainError` so every board failure shares one UI-agnostic base type.
  */
-export class DuplicateCellError extends DomainError {
+export class DuplicateArrowError extends DomainError {
   constructor(message: string) {
     super(message);
   }
 }
 
-export class PositionNotInGraphError extends DomainError {
+export class ArrowNotFoundError extends DomainError {
   constructor(message: string) {
     super(message);
   }

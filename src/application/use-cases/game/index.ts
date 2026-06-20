@@ -1,7 +1,7 @@
-export type { GameResultDto, GameSnapshotDto, PositionDto } from "./GameSnapshotDto";
+export type { GameResultDto, GameSnapshotDto } from "./GameSnapshotDto";
 export { GameSession } from "./GameSession";
 export { StartLevelUseCase } from "./StartLevelUseCase";
-export { PlayTurnUseCase } from "./PlayTurnUseCase";
+export { TapArrowUseCase } from "./TapArrowUseCase";
 export { UndoLastMoveUseCase } from "./UndoLastMoveUseCase";
 export { PauseGameUseCase } from "./PauseGameUseCase";
 export { ResumeGameUseCase } from "./ResumeGameUseCase";

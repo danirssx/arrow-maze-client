@@ -3,6 +3,7 @@ import type { Config } from "jest";
 const config: Config = {
   preset: "jest-expo",
   testMatch: ["**/tests/**/*.test.ts", "**/tests/**/*.test.tsx"],
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   collectCoverageFrom: ["src/**/*.{ts,tsx}", "!src/**/*.d.ts"],
   coverageDirectory: "coverage",
   moduleNameMapper: {

@@ -1,12 +1,10 @@
-import type { BoardCellDto } from "@/application/dto/BoardSnapshotDto";
-import type { PositionDto } from "@/application/use-cases/game/GameSnapshotDto";
+import type { ArrowDto, BoardBoundsDto } from "@/application/dto/BoardSnapshotDto";
 
 /**
  * MVVM UI state — pure presentation overlay phase.
  *
- * Closed set describing which gameplay overlay a screen should render. This is
- * UI state derived by the ViewModel from domain `GameEvent`s; it is not domain
- * state and never leaks back into the engine.
+ * Closed set describing which gameplay overlay a screen should render. Derived by
+ * the ViewModel from gameplay snapshots; it is not domain state.
  */
 export const GameOverlay = {
   None: "NONE",
@@ -18,40 +16,33 @@ export const GameOverlay = {
 export type GameOverlay = (typeof GameOverlay)[keyof typeof GameOverlay];
 
 /**
- * MVVM UI state for the gameplay screen.
+ * MVVM UI state for the gameplay screen (arrow untangle).
  *
- * A plain, serializable snapshot the `GameScreen` binds to. It carries only what
- * the view needs to draw the board, the HUD, and the victory/defeat overlay. It
- * holds no domain classes (`BoardGraph`, `LevelResult`, `Position`) — only DTOs.
+ * A plain, serializable snapshot the `GameScreen` binds to: the static arrow
+ * layout, which arrows have been extracted, the camera bounds, the HUD counters
+ * (arrows + attempts remaining), undo availability, the win/defeat overlay, and
+ * the id of the last blocked tap (for shake feedback). It holds no domain class.
  */
 export type GameUiState = {
   readonly levelId: string | null;
-  readonly rows: number;
-  readonly cols: number;
-  readonly cells: readonly BoardCellDto[];
-  readonly start: PositionDto;
-  readonly exit: PositionDto;
-  readonly playerPosition: PositionDto | null;
-  readonly moves: number;
-  readonly optimalMoves: number;
+  readonly arrows: readonly ArrowDto[];
+  readonly extractedArrowIds: readonly string[];
+  readonly bounds: BoardBoundsDto | null;
+  readonly arrowsRemaining: number;
+  readonly attemptsRemaining: number;
   readonly canUndo: boolean;
   readonly overlay: GameOverlay;
-  readonly invalidMoveAt: PositionDto | null;
+  readonly shakeArrowId: string | null;
 };
-
-const ORIGIN: PositionDto = { row: 0, column: 0 };
 
 export const initialGameUiState: GameUiState = {
   levelId: null,
-  rows: 0,
-  cols: 0,
-  cells: [],
-  start: ORIGIN,
-  exit: ORIGIN,
-  playerPosition: null,
-  moves: 0,
-  optimalMoves: 0,
+  arrows: [],
+  extractedArrowIds: [],
+  bounds: null,
+  arrowsRemaining: 0,
+  attemptsRemaining: 0,
   canUndo: false,
   overlay: GameOverlay.None,
-  invalidMoveAt: null
+  shakeArrowId: null
 };

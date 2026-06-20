@@ -1,28 +1,27 @@
 import type { IObservable } from "../../domain/observer";
-import { Position } from "../../domain/value-objects/Position";
-import type { BoardSnapshotDto } from "../dto/BoardSnapshotDto";
-import { mapBoardSnapshot } from "../dto/BoardSnapshotMapper";
 import { GameEventBridge } from "../dto/GameEventBridge";
-import type { IGameEventListener } from "../dto/IGameEventListener";
 import type { GameEventDto } from "../dto/GameEventDto";
+import type { IGameEventListener } from "../dto/IGameEventListener";
+import { mapBoardSnapshot } from "../dto/BoardSnapshotMapper";
+import type { BoardSnapshotDto } from "../dto/BoardSnapshotDto";
 import { ConcreteLevelBuilder } from "../level-build/ConcreteLevelBuilder";
 import type { ILevelStrategy } from "../level-build/ILevelStrategy";
 import type { LevelDefinition } from "../level-build/LevelDefinition";
 import { LevelDirector } from "../level-build/LevelDirector";
-import type { GameSnapshotDto, PositionDto } from "../use-cases/game/GameSnapshotDto";
+import type { GameSnapshotDto } from "../use-cases/game/GameSnapshotDto";
 import { GameSession } from "../use-cases/game/GameSession";
 import { mapGameSnapshot } from "../use-cases/game/GameSnapshotMapper";
+import { GameplayStateError } from "../use-cases/game/errors";
 import { PauseGameUseCase } from "../use-cases/game/PauseGameUseCase";
-import { PlayTurnUseCase } from "../use-cases/game/PlayTurnUseCase";
 import { ResumeGameUseCase } from "../use-cases/game/ResumeGameUseCase";
 import { StartLevelUseCase } from "../use-cases/game/StartLevelUseCase";
+import { TapArrowUseCase } from "../use-cases/game/TapArrowUseCase";
 import { UndoLastMoveUseCase } from "../use-cases/game/UndoLastMoveUseCase";
-import { GameplayStateError } from "../use-cases/game/errors";
 
 type GameFacadeDependencies = {
   session?: GameSession;
   startLevel?: StartLevelUseCase;
-  playTurn?: PlayTurnUseCase;
+  tapArrow?: TapArrowUseCase;
   undoLastMove?: UndoLastMoveUseCase;
   pauseGame?: PauseGameUseCase;
   resumeGame?: ResumeGameUseCase;
@@ -31,20 +30,16 @@ type GameFacadeDependencies = {
 /**
  * Facade pattern — gameplay application boundary.
  *
- * Provides a compact API for future ViewModels while hiding use-case wiring,
- * `GameContext`, command history, and level construction details. It does not
- * import React, navigation, storage, HTTP, or framework code.
- *
- * Observer bridge / MVVM boundary: presentation subscribes with an
- * `IGameEventListener` and receives UI-neutral `GameEventDto`s plus
- * `BoardSnapshotDto`/`GameSnapshotDto`, so a ViewModel never touches `BoardGraph`
- * or concrete domain classes. The facade owns a single `GameEventBridge` that it
- * (re)registers on each new level and fans out to all listeners.
+ * Compact API for ViewModels that hides use-case wiring, `GameContext`, command
+ * history, and level construction. It owns one `GameEventBridge` re-registered on
+ * each level and fans domain events out to presentation listeners as UI-neutral
+ * `GameEventDto`s. The static arrow layout for rendering is exposed via
+ * `getBoardSnapshot()`. No React, navigation, storage, or HTTP imports.
  */
 export class GameFacade {
   private readonly session: GameSession;
   private readonly startLevelUseCase: StartLevelUseCase;
-  private readonly playTurnUseCase: PlayTurnUseCase;
+  private readonly tapArrowUseCase: TapArrowUseCase;
   private readonly undoLastMoveUseCase: UndoLastMoveUseCase;
   private readonly pauseGameUseCase: PauseGameUseCase;
   private readonly resumeGameUseCase: ResumeGameUseCase;
@@ -58,7 +53,7 @@ export class GameFacade {
     this.session = dependencies.session ?? new GameSession();
     this.startLevelUseCase =
       dependencies.startLevel ?? new StartLevelUseCase(new LevelDirector(new ConcreteLevelBuilder()));
-    this.playTurnUseCase = dependencies.playTurn ?? new PlayTurnUseCase();
+    this.tapArrowUseCase = dependencies.tapArrow ?? new TapArrowUseCase();
     this.undoLastMoveUseCase = dependencies.undoLastMove ?? new UndoLastMoveUseCase();
     this.pauseGameUseCase = dependencies.pauseGame ?? new PauseGameUseCase();
     this.resumeGameUseCase = dependencies.resumeGame ?? new ResumeGameUseCase();
@@ -78,14 +73,6 @@ export class GameFacade {
     this.eventListeners.delete(listener);
   }
 
-  /** UI-neutral static board layout for rendering; requires an active level. */
-  getBoardSnapshot(): BoardSnapshotDto {
-    if (this.currentDefinition === undefined) {
-      throw new GameplayStateError("Cannot read the board snapshot before a level is started.");
-    }
-    return mapBoardSnapshot(this.currentDefinition);
-  }
-
   startLevel(strategy: ILevelStrategy): GameSnapshotDto {
     const definition = strategy.createDefinition();
     const snapshot = this.startLevelUseCase.execute(this.session, { createDefinition: () => definition });
@@ -94,17 +81,25 @@ export class GameFacade {
     return snapshot;
   }
 
+  /** UI-neutral static arrow layout for rendering; requires an active level. */
+  getBoardSnapshot(): BoardSnapshotDto {
+    if (this.currentDefinition === undefined) {
+      throw new GameplayStateError("Cannot read the board snapshot before a level is started.");
+    }
+    return mapBoardSnapshot(this.currentDefinition);
+  }
+
   restartLevel(): GameSnapshotDto {
     const snapshot = this.startLevelUseCase.execute(this.session, this.session.requireStrategy());
     this.attachBridgeToCurrentLevel();
     return snapshot;
   }
 
-  playTurn(destination: PositionDto): GameSnapshotDto {
-    return this.playTurnUseCase.execute(this.session, Position.of(destination.row, destination.column));
+  tapArrow(arrowId: string): GameSnapshotDto {
+    return this.tapArrowUseCase.execute(this.session, arrowId);
   }
 
-  undoMove(): GameSnapshotDto {
+  undo(): GameSnapshotDto {
     return this.undoLastMoveUseCase.execute(this.session);
   }
 

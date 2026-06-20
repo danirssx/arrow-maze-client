@@ -96,13 +96,62 @@ npm run web            # run in browser
 
 ### Environment variables
 
-Create a `.env` file at the project root (never commit it):
+The app reads `process.env.EXPO_PUBLIC_API_BASE_URL` (resolved in
+`src/framework/config/env.ts`) for all HTTP calls. Expo inlines `EXPO_PUBLIC_*`
+at build time. If it is unset, the app falls back to the local backend
+(`http://localhost:3000`). Copy `.env.example` to `.env` (never commit `.env`):
 
-```
-EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
+```bash
+cp .env.example .env
 ```
 
-The app reads `process.env.EXPO_PUBLIC_API_BASE_URL` at runtime for all HTTP calls.
+Pick the environment by setting the URL:
+
+| Environment | `EXPO_PUBLIC_API_BASE_URL` |
+| --- | --- |
+| Local (simulator) | `http://localhost:3000` (default) |
+| Local (physical device) | `http://<your-machine-LAN-IP>:3000` (e.g. `http://192.168.1.50:3000`) |
+| Dev / production-demo | the deployed backend URL (e.g. `https://arrow-maze-api.<host>`) |
+
+For production/demo builds, set `EXPO_PUBLIC_API_BASE_URL` in the EAS build
+profile (or CI env) rather than committing it. The backend's `CORS_ORIGIN` must
+allow the Expo origin (default `http://localhost:8081`).
+
+### Running the full stack locally (login + leaderboard)
+
+End-to-end auth + leaderboard needs the backend + Postgres running, a registered
+user, and the app pointed at the backend.
+
+1. **Backend** (`../arrow-maze-backend`): with a Postgres instance running, set
+   `DATABASE_URL` (and the JWT secret) in its `.env`, apply the SQL migrations in
+   `src/infrastructure/database/migrations/` (`001`–`005`) and the level seeds to
+   the database, then:
+
+   ```bash
+   cd ../arrow-maze-backend
+   npm install
+   npm run dev            # API on http://localhost:3000
+   ```
+
+2. **App**: point it at the backend and start Metro:
+
+   ```bash
+   cp .env.example .env   # EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
+   npm install
+   npm start              # press i (iOS) / a (Android), or scan with Expo Go
+   ```
+
+   On a physical device, set `EXPO_PUBLIC_API_BASE_URL` to your machine LAN IP.
+
+3. **Register + log in**: open **Settings → Account → Manage** (or the `/login`
+   route), create an account and log in. The session is stored on-device.
+
+4. **Play → submit**: win a level; the run is POSTed to the leaderboard and shows
+   up when you open that level's leaderboard (victory overlay → **View
+   leaderboard**).
+
+> Without a logged-in session the game still works fully; the score submission
+> simply no-ops.
 
 ## Quality Commands
 

@@ -31,9 +31,11 @@
     "moves": "Moves",
     "optimal": "Best",
     "objective": "Goal",
+    "arrows": "Arrows",
+    "attempts": "Attempts",
     "undo": "Undo",
     "restart": "Restart",
-    "invalidMove": "You can only move along the arrows."
+    "invalidMove": "That arrow is blocked — clear its path first."
   },
   "victory": {
     "title": "You did it!",
@@ -43,11 +45,12 @@
     "perfect": "Perfect run!",
     "playAgain": "Play again",
     "next": "Next level",
-    "home": "Home"
+    "home": "Home",
+    "leaderboard": "View leaderboard"
   },
   "defeat": {
-    "title": "Time's up",
-    "subtitle": "You ran out of time. Try again!",
+    "title": "Out of attempts",
+    "subtitle": "You ran out of attempts. Try again!",
     "retry": "Try again",
     "home": "Home"
   },
@@ -70,7 +73,23 @@
     "soundOn": "On",
     "soundOff": "Off (muted)",
     "mute": "Mute",
-    "unmute": "Unmute"
+    "unmute": "Unmute",
+    "account": "Account",
+    "manageAccount": "Manage"
+  },
+  "auth": {
+    "title": "Account",
+    "login": "Log in",
+    "register": "Create account",
+    "email": "Email",
+    "username": "Username",
+    "password": "Password",
+    "needAccount": "Need an account? Register",
+    "haveAccount": "Have an account? Log in",
+    "logout": "Log out",
+    "signedInAs": "Signed in as {{username}}",
+    "errorLogin": "Login failed. Check your credentials.",
+    "errorRegister": "Could not create the account."
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",

@@ -1,84 +1,56 @@
-import { ArrowCell } from "@/domain/board/ArrowCell";
+import { ArrowEntity } from "@/domain/board/ArrowEntity";
 import { BoardGroup } from "@/domain/board/BoardGroup";
-import { DuplicateCellError } from "@/domain/board/errors";
-import { EmptyCell } from "@/domain/board/EmptyCell";
-import { ExitCell } from "@/domain/board/ExitCell";
-import { WallCell } from "@/domain/board/WallCell";
-import { CellType } from "@/domain/value-objects/CellType";
+import { DuplicateArrowError } from "@/domain/board/errors";
+import { ArrowSpec } from "@/domain/value-objects/ArrowSpec";
 import { Direction } from "@/domain/value-objects/Direction";
 import { Position } from "@/domain/value-objects/Position";
 
-function buildBoard(): BoardGroup {
-  return new BoardGroup([
-    new ArrowCell(Position.of(0, 0), Direction.Right),
-    new WallCell(Position.of(0, 1)),
-    new EmptyCell(Position.of(1, 0)),
-    new ExitCell(Position.of(1, 1))
-  ]);
-}
+const arrow = (id: string, cells: [number, number][], direction: Direction): ArrowEntity =>
+  new ArrowEntity(ArrowSpec.of(id, "blue", cells.map(([row, col]) => Position.of(row, col)), direction));
 
-describe("BoardGroup (Composite)", () => {
-  it("should_report_total_leaf_count_when_queried_for_size", () => {
-    expect(buildBoard().size).toBe(4);
+describe("BoardGroup", () => {
+  it("should_index_overlapping_arrows_on_a_shared_cell", () => {
+    const a = arrow("a", [[0, 0], [0, 1], [0, 2]], Direction.Right); // occupies (0,2)
+    const b = arrow("b", [[2, 2], [1, 2], [0, 2]], Direction.Up); // also occupies (0,2)
+    const board = new BoardGroup([a, b]);
+
+    const at = board
+      .activeArrowsAt(Position.of(0, 2))
+      .map((found) => found.id)
+      .sort();
+
+    expect(at).toEqual(["a", "b"]);
   });
 
-  it("should_treat_nested_groups_uniformly_when_composing_subgroups", () => {
-    const nested = new BoardGroup([
-      new EmptyCell(Position.of(0, 0)),
-      new BoardGroup([new WallCell(Position.of(0, 1)), new ExitCell(Position.of(0, 2))])
-    ]);
+  it("should_count_only_active_arrows", () => {
+    const a = arrow("a", [[0, 0]], Direction.Up);
+    const b = arrow("b", [[5, 5]], Direction.Up);
+    const board = new BoardGroup([a, b]);
+    expect(board.activeArrowCount()).toBe(2);
 
-    expect(nested.size).toBe(3);
-    expect(nested.toCells()).toHaveLength(3);
+    a.extract();
+
+    expect(board.activeArrowCount()).toBe(1);
+    expect(board.activeArrowsAt(Position.of(0, 0))).toHaveLength(0);
   });
 
-  it("should_find_the_cell_when_position_exists", () => {
-    const board = buildBoard();
+  it("should_reject_duplicate_arrow_ids", () => {
+    const a = arrow("dup", [[0, 0]], Direction.Up);
+    const b = arrow("dup", [[1, 1]], Direction.Up);
 
-    const cell = board.find(Position.of(1, 1));
-
-    expect(cell?.type).toBe(CellType.Exit);
-    expect(cell?.isExit()).toBe(true);
+    expect(() => new BoardGroup([a, b])).toThrow(DuplicateArrowError);
   });
 
-  it("should_return_undefined_when_position_is_empty_within_the_board", () => {
-    const board = buildBoard();
+  it("should_frame_active_arrows_and_become_undefined_when_board_is_empty", () => {
+    const a = arrow("a", [[1, 1], [1, 2]], Direction.Right);
+    const board = new BoardGroup([a]);
 
-    expect(board.has(Position.of(2, 2))).toBe(false);
-    expect(board.find(Position.of(2, 2))).toBeUndefined();
-  });
+    const bounds = board.activeBounds();
+    expect(bounds?.minRow).toBe(1);
+    expect(bounds?.maxCol).toBe(2);
 
-  it("should_expose_cell_behavior_without_any_ui_knowledge", () => {
-    const board = buildBoard();
+    a.extract();
 
-    expect(board.find(Position.of(0, 1))?.isBlocking()).toBe(true);
-    expect(board.find(Position.of(1, 0))?.isBlocking()).toBe(false);
-  });
-
-  it("should_preserve_arrow_direction_when_cell_is_retrieved", () => {
-    const board = buildBoard();
-
-    const arrow = board.find(Position.of(0, 0));
-
-    expect(arrow?.type).toBe(CellType.Arrow);
-    expect(arrow?.direction).toBe(Direction.Right);
-  });
-
-  it("should_fail_in_controlled_way_when_two_cells_share_a_position", () => {
-    const board = new BoardGroup([new EmptyCell(Position.of(0, 0))]);
-
-    expect(() => board.add(new WallCell(Position.of(0, 0)))).toThrow(DuplicateCellError);
-  });
-});
-
-describe("Leaf cells (Composite)", () => {
-  it("should_behave_as_single_node_when_used_directly", () => {
-    const exit = new ExitCell(Position.of(2, 2));
-
-    expect(exit.size).toBe(1);
-    expect(exit.has(Position.of(2, 2))).toBe(true);
-    expect(exit.find(Position.of(2, 2))).toBe(exit);
-    expect(exit.find(Position.of(0, 0))).toBeUndefined();
-    expect(exit.toCells()).toEqual([exit]);
+    expect(board.activeBounds()).toBeUndefined();
   });
 });

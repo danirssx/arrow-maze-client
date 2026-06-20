@@ -10,16 +10,16 @@ function makeController(): { controller: GameUIController; viewModel: GameViewMo
 }
 
 describe("GameUIController", () => {
-  it("should_call_play_turn_only_when_cell_is_tapped", () => {
+  it("should_call_tap_arrow_only_when_an_arrow_is_tapped", () => {
     const { controller, viewModel } = makeController();
-    const playTurn = jest.spyOn(viewModel, "playTurn").mockImplementation(() => undefined);
+    const tapArrow = jest.spyOn(viewModel, "tapArrow").mockImplementation(() => undefined);
     const undo = jest.spyOn(viewModel, "undo").mockImplementation(() => undefined);
     const restart = jest.spyOn(viewModel, "restart").mockImplementation(() => undefined);
 
-    controller.handleCellTap({ row: 0, column: 1 });
+    controller.handleArrowTap("a");
 
-    expect(playTurn).toHaveBeenCalledWith({ row: 0, column: 1 });
-    expect(playTurn).toHaveBeenCalledTimes(1);
+    expect(tapArrow).toHaveBeenCalledWith("a");
+    expect(tapArrow).toHaveBeenCalledTimes(1);
     expect(undo).not.toHaveBeenCalled();
     expect(restart).not.toHaveBeenCalled();
   });

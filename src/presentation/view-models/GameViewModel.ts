@@ -1,23 +1,28 @@
 import type { GameFacade } from "@/application/facades/GameFacade";
-import type { IGameEventListener } from "@/application/dto/IGameEventListener";
 import type { GameEventDto } from "@/application/dto/GameEventDto";
 import { GameEventType } from "@/application/dto/GameEventDto";
+import type { IGameEventListener } from "@/application/dto/IGameEventListener";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
-import type { GameSnapshotDto, PositionDto } from "@/application/use-cases/game/GameSnapshotDto";
+import type { GameSnapshotDto } from "@/application/use-cases/game/GameSnapshotDto";
 import { GameOverlay, initialGameUiState } from "@/presentation/state/GameUiState";
 import type { GameUiState } from "@/presentation/state/GameUiState";
 import { ObservableViewModel } from "./ObservableViewModel";
 
 /**
- * MVVM — gameplay ViewModel.
+ * MVVM — gameplay ViewModel (arrow untangle).
  *
  * Owns the `GameUiState` the `GameScreen` renders and is the only presentation
- * object that talks to the application `GameFacade`. It subscribes to the
- * Observer bridge as an `IGameEventListener`, so when the domain emits
- * `LevelFinished` the ViewModel flips the UI overlay to victory/defeat — no
- * screen ever touches a use case, repository, or domain class.
+ * object that talks to the application `GameFacade`. It is snapshot-driven: each
+ * action calls the facade and reflects the returned `GameSnapshotDto`. A tap that
+ * lowers `arrowsRemaining` extracted an arrow (tracked on a LIFO stack for undo);
+ * an unchanged count was a blocked tap (flagged for shake feedback). No screen
+ * ever touches a use case, repository, or domain class.
  */
 export class GameViewModel extends ObservableViewModel<GameUiState> implements IGameEventListener {
+  private extractionStack: string[] = [];
+  private startedAtMs = 0;
+  private finishedAtMs: number | null = null;
+
   constructor(private readonly facade: GameFacade) {
     super(initialGameUiState);
   }
@@ -35,35 +40,60 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
   startLevel(levelId: string, definition: LevelDefinition): void {
     const snapshot = this.facade.startLevel({ createDefinition: () => definition });
     const board = this.facade.getBoardSnapshot();
+    this.extractionStack = [];
+    this.startedAtMs = Date.now();
+    this.finishedAtMs = null;
     this.setState({
       ...initialGameUiState,
       levelId,
-      rows: board.rows,
-      cols: board.cols,
-      cells: board.cells,
-      start: board.start,
-      exit: board.exit,
-      playerPosition: snapshot.position,
-      moves: snapshot.moves,
-      optimalMoves: snapshot.optimalMoves,
+      arrows: board.arrows,
+      bounds: board.bounds,
+      arrowsRemaining: snapshot.arrowsRemaining,
+      attemptsRemaining: snapshot.attemptsRemaining,
       canUndo: snapshot.canUndo,
-      overlay: GameOverlay.None
+      overlay: GameViewModel.overlayFor(snapshot)
     });
   }
 
-  playTurn(destination: PositionDto): void {
-    try {
-      const snapshot = this.facade.playTurn(destination);
-      this.applySnapshot(snapshot, null);
-    } catch {
-      this.setState({ ...this.getState(), invalidMoveAt: destination });
+  tapArrow(arrowId: string): void {
+    const previous = this.getState();
+    const snapshot = this.facade.tapArrow(arrowId);
+    const extracted = snapshot.arrowsRemaining < previous.arrowsRemaining;
+
+    if (extracted) {
+      this.extractionStack.push(arrowId);
     }
+
+    const overlay = GameViewModel.overlayFor(snapshot);
+    this.markFinishedIfTerminal(overlay);
+    this.setState({
+      ...previous,
+      extractedArrowIds: extracted ? [...previous.extractedArrowIds, arrowId] : previous.extractedArrowIds,
+      arrowsRemaining: snapshot.arrowsRemaining,
+      attemptsRemaining: snapshot.attemptsRemaining,
+      canUndo: snapshot.canUndo,
+      shakeArrowId: extracted ? null : arrowId,
+      overlay
+    });
   }
 
   undo(): void {
+    const previous = this.getState();
     try {
-      const snapshot = this.facade.undoMove();
-      this.applySnapshot(snapshot, null);
+      const snapshot = this.facade.undo();
+      const restored = this.extractionStack.pop();
+      this.setState({
+        ...previous,
+        extractedArrowIds:
+          restored === undefined
+            ? previous.extractedArrowIds
+            : previous.extractedArrowIds.filter((id) => id !== restored),
+        arrowsRemaining: snapshot.arrowsRemaining,
+        attemptsRemaining: snapshot.attemptsRemaining,
+        canUndo: snapshot.canUndo,
+        shakeArrowId: null,
+        overlay: GameViewModel.overlayFor(snapshot)
+      });
     } catch {
       // Nothing to undo — keep current state silently.
     }
@@ -72,35 +102,52 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
   restart(): void {
     const levelId = this.getState().levelId;
     const snapshot = this.facade.restartLevel();
+    this.extractionStack = [];
+    this.startedAtMs = Date.now();
+    this.finishedAtMs = null;
     this.setState({
       ...this.getState(),
       levelId,
-      playerPosition: snapshot.position,
-      moves: snapshot.moves,
-      optimalMoves: snapshot.optimalMoves,
+      extractedArrowIds: [],
+      arrowsRemaining: snapshot.arrowsRemaining,
+      attemptsRemaining: snapshot.attemptsRemaining,
       canUndo: snapshot.canUndo,
-      overlay: GameOverlay.None,
-      invalidMoveAt: null
+      shakeArrowId: null,
+      overlay: GameOverlay.None
     });
   }
 
   /** Observer bridge listener — reacts to UI-neutral domain events. */
   onGameEvent(event: GameEventDto): void {
     if (event.type === GameEventType.LevelFinished) {
-      const overlay =
-        event.result.status === "WON" ? GameOverlay.Victory : GameOverlay.Defeat;
-      this.setState({ ...this.getState(), overlay, invalidMoveAt: null });
+      const overlay = event.result.status === "WON" ? GameOverlay.Victory : GameOverlay.Defeat;
+      this.markFinishedIfTerminal(overlay);
+      this.setState({ ...this.getState(), overlay });
     }
   }
 
-  private applySnapshot(snapshot: GameSnapshotDto, invalidMoveAt: PositionDto | null): void {
-    this.setState({
-      ...this.getState(),
-      playerPosition: snapshot.position,
-      moves: snapshot.moves,
-      optimalMoves: snapshot.optimalMoves,
-      canUndo: snapshot.canUndo,
-      invalidMoveAt
-    });
+  elapsedMs(): number {
+    if (this.startedAtMs === 0) return 0;
+    return Math.max(0, (this.finishedAtMs ?? Date.now()) - this.startedAtMs);
+  }
+
+  movesCount(): number {
+    return this.extractionStack.length;
+  }
+
+  private static overlayFor(snapshot: GameSnapshotDto): GameOverlay {
+    if (snapshot.result.status === "WON") {
+      return GameOverlay.Victory;
+    }
+    if (snapshot.result.status === "LOST") {
+      return GameOverlay.Defeat;
+    }
+    return GameOverlay.None;
+  }
+
+  private markFinishedIfTerminal(overlay: GameOverlay): void {
+    if (overlay !== GameOverlay.None && this.finishedAtMs === null) {
+      this.finishedAtMs = Date.now();
+    }
   }
 }

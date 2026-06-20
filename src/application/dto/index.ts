@@ -8,5 +8,5 @@ export type {
 export type { IGameEventListener } from "./IGameEventListener";
 export { mapGameEvent } from "./GameEventMapper";
 export { GameEventBridge } from "./GameEventBridge";
-export type { BoardCellDto, BoardSnapshotDto } from "./BoardSnapshotDto";
+export type { ArrowDto, BoardBoundsDto, BoardSnapshotDto, CoordinateDto } from "./BoardSnapshotDto";
 export { mapBoardSnapshot } from "./BoardSnapshotMapper";

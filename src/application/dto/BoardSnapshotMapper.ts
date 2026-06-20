@@ -1,36 +1,39 @@
-import { CellType } from "../../domain/value-objects/CellType";
+import type { ArrowSpec } from "../../domain/value-objects/ArrowSpec";
+import { BoundingBox } from "../../domain/value-objects/BoundingBox";
+import type { Position } from "../../domain/value-objects/Position";
 import type { LevelDefinition } from "../level-build/LevelDefinition";
-import { InvalidLevelDefinitionError } from "../level-build/errors";
-import type { BoardCellDto, BoardSnapshotDto } from "./BoardSnapshotDto";
+import type { ArrowDto, BoardBoundsDto, BoardSnapshotDto, CoordinateDto } from "./BoardSnapshotDto";
+
+function toCoordinate(position: Position): CoordinateDto {
+  return { row: position.row, column: position.col };
+}
+
+function mapArrow(spec: ArrowSpec): ArrowDto {
+  return {
+    id: spec.id,
+    color: spec.color,
+    direction: spec.direction.name,
+    cells: spec.cells.map(toCoordinate),
+    head: toCoordinate(spec.head)
+  };
+}
 
 /**
  * Maps a `LevelDefinition` to a UI-neutral `BoardSnapshotDto`.
  *
- * This is the domain-to-UI-neutral board mapper: it flattens the domain
- * `LevelTemplate`/`CellSpec`/`Position`/`Direction` into plain DTO data so
- * presentation renders the grid from DTOs, never from `BoardGraph` or the
- * Composite board.
+ * Flattens the domain `ArrowSpec`/`Position`/`Direction` into plain DTO data so
+ * presentation renders arrows from DTOs, never from `BoardGroup` or the domain
+ * board. `bounds` is derived from every arrow cell (for camera/scroll framing).
  */
 export function mapBoardSnapshot(definition: LevelDefinition): BoardSnapshotDto {
-  const { template } = definition;
+  const arrows = definition.arrows.map(mapArrow);
+  const cells = definition.arrows.flatMap((spec) => [...spec.cells]);
 
-  const exit = template.cells.find((cell) => cell.type === CellType.Exit);
-  if (exit === undefined) {
-    throw new InvalidLevelDefinitionError(`Level ${template.id} has no exit cell to render.`);
+  let bounds: BoardBoundsDto | null = null;
+  if (cells.length > 0) {
+    const box = BoundingBox.fromPositions(cells);
+    bounds = { minRow: box.minRow, minCol: box.minCol, maxRow: box.maxRow, maxCol: box.maxCol };
   }
 
-  const cells: BoardCellDto[] = template.cells.map((cell) => ({
-    row: cell.position.row,
-    column: cell.position.col,
-    type: cell.type,
-    ...(cell.direction === undefined ? {} : { direction: cell.direction.name })
-  }));
-
-  return {
-    rows: template.rows,
-    cols: template.cols,
-    start: { row: definition.start.row, column: definition.start.col },
-    exit: { row: exit.position.row, column: exit.position.col },
-    cells
-  };
+  return { arrows, bounds };
 }

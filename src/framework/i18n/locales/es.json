@@ -31,9 +31,11 @@
     "moves": "Movimientos",
     "optimal": "Óptimo",
     "objective": "Objetivo",
+    "arrows": "Flechas",
+    "attempts": "Intentos",
     "undo": "Deshacer",
     "restart": "Reiniciar",
-    "invalidMove": "Solo puedes moverte siguiendo las flechas."
+    "invalidMove": "Esa flecha está bloqueada: libera su camino primero."
   },
   "victory": {
     "title": "¡Lo lograste!",
@@ -43,11 +45,12 @@
     "perfect": "¡Ruta perfecta!",
     "playAgain": "Jugar de nuevo",
     "next": "Siguiente nivel",
-    "home": "Inicio"
+    "home": "Inicio",
+    "leaderboard": "Ver ranking"
   },
   "defeat": {
-    "title": "Se acabó el tiempo",
-    "subtitle": "Te quedaste sin tiempo. ¡Inténtalo de nuevo!",
+    "title": "Sin intentos",
+    "subtitle": "Te quedaste sin intentos. ¡Inténtalo de nuevo!",
     "retry": "Intentar de nuevo",
     "home": "Inicio"
   },
@@ -70,7 +73,23 @@
     "soundOn": "Activado",
     "soundOff": "Desactivado (silenciado)",
     "mute": "Silenciar",
-    "unmute": "Activar sonido"
+    "unmute": "Activar sonido",
+    "account": "Cuenta",
+    "manageAccount": "Gestionar"
+  },
+  "auth": {
+    "title": "Cuenta",
+    "login": "Iniciar sesion",
+    "register": "Crear cuenta",
+    "email": "Correo",
+    "username": "Usuario",
+    "password": "Contrasena",
+    "needAccount": "Necesitas una cuenta? Registrate",
+    "haveAccount": "Ya tienes cuenta? Inicia sesion",
+    "logout": "Cerrar sesion",
+    "signedInAs": "Sesion de {{username}}",
+    "errorLogin": "Fallo el inicio de sesion. Revisa tus credenciales.",
+    "errorRegister": "No se pudo crear la cuenta."
   },
   "errors": {
     "generic": "Algo salio mal. Por favor intenta de nuevo.",

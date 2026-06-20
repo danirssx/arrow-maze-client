@@ -1,10 +1,7 @@
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { BoardView } from "@/presentation/components/BoardView";
-import { CoinBadge } from "@/presentation/components/CoinBadge";
-import { Header } from "@/presentation/components/Header";
-import { PrimaryButton } from "@/presentation/components/PrimaryButton";
-import { ScreenContainer } from "@/presentation/components/ScreenContainer";
 import { useViewModelState } from "@/presentation/hooks/useViewModelState";
 import { GameOverlay } from "@/presentation/state/GameUiState";
 import type { GameUIController } from "@/presentation/controllers/GameUIController";
@@ -19,15 +16,74 @@ interface GameScreenProps {
   onExit: () => void;
   onHome: () => void;
   onNextLevel?: (() => void) | undefined;
+  onViewLeaderboard?: (() => void) | undefined;
+}
+
+/** Circular dark icon button used by the HUD top bar. */
+function IconButton({
+  glyph,
+  onPress,
+  label,
+  disabled = false
+}: {
+  glyph: string;
+  onPress: () => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      disabled={disabled}
+      className={`h-11 w-11 items-center justify-center rounded-2xl bg-[#1B2042] border border-[#2C3360] active:opacity-70 ${
+        disabled ? "opacity-30" : ""
+      }`}
+    >
+      <Text className="text-lg font-black text-[#C7CEF7]">{glyph}</Text>
+    </Pressable>
+  );
+}
+
+/** Wide dark control button used by the HUD footer. */
+function ControlButton({
+  testID,
+  label,
+  glyph,
+  onPress,
+  disabled = false
+}: {
+  testID: string;
+  label: string;
+  glyph: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      onPress={onPress}
+      disabled={disabled}
+      className={`flex-1 flex-row items-center justify-center gap-2 rounded-2xl bg-[#1B2042] border border-[#2C3360] py-4 active:opacity-80 ${
+        disabled ? "opacity-40" : ""
+      }`}
+    >
+      <Text className="text-base text-[#C7CEF7]">{glyph}</Text>
+      <Text className="text-base font-bold text-[#C7CEF7]">{label}</Text>
+    </Pressable>
+  );
 }
 
 /**
- * MVVM view — gameplay screen.
+ * MVVM view — gameplay screen (arrow untangle), dark art-directed HUD.
  *
- * Binds to `GameViewModel` state and routes every cell tap through
- * `GameUIController.handleCellTap`, which calls `GameViewModel.playTurn` only.
- * When the ViewModel flips the overlay (from a domain level-finished event), it
- * renders the victory or defeat result. The screen calls no use cases directly.
+ * Binds to `GameViewModel` state and routes every arrow tap through
+ * `GameUIController.handleArrowTap`. The HUD shows a top pill with arrows-remaining,
+ * an attempts (hearts) row, and footer Undo/Restart controls; the board renders the
+ * snake arrows. Victory/defeat overlays come from the ViewModel; no use case is
+ * called directly.
  */
 export function GameScreen({
   viewModel,
@@ -35,60 +91,56 @@ export function GameScreen({
   levelOrder,
   onExit,
   onHome,
-  onNextLevel
+  onNextLevel,
+  onViewLeaderboard
 }: GameScreenProps) {
   const { t } = useTranslation();
   const state = useViewModelState(viewModel);
 
   return (
-    <ScreenContainer testID="game-screen">
-      <Header
-        title={t("game.level", { order: levelOrder })}
-        onBack={onExit}
-        right={<CoinBadge amount={0} />}
-      />
+    <SafeAreaView testID="game-screen" className="flex-1 bg-[#0B0E1F]">
+      <View className="flex-1 px-4">
+        <View className="flex-row items-center justify-between pt-1">
+          <IconButton glyph="‹" label="Back" onPress={onExit} />
 
-      <View className="mt-2 flex-row justify-between rounded-2xl bg-background-card border border-border-soft p-4">
-        <View className="items-center">
-          <Text testID="game-moves" className="text-xl font-black text-text-primary">
-            {state.moves}
+          <View className="items-center">
+            <View className="flex-row items-center gap-2 rounded-full bg-[#232A52] border border-[#394070] px-6 py-2">
+              <Text className="text-[13px] text-[#9AA3D8]">{t("game.arrows")}</Text>
+              <Text testID="game-arrows" className="text-2xl font-black text-white">
+                {state.arrowsRemaining}
+              </Text>
+            </View>
+            <Text className="mt-1 text-[11px] font-semibold text-[#6F77A8]">
+              {t("game.level", { order: levelOrder })}
+            </Text>
+          </View>
+
+          <IconButton glyph="⟲" label={t("game.restart")} onPress={() => controller.handleRestart()} />
+        </View>
+
+        <View className="mt-2 flex-row items-center justify-center gap-1">
+          <Text className="text-sm text-[#FF5D7A]">{"♥".repeat(Math.max(0, state.attemptsRemaining))}</Text>
+          <Text testID="game-attempts" className="ml-1 text-xs font-bold text-[#9AA3D8]">
+            {state.attemptsRemaining}
           </Text>
-          <Text className="text-xs text-text-secondary">{t("game.moves")}</Text>
         </View>
-        <View className="items-center">
-          <Text className="text-xl font-black text-primary-700">{state.optimalMoves}</Text>
-          <Text className="text-xs text-text-secondary">{t("game.optimal")}</Text>
-        </View>
-        <View className="items-center">
-          <Text className="text-xl">🏁</Text>
-          <Text className="text-xs text-text-secondary">{t("game.objective")}</Text>
-        </View>
-      </View>
 
-      <View className="flex-1 items-center justify-center">
-        <BoardView state={state} onCellTap={(position) => controller.handleCellTap(position)} />
-        {state.invalidMoveAt !== null ? (
-          <Text testID="invalid-move" className="mt-4 text-sm text-text-muted">
-            {t("game.invalidMove")}
-          </Text>
-        ) : null}
-      </View>
+        <View className="my-3 flex-1">
+          <BoardView state={state} onArrowTap={(arrowId) => controller.handleArrowTap(arrowId)} />
+        </View>
 
-      <View className="flex-row gap-3 pb-2">
-        <View className="flex-1">
-          <PrimaryButton
+        <View className="flex-row gap-3 pb-2">
+          <ControlButton
             testID="game-undo"
+            glyph="↺"
             label={t("game.undo")}
-            variant="secondary"
             onPress={() => controller.handleUndo()}
             disabled={!state.canUndo}
           />
-        </View>
-        <View className="flex-1">
-          <PrimaryButton
+          <ControlButton
             testID="game-restart"
+            glyph="⟳"
             label={t("game.restart")}
-            variant="secondary"
             onPress={() => controller.handleRestart()}
           />
         </View>
@@ -97,11 +149,10 @@ export function GameScreen({
       {state.overlay === GameOverlay.Victory ? (
         <View className="absolute inset-0">
           <VictoryScreen
-            moves={state.moves}
-            optimalMoves={state.optimalMoves}
             onPlayAgain={() => controller.handleRestart()}
             onHome={onHome}
             onNextLevel={onNextLevel}
+            onViewLeaderboard={onViewLeaderboard}
           />
         </View>
       ) : null}
@@ -111,6 +162,6 @@ export function GameScreen({
           <DefeatScreen onRetry={() => controller.handleRestart()} onHome={onHome} />
         </View>
       ) : null}
-    </ScreenContainer>
+    </SafeAreaView>
   );
 }

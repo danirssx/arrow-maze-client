@@ -120,6 +120,36 @@ scoring, and persistence are intentionally out of scope.
 
 ---
 
+# AI Usage Log: Branch Workflow Setup
+
+## Task / Problem
+
+Configure the repository branch workflow after `main` and `develop` were created.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked Codex to configure branches for the client and backend repositories and clarify what must be set in GitHub before starting the workflow.
+
+## Result Obtained
+
+Updated worktree scripts and agent/contribution documentation so feature work starts from `origin/develop`, feature PRs target `develop`, and only human-approved release PRs target `main`.
+
+## Team Modifications Pending Human Review
+
+- Confirm whether the team wants `develop` or `main` as the GitHub default branch.
+- Configure branch protection rules in GitHub for `main` and `develop`.
+
+## Lessons / Limitations
+
+When a project uses both `main` and `develop`, agent instructions must be explicit about PR targets to avoid accidental release-branch work.
+
+
+---
+
 # AI Usage Log: MAZ-123 Expo SDK 54 Upgrade
 
 ## Task / Problem
@@ -155,36 +185,6 @@ Updated Expo and related native/runtime packages to SDK 54-compatible versions, 
 ## Lessons / Limitations
 
 Expo SDK upgrades must be validated with `expo-doctor`, not only by changing the `expo` package version. Expo Router and Reanimated require direct peer dependencies under SDK 54.
-
-
----
-
-# AI Usage Log: Branch Workflow Setup
-
-## Task / Problem
-
-Configure the repository branch workflow after `main` and `develop` were created.
-
-## Tool and Model
-
-Codex / GPT-5.
-
-## Prompt Used
-
-The user asked Codex to configure branches for the client and backend repositories and clarify what must be set in GitHub before starting the workflow.
-
-## Result Obtained
-
-Updated worktree scripts and agent/contribution documentation so feature work starts from `origin/develop`, feature PRs target `develop`, and only human-approved release PRs target `main`.
-
-## Team Modifications Pending Human Review
-
-- Confirm whether the team wants `develop` or `main` as the GitHub default branch.
-- Configure branch protection rules in GitHub for `main` and `develop`.
-
-## Lessons / Limitations
-
-When a project uses both `main` and `develop`, agent instructions must be explicit about PR targets to avoid accidental release-branch work.
 
 
 ---
@@ -277,6 +277,50 @@ Updated `AGENTS.md` with a mandatory Section 6 and Section 7 compliance section,
 ## Lessons / Limitations
 
 Compliance rules should live where agents cannot miss them: `AGENTS.md`, with a README summary for human contributors and evaluators.
+
+
+---
+
+# AI Usage Log: Agent Role Traceability Documentation
+
+## Task / Problem
+
+Clarify whether ticket work has been following the configured `.agents/` workflow and update documentation so future `ai-log/` entries explicitly record which agent roles were used and how.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked whether each ticket has used the configured agents from each repo and requested documentation changes so every `ai-log/` records why and how each agent was used.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Reviewed the role boundary to distinguish actual spec alignment from referencing an approved Linear spec. | `.agents/spec-partner.md`, `AGENTS.md` |
+| Planner/Slicer | Referenced | Reviewed planner responsibilities and documented when existing Linear tickets count as referenced planning rather than a new planner run. | `.agents/planner.md`, `docs/zed-worktree-agents.md` |
+| TDD Implementer | Referenced | Updated logging requirements for implementation tickets that use test-guided or TDD-style work. | `.agents/tdd-implementer.md`, `docs/ai-log-template.md` |
+| Judge | Referenced | Added guidance for recording self-audit versus a separate judge review. | `.agents/judge.md`, `docs/zed-worktree-agents.md` |
+| Mutation Tester | Referenced | Added explicit `Not used` / future `Used` guidance until mutation tooling is configured. | `.agents/mutation.md`, `docs/ai-log-template.md` |
+
+## Result Obtained
+
+Updated client documentation so future logs must include an `Agent Roles Used` table with `Used`, `Referenced`, or `Not used` status for every configured role. Added `docs/ai-log-template.md` as the source template for future logs.
+
+## Verification
+
+- Documentation-only change; reviewed modified Markdown files.
+
+## Team Modifications Pending Human Review
+
+- Decide whether prior historical `ai-log/` entries should be retroactively annotated or left as-is to avoid overstating past agent usage.
+- Decide whether future PR templates should also require checking the `Agent Roles Used` section.
+
+## Lessons / Limitations
+
+Past work followed `AGENTS.md` constraints and role intent, but logs did not make the distinction between literal agent execution and same-session referenced roles. Future logs must be explicit and auditable.
 
 
 ---
@@ -1196,50 +1240,6 @@ All 44 tests pass. typecheck clean.
 
 ---
 
-# AI Usage Log: Agent Role Traceability Documentation
-
-## Task / Problem
-
-Clarify whether ticket work has been following the configured `.agents/` workflow and update documentation so future `ai-log/` entries explicitly record which agent roles were used and how.
-
-## Tool and Model
-
-Codex / GPT-5.
-
-## Prompt Used
-
-The user asked whether each ticket has used the configured agents from each repo and requested documentation changes so every `ai-log/` records why and how each agent was used.
-
-## Agent Roles Used
-
-| Agent | Status | How it was used | Evidence |
-| --- | --- | --- | --- |
-| Spec Partner | Referenced | Reviewed the role boundary to distinguish actual spec alignment from referencing an approved Linear spec. | `.agents/spec-partner.md`, `AGENTS.md` |
-| Planner/Slicer | Referenced | Reviewed planner responsibilities and documented when existing Linear tickets count as referenced planning rather than a new planner run. | `.agents/planner.md`, `docs/zed-worktree-agents.md` |
-| TDD Implementer | Referenced | Updated logging requirements for implementation tickets that use test-guided or TDD-style work. | `.agents/tdd-implementer.md`, `docs/ai-log-template.md` |
-| Judge | Referenced | Added guidance for recording self-audit versus a separate judge review. | `.agents/judge.md`, `docs/zed-worktree-agents.md` |
-| Mutation Tester | Referenced | Added explicit `Not used` / future `Used` guidance until mutation tooling is configured. | `.agents/mutation.md`, `docs/ai-log-template.md` |
-
-## Result Obtained
-
-Updated client documentation so future logs must include an `Agent Roles Used` table with `Used`, `Referenced`, or `Not used` status for every configured role. Added `docs/ai-log-template.md` as the source template for future logs.
-
-## Verification
-
-- Documentation-only change; reviewed modified Markdown files.
-
-## Team Modifications Pending Human Review
-
-- Decide whether prior historical `ai-log/` entries should be retroactively annotated or left as-is to avoid overstating past agent usage.
-- Decide whether future PR templates should also require checking the `Agent Roles Used` section.
-
-## Lessons / Limitations
-
-Past work followed `AGENTS.md` constraints and role intent, but logs did not make the distinction between literal agent execution and same-session referenced roles. Future logs must be explicit and auditable.
-
-
----
-
 # AI Log - AM-043 - Implement mobile auth session and backend contract tests
 
 ## Task / problem
@@ -1377,19 +1377,6 @@ Pre-checks: client and backend `AGENTS.md` reviewed, `MEMORY.md` reviewed,
 `Linear_MCP_Guideline.md` reviewed, and Linear MAZ-116 read before validation.
 Existing AM-031 observer contract and AM-044 facades were used as the boundary
 for the presentation layer.
-# AI Log - AM-046 - Implement mobile settings, i18n, audio and UX polish
-
-## Task / problem
-Complete the visible user experience: language switch (EN/ES), sound mute,
-friendly error messages with i18n, and loading/error/empty state components.
-
-## Tool and model
-Claude Code - claude-sonnet-4-6
-
-## Prompt used
-Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
-Existing i18n setup (i18n.ts, locales) and AppErrorBoundary studied.
-AM-042 files brought in from prior branch.
 
 ## Agent Roles Used
 
@@ -1447,55 +1434,6 @@ Closeout fixes before PR:
 ## Task / problem
 Complete the visible user experience: language switch (EN/ES), sound mute,
 friendly error messages with i18n, and loading/error/empty state components.
-| Spec Partner | Referenced | Spec from MAZ-117 guided in-scope items | MAZ-117 |
-| Planner/Slicer | Referenced | locales → ports → infra → components → tests | file list |
-| TDD Implementer | Referenced | Fake IAudioPlayer; @testing-library/react-native for SettingsScreen | test files |
-| Judge | Not used | No .agents/ directory configured | N/A |
-| Mutation Tester | Not used | No .agents/ directory configured | N/A |
-
-## Result obtained
-Created / updated:
-- `src/framework/i18n/locales/en.json` + `es.json` — added settings/errors/states keys
-- `src/application/ports/ISettingsRepository.ts` — { language, muted } port
-- `src/application/ports/IAudioPlayer.ts` — SoundKey + play port
-- `src/infrastructure/storage/SettingsRepository.ts` — Pattern: Adapter; persists via ILocalStorage
-- `src/infrastructure/audio/AudioFacade.ts` — Pattern: Facade, Singleton; mute blocks all play()
-- `src/infrastructure/audio/ExpoAudioAdapter.ts` — Pattern: Adapter; wraps expo-av
-- `src/presentation/components/LoadingState.tsx` — uses t('states.loading')
-- `src/presentation/components/ErrorState.tsx` — maps HttpError codes to translated messages
-- `src/presentation/components/EmptyState.tsx` — variants: default/progress/leaderboard
-- `src/presentation/screens/SettingsScreen.tsx` — language toggle + mute Switch
-- `src/framework/errors/AppErrorBoundary.tsx` — updated hardcoded string to i18n key
-- `tests/infrastructure/audio/AudioFacade.test.ts` — 5 tests (mute/unmute/singleton)
-- `tests/infrastructure/storage2/SettingsRepository.test.ts` — 3 tests
-- `tests/presentation/screens/SettingsScreen.test.tsx` — 5 tests (i18n + interactions)
-
-57 tests passing. typecheck clean. 0 lint errors.
-
-## Team modifications pending human review
-- ExpoAudioAdapter requires sound asset files in assets/sounds/ — not bundled here
-- SettingsScreen is a pure presentational component; a ViewModel/hook to wire
-  ISettingsRepository is needed before connecting to navigation
-- i18n.changeLanguage() is called imperatively in SettingsScreen; team may prefer
-  a context/provider approach for persistence across navigation
-
-## Lessons / limitations
-- DoD "no hardcoded visible strings without translation": AppErrorBoundary was the
-  only existing hardcoded string — replaced with i18n.t('errors.generic')
-- Acceptance criterion "mute enabled → no sound plays": verified by
-  should_not_play_sound_when_muted in AudioFacade.test.ts
-- Acceptance criterion "language changes to Spanish → text is translated": verified by
-  should_show_spanish_labels_when_language_is_es in SettingsScreen.test.tsx
-
-
----
-
-# AI Log - AM-047 - Complete mobile contract tests and release documentation
-
-## Task / problem
-Close client-backend compatibility with a complete contract test suite and
-provide release documentation so a new developer can run, test, and build
-the app from scratch.
 
 ## Tool and model
 Claude Code - claude-sonnet-4-6
@@ -1504,9 +1442,6 @@ Claude Code - claude-sonnet-4-6
 Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
 Existing i18n setup (i18n.ts, locales) and AppErrorBoundary studied.
 AM-042 files brought in from prior branch.
-AM-046 source files brought in from prior branch. Backend openApiSpec
-studied for all endpoint shapes. Existing README.md and CI workflow reviewed
-before updating to avoid duplication.
 
 ## Agent Roles Used
 
@@ -1515,9 +1450,6 @@ before updating to avoid duplication.
 | Spec Partner | Referenced | Spec from MAZ-117 guided in-scope items | MAZ-117 |
 | Planner/Slicer | Referenced | locales → ports → infra → components → tests | file list |
 | TDD Implementer | Referenced | Fake IAudioPlayer; @testing-library/react-native for SettingsScreen | test files |
-| Spec Partner | Referenced | Spec from MAZ-118 guided contract scope and README DoD | MAZ-118 |
-| Planner/Slicer | Referenced | contract tests → README → docs/RELEASE.md order | file list |
-| TDD Implementer | Referenced | Static fixtures, no real network calls | test files |
 | Judge | Not used | No .agents/ directory configured | N/A |
 | Mutation Tester | Not used | No .agents/ directory configured | N/A |
 
@@ -1573,6 +1505,19 @@ Pre-checks: AGENTS.md (client repo) reviewed, MEMORY.md reviewed.
 AM-046 source files brought in from prior branch. Backend openApiSpec
 studied for all endpoint shapes. Existing README.md and CI workflow reviewed
 before updating to avoid duplication.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Spec from MAZ-118 guided contract scope and README DoD | MAZ-118 |
+| Planner/Slicer | Referenced | contract tests → README → docs/RELEASE.md order | file list |
+| TDD Implementer | Referenced | Static fixtures, no real network calls | test files |
+| Judge | Not used | No .agents/ directory configured | N/A |
+| Mutation Tester | Not used | No .agents/ directory configured | N/A |
+
+## Result obtained
+Created / updated:
 - `tests/contract/levels.contract.test.ts` — 9 tests for GET /levels and GET /levels/:id
 - `tests/contract/auth.contract.test.ts` — 6 tests (LoginResponse, RegisterResponse)
 - `tests/contract/progress.contract.test.ts` — 5 tests (ProgressResponse + ProgressMapper)
@@ -1625,36 +1570,6 @@ The user asked to verify the M4 milestone port connections and implement the fro
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
-| Spec Partner | Referenced | Spec from MAZ-118 guided contract scope and README DoD | MAZ-118 |
-| Planner/Slicer | Referenced | contract tests → README → docs/RELEASE.md order | file list |
-| TDD Implementer | Referenced | Static fixtures, no real network calls | test files |
-| Judge | Not used | No .agents/ directory configured | N/A |
-| Mutation Tester | Not used | No .agents/ directory configured | N/A |
-
-## Result obtained
-Created / updated:
-- `tests/contract/levels.contract.test.ts` — 9 tests for GET /levels and GET /levels/:id
-- `tests/contract/auth.contract.test.ts` — 6 tests (LoginResponse, RegisterResponse)
-- `tests/contract/progress.contract.test.ts` — 5 tests (ProgressResponse + ProgressMapper)
-- `tests/contract/leaderboard.contract.test.ts` — 4 tests (LeaderboardResponse)
-- `README.md` — added Prerequisites, env vars, detailed quality/build commands,
-  link to RELEASE.md
-- `docs/RELEASE.md` — full release guide: Expo Go, EAS preview/production,
-  web build, CI, contract test run command, versioning, screenshots placeholder
-- `docs/screenshots/.gitkeep` — placeholder for AM-048 screenshots
-
-68 tests passing. typecheck clean. 0 lint errors.
-
-## Team modifications pending human review
-- GET /levels and GET /levels/:id contract fixtures are based on domain model
-  (LevelDto shape); must be reconciled with actual backend spec when AM-013 lands
-- `eas.json` not created — EAS profile setup requires team EAS account credentials
-- Screenshots placeholder in docs/screenshots/ to be filled after AM-048 UI polish
-
-## Lessons / limitations
-- DoD "docs align with actual commands": all commands verified against package.json
-  scripts (start/android/ios/web/lint/typecheck/test/test:coverage/verify/build)
-- Contract tests make no real network calls — static fixtures only
 | Spec Partner | Referenced | Used the backend change description as the accepted spec and kept scope limited to the mobile integration contract. | User-provided Fix #8; backend `LeaderboardController`/routes inspection. |
 | Planner/Slicer | Referenced | Mapped the fix to application port, facade, repository, and contract-test updates without touching domain/gameplay. | `ILeaderboardRepository`, `LeaderboardFacade`, `HttpLeaderboardRepository`, contract tests. |
 | TDD Implementer | Referenced | Updated tests around expected behavior first, then adjusted the port/repository implementation to pass them. | Leaderboard facade, repository, and contract tests. |
@@ -1679,6 +1594,663 @@ Created / updated:
 
 - The fix is compile-time enforced by removing `userId` from `SubmitScoreInput`.
 - No real network request was executed; validation used repository and contract tests with mocked HTTP clients.
+
+
+---
+
+# AI Usage Log: MAZ-122 (AM-051) Configure mobile API environments + finish leaderboard wiring
+
+## Task / Problem
+
+Resolve `MAZ-122` (AM-051): configure the mobile `API_BASE_URL` per environment (local/dev/prod) with docs, and — per the user's explicit request — finish the backend↔mobile connection for the leaderboard, which existed as units (adapter/repo/facade/ViewModel) but was never composed or reached by the app. Based on `develop` (full client refactor T2→T6 already merged).
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to do `MAZ-122`, first checking its spec did not conflict with the Arrow Untangle refactor, and to finish the backend↔mobile connection (leaderboard: API_BASE_URL, adapter, repository, facade, ViewModel, real levelId, navigation), following both repos' `AGENTS.md`, `MEMORY.md`, `Linear_MCP_Guideline.md`, AI logging, validation, MEMORY/AGENTS updates, commit/push/PR, Linear.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Used | Reviewed MAZ-122 vs the refactor: it is a framework/env-config chore, no conflict. Confirmed the leaderboard adapter/repo/facade/VM + backend `/leaderboard/:levelId` already exist and match. | MAZ-122 description, route/contract grep |
+| Planner/Slicer | Used | Scoped to env config + the genuine gap (composition root + screen wiring + levelId + nav); kept backend untouched (out of scope). | this log |
+| TDD Implementer | Used | Added env-resolution tests and a composition smoke test, then implemented to green. | `tests/framework/config/*` |
+| Judge | Referenced | Pre-PR self-audit: full `npm run verify`, layer boundaries (composition in framework, not presentation; no business rules in views). | `npm run verify` |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
+
+## Result Obtained
+
+- **Env (MAZ-122):** `.env.example` now sets `EXPO_PUBLIC_API_BASE_URL`; `src/framework/config/env.ts` resolves it with a local default (`http://localhost:3000`); README "Environment variables" documents local (simulator + LAN device) / dev / production-demo and the CORS note.
+- **Composition root (framework):** `createHttpClient()` builds the Axios adapter at `API_BASE_URL`; `createLeaderboardViewModel()` wires HTTP → `HttpLeaderboardRepository` → `LeaderboardFacade` → `LeaderboardViewModel`.
+- **Screen wiring:** `app/leaderboard.tsx` now builds the real ViewModel and reads `levelId` from the route (`/leaderboard?levelId=…`) with a temporary default to the first manual level, so the screen actually fetches from the backend (no longer the null/empty placeholder).
+- **Navigation:** a "View leaderboard" action on the victory overlay (`VictoryScreen` → `GameScreen` → `app/game.tsx`) navigates to `/leaderboard?levelId=<current level>` with a real id; i18n keys added (en/es).
+
+## Verification
+
+- `npm run verify` (lint + typecheck + test:coverage) → **49 suites / 227 tests passing**, 0 lint errors. Base `develop` typechecked clean before changes.
+- Contract check: client calls `GET /leaderboard/:levelId` + `POST /leaderboard/scores`; backend `leaderboardRoutes` exposes exactly those (mounted in `framework/app.ts`).
+
+## Team Modifications Pending Human Review
+
+- **Backend status:** the backend leaderboard endpoint is mounted and the level-catalog already uses `ArrowSpec` (no `CellSpec`/`BoardSize`), so T1/MAZ-130 appears already applied there. I did not deep-audit the backend (out of MAZ-122 scope).
+- **Score submission not wired:** the leaderboard *read* path is connected. Posting a score on victory (`submitScore`) still needs an authenticated session + a game-end hook — a follow-up integration ticket (depends on auth wiring).
+- `movesCount` in the leaderboard contract equals the arrow count in the untangle game; contract unchanged.
+
+## Lessons / Limitations
+
+The HTTP adapters/repos existed but nothing composed them — the missing piece was a framework composition root + a route that asks for a ready ViewModel. Keeping `createLeaderboardViewModel()` in `framework/` (not a presentation hook) preserves the inward dependency rule while letting `app/` (router/framework) consume it.
+
+
+---
+
+# AI Usage Log: MAZ-131 Arrow Untangle Domain (ArrowEntity, BoardGroup, CollisionService)
+
+## Task / Problem
+
+Resolve `MAZ-131` (Refactor T2) of the Arrow Untangle pivot: replace the maze-navigation board domain with the untangle-puzzle engine foundation. Delete the cell/Composite/`BoardGraph`/`PathfindingService` model and add `ArrowEntity`, an occupancy-indexed `BoardGroup` (`Map<coordKey, Set<arrowId>>`), and a `CollisionService` that decides extraction via a directional raycast on an unbounded board. This is the base ticket; the rest of the engine (T3-T7) migrates on top of it.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user approved the sealed refactor spec (`Refactor_Arrow_Untangle_Tickets.md`, `Mecanica_Juego_Arrow_Untangle.md`), chose a big-bang sequencing strategy, and asked to implement `MAZ-131` while following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket state, AI usage logging, validation, MEMORY/AGENTS update checks, commit/push/PR, and Linear updates.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Used | Ran a full grill-me spec session that sealed the mechanic (Model B raycast, unbounded canvas, overlaps, win/no-loss, attempts/defeat, DAG solvability) into the refactor docs before any code. | `Refactor_Arrow_Untangle_Tickets.md`, `Mecanica_Juego_Arrow_Untangle.md`, MAZ-131 |
+| Planner/Slicer | Used | Sliced the refactor into MAZ-130..137 with coverage mapping to the superseded AM tickets and blocking edges. | MAZ-130..137, §3 of the tickets doc |
+| TDD Implementer | Used | Wrote domain tests (AAA, `should_*_when_*`) for `ArrowSpec`, `BoundingBox`, `ArrowEntity`, `BoardGroup`, `CollisionService`, and negative-`Position`, then implemented to green. | `tests/domain/board/*`, `tests/domain/value-objects/*`, this branch |
+| Judge | Referenced | Pre-PR self-audit against `AGENTS.md` layer boundaries (no RN/Expo/HTTP in domain), scoped eslint, and a grep confirming no dangling references to deleted modules in the touched layer. | scoped `eslint` (exit 0), `grep` clean |
+| Mutation Tester | Not used | StrykerJS is not configured in this repo. | N/A |
+
+## Result Obtained
+
+Deleted the maze-navigation engine in the board + value-objects layer:
+- `src/domain/board/{ICell,IBoardComponent,Cell,ArrowCell,WallCell,EmptyCell,ExitCell,BoardGraph,BoardGraphBuilder,PathfindingService}.ts`
+- `src/domain/value-objects/{CellSpec,CellType,LevelTemplate}.ts`
+- `src/domain/factory/*` and `src/domain/decorators/*`
+- Dead tests: old `board/{BoardGraph,BoardGroup}.test.ts`, `value-objects/{CellSpec,LevelTemplate}.test.ts`, `tests/domain/cells/*`
+
+Added the untangle domain:
+- `value-objects/ArrowSpec` (immutable; validates orthogonal connectivity, no self-intersection, head not pointing back into its own body).
+- `value-objects/BoundingBox` (camera framing only; never used by rules).
+- `board/ArrowEntity` (entity with `active`/`extracted` reversible state).
+- `board/BoardGroup` (occupancy index `Map<coordKey, Set<arrowId>>`; overlaps allowed; queries filter by `isActive` so removal = state flip).
+- `board/CollisionService.canExtract` (unbounded directional raycast; own body transparent; any other active arrow strictly ahead on the head's axis blocks).
+- `Position` now allows negative integer coordinates; `Direction.fromName` throws the new `InvalidDirectionError`.
+- Updated `board/errors.ts` (`DuplicateArrowError`, `ArrowNotFoundError`), `value-objects/errors.ts` (added `InvalidDirectionError`, `InvalidArrowSpecError`, `InvalidBoundingBoxError`; removed cell/template errors), and both barrels.
+
+## Verification
+
+- `npx jest tests/domain/board tests/domain/value-objects` → 8 suites, 38 tests passing.
+- `npx eslint src/domain/board src/domain/value-objects tests/domain/board tests/domain/value-objects` → exit 0 (clean).
+- `grep` for deleted-module references inside the touched layer → clean.
+- NOTE: full `npm run verify` is **intentionally red** under the approved big-bang strategy, because consumers (`level`/`state`/`command`/`scoring`/`application`/`presentation`) still reference the deleted engine until tickets T3-T7 migrate them. This PR is a Draft and must not merge to `develop` until the refactor chain is green.
+
+## Team Modifications Pending Human Review
+
+- Confirm the big-bang sequencing: T3 (`MAZ-132`), T4 (`MAZ-133`), T6 (`MAZ-135`), T7 (`MAZ-136`) must migrate consumers off the deleted engine before `develop` can go green; PRs stay Draft until then.
+- `docs/design-patterns.md` and `docs/architecture.md` still describe the removed Composite/Graph/Pathfinding patterns; they must be revised once the chain lands (out of T2 scope).
+- Confirm `attempts`/scoring/level-build contracts as their tickets (T1/T4/T5) consume the new `ArrowSpec`/`LevelDefinition`.
+
+## Lessons / Limitations
+
+Modeling arrow removal as an `ArrowEntity` state flip (instead of mutating the occupancy index) keeps `CollisionService` and future undo trivial: the index is built once and queries filter by `isActive`. On an unbounded board the raycast is tested against the finite set of other active cells (no edge to walk to). The big-bang approach trades a temporarily red tree for a direct path to the target engine, validated layer-by-layer in isolation.
+
+
+---
+
+# AI Usage Log: MAZ-132 Arrow Extraction, Attempts/Defeat, Win Condition (gameplay domain)
+
+## Task / Problem
+
+Resolve `MAZ-132` (Refactor T3) of the Arrow Untangle pivot: migrate the gameplay domain off the deleted maze engine. Replace player movement with arrow extraction, add the limited-attempts soft-defeat system (with per-arrow dedup), and make victory "empty board". Stacked on `MAZ-131`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-132` following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket state, AI usage logging, validation, MEMORY/AGENTS update checks, commit/push/PR, and Linear updates, noting the refactor requires reviewing all affected tickets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | The mechanic (Model B extraction, attempts/dedup, soft defeat, empty-board victory) was already sealed in the refactor docs and MAZ-132; no new interview. | `Refactor_Arrow_Untangle_Tickets.md` (T3), MAZ-132 |
+| Planner/Slicer | Used | Re-sliced T3 to the gameplay domain core (command/level/state) and deferred the application use-cases + GameFacade to T4 because they are inseparable from the level-build Builder. | this log, MEMORY re-slice note |
+| TDD Implementer | Used | Wrote AAA `should_*_when_*` tests for ExtractArrowCommand, NormalLevel, TimedLevel, GameContext, then implemented to green. | `tests/domain/{command,level,state}`, this branch |
+| Judge | Referenced | Pre-PR self-audit: scoped eslint, dangling maze-ref grep, layer boundaries (domain imports no RN/Expo/HTTP). | scoped `eslint` (exit 0), `grep` clean |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
+
+## Result Obtained
+
+- Domain `command`: removed `MoveCommand`; added `ExtractArrowCommand` — captures a `GameContext` snapshot, delegates extraction, and on `undo` re-places the arrow and restores the prior phase/result. `CommandHistory`/`ICommand` unchanged.
+- Domain `level`: rewrote `BaseLevel` over `BoardGroup` + `CollisionService` with `attemptsRemaining` + `penalizedFailures: Set` (dedup), `extractArrow`/`restoreArrow`/`registerFailedAttempt`/`canExtract`; victory = empty board; defeat = out-of-attempts (`DefeatReason.OutOfAttempts`) plus the subclass hook (`TimedLevel` time). Dropped player/move/graph/template; kept `Clock`; emits `LevelFinished` only. `NormalLevel`/`TimedLevel` re-based on `(id, board, attempts, ...)`.
+- Domain `state`: `IGameState`/`BaseGameState` now expose `extract`/`failAttempt` instead of `move`; `PlayingState` extract→`VictoryState`, failAttempt→`GameOverState`; `GameContext` exposes `extract`/`failAttempt` and snapshot/restore.
+- Errors: `level/errors` now `InvalidTimeLimitError`, `InvalidAttemptsError`, `ArrowNotExtractableError` (dropped maze errors); barrels updated.
+
+## Verification
+
+- `npx jest tests/domain/level tests/domain/command tests/domain/state` → 4 suites, 17 tests passing.
+- `npx eslint src/domain/{level,command,state} tests/domain/{level,command,state}` → exit 0 (clean).
+- `grep` for maze refs (`BoardGraph`, `PathfindingService`, `CellFactory`, `LevelTemplate`, `MoveCommand`, `.move(`, `playerPosition`) in the touched layer → clean.
+- Full `npm run verify` is **intentionally red** (big-bang) until the application layer migrates (T4) and UI/levels land.
+
+## Team Modifications Pending Human Review
+
+- **Re-slice (please confirm):** the application `use-cases/game` + `GameFacade` migration moved to **T4 (MAZ-133)**, because `GameSession`/`StartLevelUseCase`/`GameFacade` construct levels via the `level-build` Builder (T4) and emit via the `dto` `GameEventBridge` (T6). `BaseLevel` is now constructed from a `BoardGroup` + attempts, which the Builder will supply.
+- The `observer`/`dto` event chain still references the old move/cell events; it compiles but is semantically stale and should be revised when the UI lands (T6).
+
+## Lessons / Limitations
+
+Re-slicing T3 to the domain core keeps the slice coherent and green-in-isolation, mirroring how MAZ-131 was a clean board/value-objects slice. The application/facade is inseparable from the T4 builder, so migrating it there avoids pulling T4/T6 scope into T3. Keeping arrow removal as an `ArrowEntity` state flip made `ExtractArrowCommand.undo` a one-liner (`restoreArrow` + context restore).
+
+
+---
+
+# AI Usage Log: MAZ-133 Time Scoring, Arrow Level Builder, Application Gameplay
+
+## Task / Problem
+
+Resolve `MAZ-133` (Refactor T4) of the Arrow Untangle pivot: replace pathfinding-based scoring with time-based scoring, rebuild the level-build Builder/Director/strategies over `ArrowSpec`, and (absorbed from the T3 re-slice) migrate the application `use-cases/game` + `GameFacade` to the new domain. Stacked on `MAZ-132`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user approved the T3 re-slice and asked to implement `MAZ-133` (T4) absorbing the deferred application/facade migration, following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket state, AI usage logging, validation, MEMORY/AGENTS update checks, commit/push/PR, and Linear updates.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Time scoring (`max(0, base − elapsedSeconds·k)`), ArrowSpec contract, and attempts were already sealed in the refactor docs; no new interview. | `Refactor_Arrow_Untangle_Tickets.md` (T4, §1.1) |
+| Planner/Slicer | Used | Absorbed the T3 re-slice (application use-cases + GameFacade) into T4; scoped GameFacade's board-snapshot/event-DTO board mapping out to T6. | this log, MEMORY note |
+| TDD Implementer | Used | Wrote AAA tests for TimeScoring/ScoreContext, the arrow Builder/Director/Json strategy, and a GameFacade play→win→undo flow, then implemented to green. | `tests/domain/scoring`, `tests/application/{level-build,game}`, this branch |
+| Judge | Referenced | Pre-PR self-audit: scoped eslint (T4 files clean), dangling-ref grep, layer boundaries (no React/Expo/HTTP). | scoped `eslint`, `grep` |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
+
+## Result Obtained
+
+- Domain `scoring`: removed `EfficiencyScoringStrategy` and `TimeBonusScoringStrategy`; added `TimeScoringStrategy` (`score = max(0, base − elapsedSeconds·pointsPerSecond)`, higher = better, zero when not won); simplified `ScoreContext` to `{ result, elapsedMs }` (dropped moves/optimalMoves/remainingMs); kept `StandardScoringStrategy`; updated barrel.
+- Application `level-build`: `LevelDefinition` is now `{ id, difficulty, arrows: ArrowSpec[], attempts?, kind, timeLimitSeconds? }` (+ `DEFAULT_ATTEMPTS = 5`); `BuiltLevel = { level }` (no optimalMoves); `ILevelBuilder`/`ConcreteLevelBuilder` build a `BoardGroup` of `ArrowEntity` and instantiate `NormalLevel`/`TimedLevel` with attempts (no graph/pathfinding/solvability — backend owns solvability via the DAG check); `LevelDirector`, `TutorialLevelStrategy` (a 2-arrow dependency puzzle), and `JsonLevelStrategy` (parses arrows) rewritten.
+- Application `use-cases/game`: `GameSession` drops optimalMoves; `PlayTurnUseCase` → `TapArrowUseCase(arrowId)` (extract if the ray is clear, else a deduped failed attempt); `GameSnapshotDto`/mapper now expose `arrowsRemaining`/`attemptsRemaining`/`canUndo` (no position/moves/optimalMoves); `StartLevelUseCase`/`Undo`/`Pause`/`Resume` adapted.
+- `GameFacade`: gameplay orchestration (`startLevel`/`tapArrow`/`undo`/`pause`/`resume`/`restart`/`getSnapshot`) + the domain→DTO event bridge. `getBoardSnapshot` (static board rendering) was removed and deferred to the mobile UI ticket (T6).
+
+## Verification
+
+- `npx jest tests/domain/scoring tests/application/level-build/{ConcreteLevelBuilder,LevelDirector,JsonLevelStrategy}.test.ts tests/application/game/GameFacade.test.ts` → 7 suites, 26 tests passing (incl. a start→blocked-tap→clear→win→undo flow through the real `GameFacade`).
+- `npx eslint` on the touched scoring/level-build/use-cases/facade files + tests → clean. (The only eslint errors are in `level-build/fixtures/manualLevels.ts`, which belongs to T5 and was already red.)
+- Full `npm run verify` is **intentionally red** (big-bang) until T5 (manual levels) and T6 (UI) land.
+
+## Team Modifications Pending Human Review
+
+- `GameFacade.getBoardSnapshot` + `dto/BoardSnapshotMapper` (static board rendering) deferred to **T6 (MAZ-135, UI)** — they map a level definition to UI cells, a presentation concern.
+- `level-build/fixtures/manualLevels.ts` and the manual-level tests still reference the deleted cell model — owned by **T5 (MAZ-134)**.
+- Application/UI event/contract tests (`GameEventContract`, the old `GameplayApplicationFlow`) belong to **T6/T7** and were left/removed accordingly.
+
+## Lessons / Limitations
+
+Modeling level construction as "arrows → `ArrowEntity` → `BoardGroup` → level" let the Builder stay a thin, dependency-free assembler now that solvability lives in the backend. Taps are addressed by arrow id (the UI disambiguates overlaps from rendered geometry), which keeps the application layer free of pixel/geometry concerns. Keeping the event bridge while dropping the board snapshot was the clean cut that let `GameFacade` compile without pulling in the T6 rendering mapper.
+
+
+---
+
+# AI Usage Log: MAZ-134 Manual Arrow-Knot Levels (15 fixtures)
+
+## Task / Problem
+
+Resolve `MAZ-134` (Refactor T5): replace the maze-era manual level fixtures with 15 solvable arrow-untangle "knot" levels in the new `ArrowSpec` format, with progressive difficulty. This also unblocks the `level-build/fixtures/manualLevels.ts` red left by T4. Stacked on `MAZ-133`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-134` (T5) following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket state, AI usage logging, validation, MEMORY/AGENTS update checks, commit/push/PR, and Linear updates.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Level-design guidance (progressive difficulty by arrow count / crossings / body length, no self-pointing, DAG-solvable) was already sealed in the refactor docs. | `Refactor_Arrow_Untangle_Tickets.md` (T5) |
+| Planner/Slicer | Used | Scoped T5 to the client fixtures; deferred the backend seed reseed to T1 (MAZ-130), which owns the new schema. | this log, MEMORY note |
+| TDD Implementer | Used | Wrote a greedy-solver test (proves each level's blocking graph is acyclic) + structure/progression/buildability tests, then authored the fixtures to green. | `tests/application/levels/ManualLevels.test.ts` |
+| Judge | Referenced | Pre-PR self-audit: scoped eslint, confirmed fixtures no longer reference the deleted cell model, verified the solvability guarantee. | scoped `eslint`, `grep` |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
+
+## Result Obtained
+
+- Rewrote `src/application/level-build/fixtures/manualLevels.ts`: 15 ordered `LevelDefinition`s of `ArrowSpec` arrows, progressive (2 → 10 arrows; Easy → Medium → Hard; growing body length; timed + reduced attempts on harder levels).
+- Solvability guarantee: every arrow points only UP or RIGHT and is straight, which makes the blocking graph provably acyclic (a blocker always has a strictly smaller `row − col`), so a removal order always exists. A deterministic `knot(n)` helper lays out a crossing "top bar + hanging verticals + side bars" so levels have real dependencies, not just free arrows.
+- `ManualLevelFixture` is now `{ id, order, difficulty, arrowCount, definition }` (dropped maze-era `expectedOptimalMoves`/`version`); `manualLevels` + `manualLevelDefinitions` exports preserved for `LevelSelectViewModel` (T6).
+- Unblocks the `fixtures/manualLevels.ts` red left by T4 (the `level-build` layer now builds clean).
+
+## Verification
+
+- `npx jest tests/application/levels/ManualLevels.test.ts` → 32 tests passing (15 build-via-director + 15 greedy-solvable + structure/progression).
+- `npx eslint src/application/level-build/fixtures tests/application/levels/ManualLevels.test.ts` → clean.
+- `grep` confirms the fixtures no longer reference `CellSpec`/`CellType`/`LevelTemplate`/`optimalMoves`/`walls`.
+- Full `npm run verify` still intentionally red until T6 (UI) lands (presentation layer).
+
+## Team Modifications Pending Human Review
+
+- **Backend seed reseed (`001_seed_levels.sql`) deferred to T1 (MAZ-130)** — it needs the new `ArrowSpec` JSONB schema, which does not exist yet. The client fixtures can be exported to seed format once the backend lands.
+- The levels are **baseline procedural layouts** (straight UP/RIGHT arrows). They satisfy solvability + progression + no-self-pointing; curved/art-directed bodies can refine them later without changing the contract.
+- `LevelSelectViewModel` (presentation) still references the old domain elsewhere and lands green in T6; the fixtures API it consumes (`manualLevels` → `id`/`definition`) was kept compatible.
+
+## Lessons / Limitations
+
+Constraining the fixtures to straight UP/RIGHT arrows turned "is this level solvable?" from a hand-verification burden into a proof: the `row − col` potential strictly decreases along every blocking edge, so no cycle can form. The greedy-solver test then doubles as the acceptance check for all 15 levels at once.
+
+
+---
+
+# AI Usage Log: MAZ-135 Mobile UI — canvas, HUD, MVVM (closes the client chain green)
+
+## Task / Problem
+
+Resolve `MAZ-135` (Refactor T6): rebuild the gameplay presentation for the arrow untangle game — a dark dotted canvas with colored arrows, tap-to-extract, scroll, a HUD (arrows + attempts) and a soft-defeat overlay — following the `design/` guidelines, and re-introduce the board-snapshot DTO. As the last red layer, this brings the whole client green. Stacked on `MAZ-134`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-135` (T6) taking `arrow-maze-client/design/` into account, following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket state, AI usage logging, validation, MEMORY/AGENTS update checks, commit/push/PR, and Linear updates.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Mechanic/HUD/overlay behavior was sealed in the refactor docs; `design/README.md` provided the palette (blue/lavender app chrome; dark game board per `game-design/`). | `Refactor_Arrow_Untangle_Tickets.md` (T6), `design/README.md` |
+| Planner/Slicer | Used | Scoped T6 to the testable presentation logic + functional RN views; folded the inherited strict-null fixes needed for green into this green-gate ticket. | this log, MEMORY note |
+| TDD Implementer | Used | Wrote/rewrote ViewModel, controller, screen, mapper, and level-select tests to the new model, then implemented to green. | `tests/presentation/*`, `tests/application/dto/BoardSnapshotMapper.test.ts` |
+| Judge | Referenced | Pre-PR self-audit: full `npm run verify`, layer boundaries (NativeWind/Zustand only in presentation; no domain classes in views). | `npm run verify` output |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
+
+## Result Obtained
+
+- **dto:** `BoardSnapshotDto`/`BoardSnapshotMapper` rebuilt around arrows (`ArrowDto`, `CoordinateDto`, `BoardBoundsDto`); `GameEventDto`/`GameEventMapper` now use a local `CoordinateDto` (the removed `PositionDto` dependency is gone); `dto/index` updated.
+- **presentation logic:** `GameUiState` holds arrows + extracted ids + bounds + HUD counters + overlay + shake id. `GameViewModel` is snapshot-driven (a tap that lowers `arrowsRemaining` extracted an arrow — pushed to a LIFO stack for undo; an unchanged count is a blocked tap flagged for shake). `GameUIController.handleArrowTap(id)` replaces cell taps. `LevelSelectViewModel` updated to the new fixtures.
+- **RN views:** `BoardView` renders a dark dotted lattice with colored rounded arrow cells (palette-aligned), both-axis scroll, and head glyphs; tapping any cell reports the arrow id. `GameScreen` HUD shows arrows-remaining + attempts-remaining; `VictoryScreen`/`DefeatScreen` (out-of-attempts) overlays. i18n keys `game.arrows`/`game.attempts` + defeat copy added (en/es).
+- **facade:** restored `GameFacade.getBoardSnapshot()` using the new arrow mapper; fixed `app/victory.tsx`.
+- **Green-gate fixes (inherited from earlier chain branches, surfaced by full `tsc`):** strict-null (`noUncheckedIndexedAccess`) fixes in `ArrowSpec`, `BoundingBox`, and `fixtures/manualLevels.ts`; index-access fix in `ManualLevels.test`; removed the stale maze `LevelObserver.test` (untangle observer tests belong to T7).
+
+## Verification
+
+- `npx tsc --noEmit` → clean (whole project typechecks).
+- `npm run verify` (lint + typecheck + test:coverage) → **47 suites, 222 tests passing**, 0 lint errors. The full client is green for the first time since the pivot began.
+
+## Team Modifications Pending Human Review
+
+- The board render is **functional, not final art**: arrows are straight cells (not curved snakes), there is no live timer/"Best" wiring yet, and power-ups (hint/shuffle) remain in **T8**. These are visual/score refinements, not contract changes.
+- The per-ticket jest runs (T2-T5) did not run full `tsc`, so a few strict-null errors were latent; they are fixed here. Future tickets should run `npm run typecheck` (not only jest) before claiming local green.
+- Observer tests for the untangle events (`LevelFinished`) should be re-added in **T7 (MAZ-136)**.
+
+## Lessons / Limitations
+
+A snapshot-driven ViewModel (read the `GameSnapshotDto` returned by each facade call, track extracted ids locally) avoided exposing live arrow state from the domain while keeping the screen in sync — including undo via a LIFO stack. Running the full `tsc` at the green-gate ticket caught strict-null issues that per-file jest had masked; that is the real lesson for the rest of the chain.
+
+
+---
+
+# AI Usage Log: FlechaGo logo + Outfit font (no ticket, direct PR)
+
+## Task / Problem
+
+Per the user's direct request (no Linear ticket): (1) place the `design/logo-go.svg` logo in the app, and (2) adopt the Google "Outfit" font across the app. Constraint (MEMORY): `react-native-svg` is **not** wired, so an SVG cannot be rendered directly. Based on `develop`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to add the logo where appropriate and to implement the Outfit font (gave the Google Fonts `@import` URL), as a single PR with no ticket — following both repos' `AGENTS.md`, `MEMORY.md`, AI logging, validation, MEMORY/AGENTS update check, commit/push/PR.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Used | Clarified the two constraints that shaped the design: no `react-native-svg` (→ rasterize the SVG to PNG) and RN does not inherit `fontFamily` while NativeWind feeds `style` from `className` (→ a `defaultProps` font default cannot work). | this log |
+| Planner/Slicer | Used | Scoped to: bundle the logo as a PNG + render it in `Brand`; load Outfit via `useFonts`; make it global with a weight-aware host-render patch. Presentation/framework only. | this log |
+| TDD Implementer | Referenced | No new unit test (visual/asset + global font); leaned on the existing `HomeScreen` test (which imports `Brand` → the PNG) plus full `npm run verify` to prove nothing regressed. | `tests/presentation/screens/HomeScreen.test.tsx` |
+| Judge | Referenced | Pre-PR audit: full `npm run verify`; confirmed the font patch is idempotent, injects family *under* explicit styles, and maps `fontWeight` → real Outfit weight files; verified the PNG import is typed (`images.d.ts`) and resolves in jest. | `npm run verify` |
+| Mutation Tester | Not used | StrykerJS not configured; asset/UI change. | N/A |
+
+## Result Obtained
+
+- **Logo:** `design/logo-go.svg` wraps a base64 PNG; extracted it and downscaled (`sips -Z 768`) to `assets/images/logo-go.png` (768×614, alpha, ~175 KB). Rendered in `Brand` (logo mark above the wordmark), so it shows on the Home hub. Added `images.d.ts` so `*.png` imports are typed.
+- **Outfit font:** installed `@expo-google-fonts/outfit`; `app/_layout.tsx` loads Regular/Medium/SemiBold/Bold/Black via `useFonts` and holds the UI until ready. `src/framework/fonts/registerDefaultFont.ts` patches the host `Text` renderer once to inject the Outfit weight family that matches the resolved `fontWeight`, *under* the element's own style — so the whole app renders in Outfit with **zero per-component edits**, and `font-bold`/`font-semibold`/`font-black` resolve to the real weight files (not synthetic bold).
+
+## Verification
+
+- `npm run verify` (lint + typecheck + coverage) → **52 suites / 233 tests passing**.
+- `tsc --noEmit` clean after adding `images.d.ts`; `HomeScreen` test (imports the PNG) green.
+
+## Team Modifications Pending Human Review
+
+- New runtime dependency `@expo-google-fonts/outfit` (+ `package-lock.json`); `expo-font` was already present.
+- The render patch targets `Text` (RN forwardRef with `.render`); `TextInput` is skipped (class component, no static `.render`) — inputs keep the system font. Easy to extend later if desired.
+- Logo is a raster (no `react-native-svg`); if a crisp vector is needed later, wire `react-native-svg` + transformer.
+
+## Lessons / Limitations
+
+The two RN realities that drove the design: (1) `fontFamily` does not inherit and NativeWind sets the `style` prop from `className`, so `Text.defaultProps.style` never applies — wrapping the host `render` and injecting the family *under* the existing style is the reliable global-font seam; (2) an "SVG" exported from design tools is often just a PNG in a `<pattern>`, so extracting the embedded raster avoids pulling in `react-native-svg`.
+
+
+---
+
+# AI Usage Log: MAZ-139 Wire mobile auth login flow (populate session)
+
+## Task / Problem
+
+Resolve `MAZ-139`: build the missing login flow so an `AuthSession` is populated in the app. The auth use cases (`LoginUseCase` saves the session), `HttpAuthRepository`, `SessionManager`, and the backend JWT endpoints already existed, but there was no login screen/route — so no session, which blocked the leaderboard write path (MAZ-138 no-ops without a session). Based on `develop`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to do the full auth wiring directly and to be told what to run to test end-to-end, following both repos' `AGENTS.md`, `MEMORY.md`, `Linear_MCP_Guideline.md`, AI logging, validation, MEMORY/AGENTS updates, commit/push/PR, Linear.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Used | Created MAZ-139 from the discovered gap (use cases + repo + backend exist; no login UI) and confirmed the contract (`/auth/login` `{email, rawPassword}` → session; backend derives userId from the token). | MAZ-139 |
+| Planner/Slicer | Used | Scoped to a composition + `AuthViewModel` + login/register screen + route + a backward-compatible Settings entry; backend untouched. | this log |
+| TDD Implementer | Used | Wrote `AuthViewModel` tests (login success/failure, register-then-login, logout) then implemented to green. | `tests/presentation/view-models/AuthViewModel.test.ts` |
+| Judge | Referenced | Pre-PR self-audit: full `npm run verify`; the new Settings prop is optional (existing tests unchanged); AuthViewModel stays pure. | `npm run verify` |
+| Mutation Tester | Not used | StrykerJS is not configured. | N/A |
+
+## Result Obtained
+
+- **`AuthViewModel`** (presentation): `login`/`register`/`logout`/`loadSession` with `AuthUiState` (status + session + errorKey). Successful login persists the session via `LoginUseCase` (saved in `SessionManager`); failures surface a controlled i18n error key and save nothing.
+- **Composition** `createAuthViewModel()` (framework): `HttpAuthRepository(createHttpClient())` + `SessionManager` → the four auth use cases → `AuthViewModel`.
+- **`AuthScreen`** (presentation): login/register form (email/username/password, toggle, error) and, when signed in, the username + a logout action.
+- **`app/login.tsx`** route + a backward-compatible **Settings → Account** entry (`onAccount` optional prop) navigating to `/login`. i18n keys added (en/es).
+- Once logged in, `SessionManager` holds the token, so `SubmitScoreUseCase` (MAZ-138) and any authed request go live.
+
+## Verification
+
+- `npx jest tests/presentation/view-models/AuthViewModel.test.ts` → 4 passing.
+- `npm run verify` (lint + typecheck + coverage) → **50 suites / 231 tests passing**.
+
+## Team Modifications Pending Human Review
+
+- **End-to-end requires the backend running + a registered user** (Postgres + migrations). README "Running the full stack locally" documents it.
+- The real score submission also needs **MAZ-138** merged (it is stacked separately); auth + MAZ-138 together complete the loop.
+- Token refresh / expiry handling and a proper auth gate are future work (out of scope here).
+
+## Lessons / Limitations
+
+Keeping `AuthViewModel` dependent only on the auth use cases made it unit-testable with a fake `IAuthRepository` + `ISessionManager` and kept AsyncStorage/HTTP out of the test path (they live only in the framework composition). Making the Settings entry an optional prop avoided touching the existing SettingsScreen tests.
+
+
+---
+
+# AI Log — MAZ-141 — Backend-driven mobile integration
+
+## Ticket
+
+- Linear: `MAZ-141`
+- Branch: `feat/mobile-backend-integration-MAZ-141`
+- Worktree: `worktrees/am-MAZ-141-client`
+
+## Agent Roles Used
+
+| Role | Status | Notes |
+| --- | --- | --- |
+| Spec Partner | Referenced | Used the requested backend-first integration scope to decide source-of-truth behavior. |
+| Planner/Slicer | Referenced | Created one integration ticket and split work into backend setup, session, progress, score submit, and remote levels. |
+| TDD Implementer | Used | Added implementation plus focused tests for progress facade, remote level catalog, and contracts. |
+| Judge | Referenced | Ran typecheck, lint, and focused tests. |
+| Mutation | Not used | Mutation testing was out of scope for this integration pass. |
+
+## Summary
+
+- Added shared session composition through `src/framework/config/session.ts` and `useCurrentSession`.
+- Wired `app/progress.tsx` to `ProgressViewModel` with `LocalProgressRepository` + `HttpProgressRepository`.
+- Added remote `completeLevel` support for `/progress/levels/:levelId/complete`.
+- Added backend level catalog repository and DTO mapper for `/levels` and `/levels/:id`.
+- Kept the client level DTO contract aligned with the Arrow Untangle catalog by removing `moveCount` from level detail DTOs.
+- Updated levels, game, and leaderboard routes to prefer backend level data with local fixtures as fallback.
+- Added victory-side effects to save progress and submit leaderboard score once per win.
+
+## Validation
+
+- `npm run typecheck`
+- `npm run lint`
+- `npm test -- --runInBand tests/application/facades/ProgressFacade.test.ts tests/presentation/view-models/LevelSelectViewModel.test.ts tests/infrastructure/repositories/HttpProgressRepository.test.ts tests/infrastructure/repositories/HttpLevelCatalogRepository.test.ts tests/contract/levels.contract.test.ts`
+- `npm run verify` — green, 52 suites / 233 tests
+
+## Notes
+
+- Validation used a temporary ignored `node_modules` symlink to the main client worktree, then removed it.
+- Score submit is a no-op when there is no saved auth session.
+
+
+---
+
+# AI Usage Log: MAZ-142 Polish board UI (spacing + tap & exit animations)
+
+## Task / Problem
+
+Resolve `MAZ-142`: improve `BoardView` UX — (1) arrowheads poked past their cell and sat on neighbouring arrows; (2) tapping an arrow gave no immediate feedback; (3) make the extraction "fly off the screen in the head direction" read clearly. Constraint (MEMORY): reanimated is **not** wired and there is **no react-native-svg** — use RN `Animated` + plain Views only. Based on `develop`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to improve the board UI in `BoardView.tsx` on three points (spacing/overlap, tap feedback, exit animation), following both repos' `AGENTS.md`, `MEMORY.md`, `Linear_MCP_Guideline.md`, AI logging, validation, MEMORY/AGENTS update check, commit/push/PR, Linear.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Used | Turned the three asks into MAZ-142 with concrete acceptance criteria; diagnosed the overlap as `HEAD (17) > CELL/2 (15)` → 2px spill into the neighbour cell. | MAZ-142 |
+| Planner/Slicer | Used | Scoped to `BoardView.tsx` only (presentation); no domain/application/test-contract change; keep `testID="arrow-<id>"`. | this log |
+| TDD Implementer | Referenced | No direct BoardView test exists; relied on `GameScreen` tap tests (`arrow-a`/`arrow-b`) staying green to prove the hit targets/testIDs are intact. | `tests/presentation/screens/GameScreen.test.tsx` |
+| Judge | Referenced | Pre-PR self-audit: full `npm run verify`; verified the head now fits its cell (`HEAD=15 ≤ CELL/2=17`), pulse calls `onTap` synchronously so taps are unaffected, animations stay native-driven. | `npm run verify` |
+| Mutation Tester | Not used | StrykerJS is not configured; change is visual/animation. | N/A |
+
+## Result Obtained
+
+- **Spacing/overlap:** `CELL 30→34`, `HEAD 17→15` (kept `≤ CELL/2`, so a head tip lands ~2px inside its own cell instead of spilling into the neighbour) and wider gaps between parallel bodies. Crossings still overlap as a legible knot.
+- **Tap feedback:** added a `pulse` `Animated.Value` per arrow; on every tap the arrow instantly **dims (opacity → 0.5) and lurches `PRESS_NUDGE` px toward its head direction**, then settles. `onTap` fires synchronously so gameplay timing is unchanged. Blocked taps still shake (combined via `Animated.add`).
+- **Exit animation:** kept/polished `ExitingArrow` — flies `FLY 720→900` px off-board in the head direction with accelerate-out easing and a longer opacity hold (`0.85`), so an extracted arrow clearly escapes the screen before unmounting.
+
+## Verification
+
+- `npx jest tests/presentation/screens/GameScreen.test.tsx` → 2 passing (tap + win flow intact).
+- `npm run verify` (lint + typecheck + coverage) → **50 suites / 231 tests passing**.
+
+## Team Modifications Pending Human Review
+
+- Pure presentation change (`BoardView.tsx`); no API/domain/test-contract impact.
+- Animations use RN `Animated` + native driver (no new deps), per the client UI constraint.
+
+## Lessons / Limitations
+
+The overlap was purely geometric: the triangular head length must stay `≤ CELL/2` or it renders into the adjacent lattice cell. Driving the press pulse from a one-shot `Animated.sequence` (in→out) while still calling `onTap` synchronously gives immediate feedback without changing the extract/block decision or breaking the snapshot round-trip — and naturally hands off to the fly-off when the arrow is extractable.
+
+
+---
+
+# AI Usage Log: MAZ-144 Animate arrow extraction with SVG + Reanimated
+
+## Task / Problem
+
+Resolve `MAZ-144`: replace the rigid "fly off in a straight line" extraction
+(`ExitingArrow`, RN `Animated` + Views) with the reference exit animation seen in
+`fotogramas-arrow-orig/` — when an arrow is tapped and clears, its snake body
+**unspools along its own curve and streams off-board** in the head direction. The
+plan (`Plan animación game.md`) prescribes `react-native-svg` + `react-native-reanimated`
+and the `strokeDashoffset` trim trick. The product owner explicitly authorised
+breaking the prior "no SVG / reanimated not wired" UI constraint. Based on `develop`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to upgrade the game UI with smooth arrow exit movement/animations
+per `Plan animación game.md` and the reference frames in `fotogramas-arrow-orig/`,
+explicitly granting permission to break pre-established rules, and to follow the
+full workflow (both repos' `AGENTS.md`, root `MEMORY.md`, `Linear_MCP_Guideline.md`,
+a new worktree, AI logging + `compile-ai-usage.sh`, MEMORY/AGENTS review,
+commit/push/PR, Linear).
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Used | Studied frames 013→019 to derive the exact mechanic (snake unspools and streams off as a straight line — not a rigid translate, not an in-place retract); turned the plan + frames into MAZ-144 with concrete acceptance criteria and the "extended path = body + off-board exit ray" model. | MAZ-144 |
+| Planner/Slicer | Used | Sliced into: (1) deps/babel/jest wiring, (2) a pure tested geometry helper, (3) SVG `NeonArrow` + `BoardView` rewrite. Decided lattice stays Views (resilience), SVG only for arrows, Reanimated only for the extraction dash; tap `testID`s + RN `Animated` shake/press kept. | this log |
+| TDD Implementer | Used | Wrote `arrowSvgGeometry.test.ts` (12 AAA cases) before the helper, then `BoardView.test.tsx` (5 cases: render, tap-up, extraction drops the active target, shake, empty board). | `tests/presentation/components/board/arrowSvgGeometry.test.ts`, `tests/presentation/components/BoardView.test.tsx` |
+| Judge | Referenced | Pre-PR self-audit: full `npm run verify` green; confirmed Reanimated is auto-wired by `babel-preset-expo@54` (worklets), the broken v4 `/mock` is replaced by manual `__mocks__`, head stays `≤ CELL/2`, taps unchanged. | `npm run verify` |
+| Mutation Tester | Not used | StrykerJS is not configured; the pure geometry helper is covered by explicit value assertions instead. | N/A |
+
+## Result Obtained
+
+- **Wiring (presentation-only):** added `react-native-svg@15.12.1` (expo-pinned).
+  Discovered Reanimated was already installed (`4.1.7` + `react-native-worklets@0.5.1`,
+  New Arch on) and is auto-wired by `babel-preset-expo@54` — so the app needed **no**
+  babel plugin change. `babel.config.js` only disables the worklets transform under
+  Jest (`api.env("test")` → `worklets:false`). `jest.config.ts` gains
+  `setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"]`, which routes both libraries to
+  deterministic manual mocks in `__mocks__/` (the published v4 `react-native-reanimated/mock`
+  is broken — it points at a missing `./src/mock`).
+- **Geometry helper** `src/presentation/components/board/arrowSvgGeometry.ts` (pure,
+  framework-free): `polylinePath`, `polylineLength`, `directionUnit`,
+  `headTrianglePoints`, and `buildArrowExtraction` (body polyline + a straight exit
+  ray from the head, with `bodyLength`/`totalLength` for the dash window).
+- **`NeonArrow.tsx`:** `NeonArrowBody` (static) and `ExitingNeonArrow` (extracting).
+  Neon glow is faked with layered semi-transparent strokes (wide halo + core + bright
+  inner highlight) — **no SVG blur** (the plan warns it tanks FPS). Extraction animates
+  `strokeDashoffset` from `0 → -totalLength` (Reanimated `useAnimatedProps`) over a
+  body-length dash on the extended path, so the body slides off along its own curve.
+- **`BoardView.tsx`:** rewritten to render each arrow as an SVG snake inside a
+  per-arrow `Svg` wrapped in the existing RN `Animated` shake/press view; transparent
+  `Pressable` hit targets with `testID="arrow-<id>"` are preserved on top. Dotted
+  lattice kept as Views. Exit tracking unchanged; `exitClearance = max(width,height)`.
+
+## Verification
+
+- `npx jest tests/presentation/components` → 17 passing (geometry 12 + BoardView 5).
+- `npm run verify` (lint + typecheck + coverage) → **54 suites / 250 tests passing**.
+  New files: `BoardView.tsx` 100% lines, `NeonArrow.tsx` / `arrowSvgGeometry.ts` ~97%.
+- **Not verified here:** real-device FPS / visual smoothness — needs `expo start` on a
+  simulator (Reanimated runs the dash on the UI thread; the human confirms feel).
+
+## Team Modifications Pending Human Review
+
+- New runtime dependency `react-native-svg` (presentation-only). Run `npm install`
+  in each checkout/worktree (shared `node_modules` symlink already updated).
+- Confirm exit feel on device and tune `EXIT_DURATION_MS` (420) / `Easing.in(cubic)` /
+  `exitClearance` and the neon layer widths/opacities if needed.
+- Confirm keeping the dotted lattice as Views (vs. moving it into the SVG canvas).
+
+## Lessons / Limitations
+
+The reference effect is the `strokeDashoffset` trim trick applied to an **extended**
+path (snake body + an off-board straight ray): sliding a body-length dash window along
+it makes each segment follow the path the head traced and then straighten out — exactly
+the on-screen "unspool & stream off". `babel-preset-expo@54` already injects
+`react-native-worklets/plugin` when the package is present, so "reanimated not wired"
+was never true at the babel level; the only real gap was a Jest mock (and the shipped
+v4 `/mock` is broken). Keeping Reanimated to just the extraction dash, and leaving
+shake/press on RN `Animated`, kept the change small and the existing tap tests intact.
+
+
+---
+
+# AI Usage Log: MAZ-144 fix — exit animation didn't run on device
+
+## Task / Problem
+
+After the initial MAZ-144 implementation, on a real device the board rendered and
+taps registered (a blocked tap still consumed an attempt), but tapping an
+extractable arrow showed **no movement** — the arrow neither streamed off nor left
+the board. The engine/ViewModel were proven correct (the `GameScreen` victory test
+extracts both fixture arrows and wins), so the regression was isolated to the new
+extraction **rendering**: the Reanimated-driven `strokeDashoffset` was not animating
+on device (react-native-svg `Path` + Reanimated v4 `useAnimatedProps`), leaving the
+extracted arrow rendered frozen at progress 0 (full body) and never retiring.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user reported: "pressing an arrow does nothing, it doesn't move, nothing
+happens — but pressing them does work because a wrong press deducts from the score."
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Reframed the bug from the symptom: UI renders + taps register (attempts drop) + engine extracts fixtures (victory test green) ⇒ only the animated extraction render is broken. | this log |
+| Planner/Slicer | Used | Smallest reliable fix: drive the SVG `strokeDashoffset` exit with RN `Animated` (proven on device, dependable completion callback) instead of Reanimated; keep the SVG neon look and geometry. | `NeonArrow.tsx` |
+| TDD Implementer | Referenced | Existing `BoardView`/`GameScreen` tests already assert the active tap target drops on extraction and victory shows; kept them green. | `tests/presentation/components/BoardView.test.tsx` |
+| Judge | Referenced | `npm run verify` green; confirmed `strokeDashoffset` needs `useNativeDriver:false` and the `Animated.timing(...).start(cb)` completion reliably calls `onDone` (retires the arrow). | `npm run verify` |
+| Mutation Tester | Not used | Visual/animation change; geometry already unit-tested. | N/A |
+
+## Result Obtained
+
+- Rewrote `ExitingNeonArrow` in `src/presentation/components/board/NeonArrow.tsx` to
+  use **RN `Animated`** (`Animated.createAnimatedComponent(Path)` from
+  react-native-svg) instead of Reanimated: an `Animated.Value` 0→1 over 420ms
+  (`Easing.in(cubic)`, `useNativeDriver:false`) drives `strokeDashoffset` via
+  `interpolate([0,1] → [0, -totalLength])`. The completion callback calls `onDone`,
+  so the exiting arrow always unmounts.
+- The mechanic is unchanged (dash window slides along body + off-board exit ray →
+  unspool & stream off). The static neon body, geometry helper, and SVG neon look
+  are untouched. Reanimated is no longer used by the board (it stays a transitive
+  dep via react-navigation; the jest mock + babel test-env guard stay, harmless).
+
+## Verification
+
+- `npm run verify` (lint + typecheck + coverage) → **54 suites / 250 tests passing**.
+- **Pending device confirmation:** the user must reload the app and verify an
+  extractable tap now visibly streams the arrow off-board. If the slide still does
+  not show, the next suspect is the SVG static/native render path rather than the
+  animation driver.
+
+## Team Modifications Pending Human Review
+
+- Confirm on device that extraction now animates and the arrow leaves.
+- If preferred, the Reanimated dependency/wiring can be fully removed later since the
+  board no longer uses it (left in place to avoid churn; react-navigation needs it).
+
+## Lessons / Limitations
+
+RN `Animated` + react-native-svg is the long-proven way to animate `strokeDashoffset`
+(progress/trim effects) and is reliable on device with a dependable completion
+callback, whereas the react-native-svg + Reanimated-v4 `animatedProps` pairing was
+not animating here. When an effect can't be verified on a simulator from the agent
+environment, prefer the device-proven animation driver over the newer one.
 
 
 <!-- AI_LOG_ENTRIES_END -->

@@ -1,6 +1,5 @@
 import type { BaseLevel } from "../level/BaseLevel";
 import { LevelResult } from "../level/LevelResult";
-import type { Position } from "../value-objects/Position";
 import { GamePhase } from "./GamePhase";
 import type { IGameState } from "./IGameState";
 import { GameOverState } from "./GameOverState";
@@ -18,9 +17,9 @@ export type GameContextSnapshot = {
 /**
  * State pattern — context.
  *
- * Holds the active lifecycle state and delegates gameplay commands to it. This
- * is intentionally not a global singleton: each game session owns its context,
- * avoiding hidden shared state while preserving the approved State pattern.
+ * Holds the active lifecycle state and delegates gameplay to it. Intentionally
+ * not a global singleton: each game session owns its context, avoiding hidden
+ * shared state while preserving the approved State pattern.
  */
 export class GameContext {
   private currentState: IGameState;
@@ -47,8 +46,12 @@ export class GameContext {
     this.currentState.start(this, level);
   }
 
-  move(to: Position): LevelResult {
-    return this.currentState.move(this, to);
+  extract(arrowId: string): LevelResult {
+    return this.currentState.extract(this, arrowId);
+  }
+
+  failAttempt(arrowId: string): LevelResult {
+    return this.currentState.failAttempt(this, arrowId);
   }
 
   pause(): void {
