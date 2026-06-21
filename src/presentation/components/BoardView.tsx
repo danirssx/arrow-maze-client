@@ -60,6 +60,19 @@ function lighten(hex: string, amount = 0.5): string {
   return `#${toHex(channel(0))}${toHex(channel(2))}${toHex(channel(4))}`;
 }
 
+/** Dotted-lattice dot style centered on a pixel coordinate. */
+function dotStyle(cx: number, cy: number) {
+  return {
+    position: "absolute" as const,
+    left: cx - DOT / 2,
+    top: cy - DOT / 2,
+    width: DOT,
+    height: DOT,
+    borderRadius: DOT / 2,
+    backgroundColor: DOT_COLOR
+  };
+}
+
 type Center = (cell: CoordinateDto) => { cx: number; cy: number };
 
 function centersOf(arrow: ArrowDto, center: Center): Point[] {
@@ -247,25 +260,37 @@ export function BoardView({ state, onArrowTap }: BoardViewProps) {
           showsHorizontalScrollIndicator={false}
         >
           <View style={{ width, height, margin: 16 }}>
-            {Array.from({ length: gRows * gCols }).map((_, index) => {
-              const r = Math.floor(index / gCols);
-              const c = index % gCols;
-              return (
-                <View
-                  key={`dot-${r}-${c}`}
-                  pointerEvents="none"
-                  style={{
-                    position: "absolute",
-                    left: c * CELL + CELL / 2 - DOT / 2,
-                    top: r * CELL + CELL / 2 - DOT / 2,
-                    width: DOT,
-                    height: DOT,
-                    borderRadius: DOT / 2,
-                    backgroundColor: DOT_COLOR
-                  }}
-                />
-              );
-            })}
+            {/* Dotted background: only the mask cells for a shaped board (Option A),
+                otherwise the rectangular lattice fallback derived from arrow bounds. */}
+            {state.boardShape && state.boardShape.length > 0 ? (
+              <View testID="board-shape-dots" pointerEvents="none" style={ABSOLUTE_FILL}>
+                {state.boardShape.map((cell) => {
+                  const { cx, cy } = center(cell);
+                  return (
+                    <View
+                      key={`dot-${cell.row}-${cell.column}`}
+                      testID={`board-dot-${cell.row}-${cell.column}`}
+                      pointerEvents="none"
+                      style={dotStyle(cx, cy)}
+                    />
+                  );
+                })}
+              </View>
+            ) : (
+              <View testID="board-rect-dots" pointerEvents="none" style={ABSOLUTE_FILL}>
+                {Array.from({ length: gRows * gCols }).map((_, index) => {
+                  const r = Math.floor(index / gCols);
+                  const c = index % gCols;
+                  return (
+                    <View
+                      key={`dot-${r}-${c}`}
+                      pointerEvents="none"
+                      style={dotStyle(c * CELL + CELL / 2, r * CELL + CELL / 2)}
+                    />
+                  );
+                })}
+              </View>
+            )}
 
             {/* Visual layer — neon snakes (non-interactive). */}
             {activeArrows.map((arrow) => (
