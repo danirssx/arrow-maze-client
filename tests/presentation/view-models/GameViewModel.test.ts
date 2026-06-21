@@ -1,10 +1,15 @@
 import { GameFacade } from "@/application/facades/GameFacade";
 import { manualLevels } from "@/application/level-build/fixtures";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
+import { LevelKind } from "@/application/level-build/LevelDefinition";
 import { GameEventType } from "@/application/dto/GameEventDto";
 import { ArrowEntity } from "@/domain/board/ArrowEntity";
 import { BoardGroup } from "@/domain/board/BoardGroup";
 import { CollisionService } from "@/domain/board/CollisionService";
+import { ArrowSpec } from "@/domain/value-objects/ArrowSpec";
+import { Difficulty } from "@/domain/value-objects/Difficulty";
+import { Direction } from "@/domain/value-objects/Direction";
+import { Position } from "@/domain/value-objects/Position";
 import { GameViewModel } from "@/presentation/view-models/GameViewModel";
 import { GameOverlay } from "@/presentation/state/GameUiState";
 
@@ -116,6 +121,32 @@ describe("GameViewModel", () => {
     expect(state.arrowsRemaining).toBe(firstLevel.arrowCount);
     expect(state.extractedArrowIds).toHaveLength(0);
     expect(state.canUndo).toBe(false);
+  });
+
+  it("should_carry_board_shape_into_ui_state_when_the_level_has_one", () => {
+    const shaped: LevelDefinition = {
+      id: "shaped",
+      difficulty: Difficulty.Easy,
+      kind: LevelKind.Normal,
+      arrows: [
+        ArrowSpec.of("a", "blue", [Position.of(0, 0), Position.of(0, 1)], Direction.Right)
+      ],
+      boardShape: {
+        type: "CELL_MASK",
+        cells: [
+          { row: 0, col: 0 },
+          { row: 0, col: 1 },
+          { row: 1, col: 0 }
+        ]
+      }
+    };
+    const viewModel = new GameViewModel(GameFacade.createDefault());
+    viewModel.attach();
+
+    viewModel.startLevel("shaped", shaped);
+
+    expect(viewModel.getState().boardShape).toHaveLength(3);
+    expect(viewModel.getState().boardShape![0]).toEqual({ row: 0, column: 0 });
   });
 
   it("should_render_defeat_overlay_on_a_lost_level_finished_event", () => {

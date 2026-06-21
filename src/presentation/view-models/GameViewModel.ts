@@ -51,7 +51,8 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       arrowsRemaining: snapshot.arrowsRemaining,
       attemptsRemaining: snapshot.attemptsRemaining,
       canUndo: snapshot.canUndo,
-      overlay: GameViewModel.overlayFor(snapshot)
+      overlay: GameViewModel.overlayFor(snapshot),
+      ...(board.boardShape !== undefined ? { boardShape: board.boardShape } : {})
     });
   }
 
