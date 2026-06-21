@@ -1,4 +1,4 @@
-import type { ArrowDto, BoardBoundsDto } from "@/application/dto/BoardSnapshotDto";
+import type { ArrowDto, BoardBoundsDto, CoordinateDto } from "@/application/dto/BoardSnapshotDto";
 
 /**
  * MVVM UI state — pure presentation overlay phase.
@@ -33,6 +33,8 @@ export type GameUiState = {
   readonly canUndo: boolean;
   readonly overlay: GameOverlay;
   readonly shakeArrowId: string | null;
+  /** Option A mask cells the board renders as its dotted background (undefined = rectangular fallback). */
+  readonly boardShape?: readonly CoordinateDto[];
 };
 
 export const initialGameUiState: GameUiState = {

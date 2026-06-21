@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/react-native";
-import type { ArrowDto } from "@/application/dto/BoardSnapshotDto";
+import type { ArrowDto, CoordinateDto } from "@/application/dto/BoardSnapshotDto";
 import { BoardView } from "@/presentation/components/BoardView";
 import { GameOverlay, initialGameUiState } from "@/presentation/state/GameUiState";
 import type { GameUiState } from "@/presentation/state/GameUiState";
@@ -86,5 +86,46 @@ describe("BoardView", () => {
 
     expect(getByTestId("board-view")).toBeTruthy();
     expect(queryByTestId("arrow-a")).toBeNull();
+  });
+
+  describe("board shape (Option A)", () => {
+    const SHAPE: readonly CoordinateDto[] = [
+      { row: 0, column: 0 },
+      { row: 0, column: 1 },
+      { row: 1, column: 0 }
+    ];
+
+    it("should_render_only_mask_cells_as_dots_when_a_board_shape_is_present", () => {
+      const { getByTestId, queryByTestId } = render(
+        <BoardView state={stateWith({ boardShape: SHAPE })} onArrowTap={jest.fn()} />
+      );
+
+      expect(getByTestId("board-shape-dots")).toBeTruthy();
+      expect(queryByTestId("board-rect-dots")).toBeNull();
+      expect(getByTestId("board-dot-0-0")).toBeTruthy();
+      // arrow heads stay tappable on a shaped board
+      expect(getByTestId("arrow-a")).toBeTruthy();
+    });
+
+    it("should_keep_the_rectangular_dotted_lattice_when_no_board_shape", () => {
+      const { getByTestId, queryByTestId } = render(
+        <BoardView state={stateWith({})} onArrowTap={jest.fn()} />
+      );
+
+      expect(getByTestId("board-rect-dots")).toBeTruthy();
+      expect(queryByTestId("board-shape-dots")).toBeNull();
+    });
+
+    it("should_extract_an_arrow_on_a_shaped_board_so_the_shape_is_not_a_wall", () => {
+      const { queryByTestId } = render(
+        <BoardView
+          state={stateWith({ boardShape: SHAPE, extractedArrowIds: ["a"], arrowsRemaining: 1 })}
+          onArrowTap={jest.fn()}
+        />
+      );
+
+      expect(queryByTestId("arrow-a")).toBeNull();
+      expect(queryByTestId("arrow-b")).toBeTruthy();
+    });
   });
 });
