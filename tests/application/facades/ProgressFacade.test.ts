@@ -18,8 +18,12 @@ const LOCAL_PROGRESS: LocalProgress = {
 
 class FakeLocalRepo implements IProgressRepository {
   private store = new Map<string, LocalProgress>();
+  readonly saved: LocalProgress[] = [];
   async load(userId: string): Promise<LocalProgress | null> { return this.store.get(userId) ?? null; }
-  async save(progress: LocalProgress): Promise<void> { this.store.set(progress.userId, progress); }
+  async save(progress: LocalProgress): Promise<void> {
+    this.saved.push(progress);
+    this.store.set(progress.userId, progress);
+  }
   async markPendingSync(userId: string): Promise<void> {
     const p = this.store.get(userId);
     if (p) this.store.set(userId, { ...p, pendingSync: true });
@@ -34,11 +38,15 @@ class FakeHttpProgressRepo implements IRemoteProgressRepository {
   fetchResult = REMOTE_PROGRESS;
   syncResult = REMOTE_PROGRESS;
   completed: CompletedLevelData | null = null;
+  syncedLevels: CompletedLevelData[] | null = null;
   async fetchRemote(_token: string): Promise<LocalProgress> { return this.fetchResult; }
   async completeLevel(_token: string, completedLevel: CompletedLevelData): Promise<void> {
     this.completed = completedLevel;
   }
-  async sync(_token: string, _levels: CompletedLevelData[]): Promise<LocalProgress> { return this.syncResult; }
+  async sync(_token: string, levels: CompletedLevelData[]): Promise<LocalProgress> {
+    this.syncedLevels = levels;
+    return this.syncResult;
+  }
 }
 
 describe('ProgressFacade', () => {
@@ -79,6 +87,21 @@ describe('ProgressFacade', () => {
     expect(stored?.pendingSync).toBe(false);
   });
 
+  it('should_send_local_completed_levels_when_syncing_pending_progress', async () => {
+    const completedLevel = REMOTE_PROGRESS.completedLevels[0]!;
+    await local.save({ ...LOCAL_PROGRESS, completedLevels: [completedLevel], pendingSync: true });
+
+    await facade.sync('user-1', 'token-placeholder');
+
+    expect(remote.syncedLevels).toEqual([completedLevel]);
+  });
+
+  it('should_sync_empty_completed_levels_when_no_local_progress_exists', async () => {
+    await facade.sync('user-1', 'token-placeholder');
+
+    expect(remote.syncedLevels).toEqual([]);
+  });
+
   it('should_complete_level_remotely_and_cache_latest_progress', async () => {
     const completedLevel: CompletedLevelData = {
       levelId: 'level-2',
@@ -92,6 +115,48 @@ describe('ProgressFacade', () => {
     expect(result.progressId).toBe('p-remote');
     const stored = await local.load('user-1');
     expect(stored?.pendingSync).toBe(false);
+  });
+
+  it('should_keep_existing_best_completion_when_saving_pending_local_completion', async () => {
+    const existingBest: CompletedLevelData = {
+      levelId: 'level-1',
+      score: 500,
+      timeSeconds: 20,
+      movesCount: 8,
+      completedAt: '2026-06-17T00:00:00.000Z',
+    };
+    await local.save({ ...LOCAL_PROGRESS, completedLevels: [existingBest] });
+    local.saved.length = 0;
+
+    await facade.completeLevel('user-1', 'token-placeholder', {
+      levelId: 'level-1',
+      score: 100,
+      timeSeconds: 10,
+      movesCount: 2,
+      completedAt: '2026-06-18T00:00:00.000Z',
+    });
+
+    expect(local.saved[0]?.pendingSync).toBe(true);
+    expect(local.saved[0]?.completedLevels).toEqual([existingBest]);
+  });
+
+  it('should_create_pending_local_progress_when_completing_without_cached_progress', async () => {
+    const completedLevel: CompletedLevelData = {
+      levelId: 'level-1',
+      score: 500,
+      timeSeconds: 10,
+      movesCount: 2,
+      completedAt: '2026-06-18T00:00:00.000Z',
+    };
+
+    await facade.completeLevel('user-1', 'token-placeholder', completedLevel);
+
+    expect(local.saved[0]).toMatchObject({
+      progressId: 'local-user-1',
+      userId: 'user-1',
+      pendingSync: true,
+      completedLevels: [completedLevel],
+    });
   });
 
   it('should_report_pending_sync_true_when_flagged', async () => {
