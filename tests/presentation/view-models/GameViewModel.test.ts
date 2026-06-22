@@ -149,6 +149,13 @@ describe("GameViewModel", () => {
     expect(viewModel.getState().boardShape![0]).toEqual({ row: 0, column: 0 });
   });
 
+  it("should_not_expose_scoring_or_progress_metric_sources", () => {
+    const viewModel = startedViewModel() as unknown as Record<string, unknown>;
+
+    expect(viewModel.elapsedMs).toBeUndefined();
+    expect(viewModel.movesCount).toBeUndefined();
+  });
+
   it("should_render_defeat_overlay_on_a_lost_level_finished_event", () => {
     const viewModel = startedViewModel();
 

@@ -19,6 +19,8 @@ export function mapGameSnapshot(session: GameSession): GameSnapshotDto {
     result: mapResult(context.result),
     arrowsRemaining: level.activeArrowCount,
     attemptsRemaining: level.attemptsRemaining,
-    canUndo: history.canUndo
+    canUndo: history.canUndo,
+    elapsedMs: session.elapsedMs(),
+    movesCount: session.movesCount()
   };
 }

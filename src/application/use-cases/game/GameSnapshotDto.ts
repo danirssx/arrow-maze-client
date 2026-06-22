@@ -8,9 +8,10 @@ export type GameResultDto = {
 
 /**
  * UI-neutral gameplay snapshot for ViewModels: the lifecycle phase, the level
- * result, how many arrows remain, how many attempts are left, and whether undo
- * is available. No board geometry here — the static board layout is a separate
- * presentation concern.
+ * result, how many arrows remain, how many attempts are left, whether undo is
+ * available, and the plain result metrics (elapsed play time in ms and moves
+ * count) scoring/progress consume. No board geometry here — the static board
+ * layout is a separate presentation concern.
  */
 export type GameSnapshotDto = {
   readonly phase: GamePhase;
@@ -18,4 +19,6 @@ export type GameSnapshotDto = {
   readonly arrowsRemaining: number;
   readonly attemptsRemaining: number;
   readonly canUndo: boolean;
+  readonly elapsedMs: number;
+  readonly movesCount: number;
 };
