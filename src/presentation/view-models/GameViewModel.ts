@@ -14,14 +14,15 @@ import { ObservableViewModel } from "./ObservableViewModel";
  * Owns the `GameUiState` the `GameScreen` renders and is the only presentation
  * object that talks to the application `GameFacade`. It is snapshot-driven: each
  * action calls the facade and reflects the returned `GameSnapshotDto`. A tap that
- * lowers `arrowsRemaining` extracted an arrow (tracked on a LIFO stack for undo);
- * an unchanged count was a blocked tap (flagged for shake feedback). No screen
- * ever touches a use case, repository, or domain class.
+ * lowers `arrowsRemaining` extracted an arrow (tracked on a LIFO stack only to map
+ * the extracted-arrow UI list on undo); an unchanged count was a blocked tap
+ * (flagged for shake feedback). No screen ever touches a use case, repository, or
+ * domain class. Result metrics (elapsed time, moves, score) are measured and
+ * computed in the application layer — the ViewModel only maps snapshots to UI
+ * state and never reads a clock or scores a game.
  */
 export class GameViewModel extends ObservableViewModel<GameUiState> implements IGameEventListener {
   private extractionStack: string[] = [];
-  private startedAtMs = 0;
-  private finishedAtMs: number | null = null;
 
   constructor(private readonly facade: GameFacade) {
     super(initialGameUiState);
@@ -41,8 +42,6 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
     const snapshot = this.facade.startLevel({ createDefinition: () => definition });
     const board = this.facade.getBoardSnapshot();
     this.extractionStack = [];
-    this.startedAtMs = Date.now();
-    this.finishedAtMs = null;
     this.setState({
       ...initialGameUiState,
       levelId,
@@ -66,7 +65,6 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
     }
 
     const overlay = GameViewModel.overlayFor(snapshot);
-    this.markFinishedIfTerminal(overlay);
     this.setState({
       ...previous,
       extractedArrowIds: extracted ? [...previous.extractedArrowIds, arrowId] : previous.extractedArrowIds,
@@ -104,8 +102,6 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
     const levelId = this.getState().levelId;
     const snapshot = this.facade.restartLevel();
     this.extractionStack = [];
-    this.startedAtMs = Date.now();
-    this.finishedAtMs = null;
     this.setState({
       ...this.getState(),
       levelId,
@@ -122,18 +118,8 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
   onGameEvent(event: GameEventDto): void {
     if (event.type === GameEventType.LevelFinished) {
       const overlay = event.result.status === "WON" ? GameOverlay.Victory : GameOverlay.Defeat;
-      this.markFinishedIfTerminal(overlay);
       this.setState({ ...this.getState(), overlay });
     }
-  }
-
-  elapsedMs(): number {
-    if (this.startedAtMs === 0) return 0;
-    return Math.max(0, (this.finishedAtMs ?? Date.now()) - this.startedAtMs);
-  }
-
-  movesCount(): number {
-    return this.extractionStack.length;
   }
 
   private static overlayFor(snapshot: GameSnapshotDto): GameOverlay {
@@ -144,11 +130,5 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       return GameOverlay.Defeat;
     }
     return GameOverlay.None;
-  }
-
-  private markFinishedIfTerminal(overlay: GameOverlay): void {
-    if (overlay !== GameOverlay.None && this.finishedAtMs === null) {
-      this.finishedAtMs = Date.now();
-    }
   }
 }
