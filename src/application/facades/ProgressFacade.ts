@@ -1,8 +1,11 @@
 // Pattern: Facade — ViewModels interact only with this; never with storage or HTTP directly
 import type { IProgressRepository, LocalProgress, CompletedLevelData } from '@/application/ports/IProgressRepository';
 import type { IRemoteProgressRepository } from '@/application/ports/IRemoteProgressRepository';
+import { ProgressMergePolicy } from '@/domain/progress';
 
 export class ProgressFacade {
+  private readonly progressMergePolicy = new ProgressMergePolicy();
+
   constructor(
     private readonly local: IProgressRepository,
     private readonly remote: IRemoteProgressRepository,
@@ -22,7 +25,7 @@ export class ProgressFacade {
 
   async completeLevel(userId: string, accessToken: string, completedLevel: CompletedLevelData): Promise<LocalProgress> {
     const local = await this.local.load(userId);
-    const updated = ProgressFacade.mergeCompletion(
+    const updated = this.mergeCompletion(
       local ?? ProgressFacade.emptyProgress(userId, completedLevel.completedAt),
       completedLevel,
     );
@@ -58,20 +61,11 @@ export class ProgressFacade {
     };
   }
 
-  private static mergeCompletion(progress: LocalProgress, completedLevel: CompletedLevelData): LocalProgress {
-    const existing = progress.completedLevels.find((level) => level.levelId === completedLevel.levelId);
-    const keepExisting =
-      existing !== undefined &&
-      (existing.score > completedLevel.score ||
-        (existing.score === completedLevel.score && existing.timeSeconds <= completedLevel.timeSeconds));
-
+  private mergeCompletion(progress: LocalProgress, completedLevel: CompletedLevelData): LocalProgress {
     return {
       ...progress,
       updatedAt: completedLevel.completedAt,
-      completedLevels: [
-        ...progress.completedLevels.filter((level) => level.levelId !== completedLevel.levelId),
-        keepExisting ? existing : completedLevel,
-      ],
+      completedLevels: this.progressMergePolicy.mergeCompletion(progress.completedLevels, completedLevel),
       pendingSync: true,
     };
   }
