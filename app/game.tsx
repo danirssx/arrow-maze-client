@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 
-import { ScoreContext } from "@/domain/scoring/ScoreContext";
-import { TimeScoringStrategy } from "@/domain/scoring/TimeScoringStrategy";
-import { LevelResult } from "@/domain/level/LevelResult";
 import { createLeaderboardFacade } from "@/framework/config/leaderboard";
 import { createLevelSelectViewModel } from "@/framework/config/levelCatalog";
 import { createProgressFacade } from "@/framework/config/progress";
@@ -44,7 +41,7 @@ export default function GameRoute() {
   const order = levels.find((level) => level.id === levelId)?.order ?? 0;
   const nextLevel = levels.find((level) => level.order === order + 1);
 
-  const { viewModel, controller } = useGameSession(levelId, definition);
+  const { facade, viewModel, controller } = useGameSession(levelId, definition);
   const gameState = useViewModelState(viewModel);
   const submittedVictoryKey = useRef<string | null>(null);
 
@@ -81,12 +78,8 @@ export default function GameRoute() {
     if (submittedVictoryKey.current === victoryKey) return;
     submittedVictoryKey.current = victoryKey;
 
-    const elapsedMs = viewModel.elapsedMs();
-    const timeSeconds = Math.max(1, Math.floor(elapsedMs / 1000));
-    const movesCount = Math.max(1, viewModel.movesCount());
-    const score = new TimeScoringStrategy().score(
-      ScoreContext.create({ result: LevelResult.won(), elapsedMs }),
-    ).value;
+    // Result already calculated in the application layer (no scoring/clock here).
+    const { score, timeSeconds, movesCount } = facade.getLevelOutcome();
     const completedAt = new Date().toISOString();
 
     void progressFacade.completeLevel(session.userId, session.accessToken, {
@@ -106,7 +99,7 @@ export default function GameRoute() {
       timeSeconds,
       movesCount,
     }, session.accessToken).catch(() => undefined);
-  }, [gameState.extractedArrowIds.length, gameState.overlay, leaderboardFacade, levelId, progressFacade, session, viewModel]);
+  }, [facade, gameState.extractedArrowIds.length, gameState.overlay, leaderboardFacade, levelId, progressFacade, session]);
 
   useEffect(() => {
     if (gameState.overlay === GameOverlay.None) {
