@@ -22,6 +22,12 @@ export interface LevelArrowDto {
   direction: "UP" | "DOWN" | "LEFT" | "RIGHT";
 }
 
+/** Optional abstract board mask (Option A) as returned by the backend. */
+export interface BoardShapeDto {
+  type: string;
+  cells: { row: number; col: number }[];
+}
+
 export interface LevelDetailDto {
   levelId: string;
   name: string;
@@ -32,6 +38,7 @@ export interface LevelDetailDto {
   definition: {
     attempts: number;
     arrows: LevelArrowDto[];
+    boardShape?: BoardShapeDto;
   };
   timeLimitSeconds?: number;
   createdAt: string;
