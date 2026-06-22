@@ -35,6 +35,17 @@ export class LevelCatalogMapper {
       attempts: dto.definition.attempts,
       kind: dto.timeLimitSeconds === undefined ? LevelKind.Normal : LevelKind.Timed,
       ...(dto.timeLimitSeconds !== undefined ? { timeLimitSeconds: dto.timeLimitSeconds } : {}),
+      ...(dto.definition.boardShape !== undefined
+        ? {
+            boardShape: {
+              type: "CELL_MASK" as const,
+              cells: dto.definition.boardShape.cells.map((cell) => ({
+                row: cell.row,
+                col: cell.col,
+              })),
+            },
+          }
+        : {}),
     };
   }
 }
