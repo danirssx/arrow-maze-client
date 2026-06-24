@@ -1,4 +1,4 @@
-export { GameEventType } from "./GameEventDto";
+export { GameEventTypeDto } from "./GameEventDto";
 export type {
   GameEventDto,
   MoveExecutedEventDto,

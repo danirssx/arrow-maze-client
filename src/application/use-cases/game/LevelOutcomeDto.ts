@@ -1,4 +1,4 @@
-import type { LevelStatus } from "../../../domain/level/LevelResult";
+import type { LevelStatusDto } from "./GameSnapshotDto";
 
 /**
  * Already-calculated, UI-neutral result of a finished game.
@@ -6,10 +6,11 @@ import type { LevelStatus } from "../../../domain/level/LevelResult";
  * The plain numbers the victory submit forwards to progress + leaderboard:
  * scoring is computed in the application layer (via `ResolveLevelOutcomeUseCase`),
  * never in presentation. `timeSeconds` and `movesCount` are clamped to the
- * persistence floor (>= 1) the backend expects.
+ * persistence floor (>= 1) the backend expects. `status` is the boundary's own
+ * DTO literal, not a domain value object.
  */
 export type LevelOutcomeDto = {
-  readonly status: LevelStatus;
+  readonly status: LevelStatusDto;
   readonly won: boolean;
   readonly score: number;
   readonly timeSeconds: number;

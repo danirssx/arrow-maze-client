@@ -1,6 +1,6 @@
 import type { GameFacade } from "@/application/facades/GameFacade";
 import type { GameEventDto } from "@/application/dto/GameEventDto";
-import { GameEventType } from "@/application/dto/GameEventDto";
+import { GameEventTypeDto } from "@/application/dto/GameEventDto";
 import type { IGameEventListener } from "@/application/dto/IGameEventListener";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
 import type { GameSnapshotDto } from "@/application/use-cases/game/GameSnapshotDto";
@@ -116,7 +116,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
 
   /** Observer bridge listener — reacts to UI-neutral domain events. */
   onGameEvent(event: GameEventDto): void {
-    if (event.type === GameEventType.LevelFinished) {
+    if (event.type === GameEventTypeDto.LevelFinished) {
       const overlay = event.result.status === "WON" ? GameOverlay.Victory : GameOverlay.Defeat;
       this.setState({ ...this.getState(), overlay });
     }
