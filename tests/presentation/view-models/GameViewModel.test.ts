@@ -2,7 +2,7 @@ import { GameFacade } from "@/application/facades/GameFacade";
 import { manualLevels } from "@/application/level-build/fixtures";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
 import { LevelKind } from "@/application/level-build/LevelDefinition";
-import { GameEventType } from "@/application/dto/GameEventDto";
+import { GameEventTypeDto } from "@/application/dto/GameEventDto";
 import { ArrowEntity } from "@/domain/board/ArrowEntity";
 import { BoardGroup } from "@/domain/board/BoardGroup";
 import { CollisionService } from "@/domain/board/CollisionService";
@@ -160,7 +160,7 @@ describe("GameViewModel", () => {
     const viewModel = startedViewModel();
 
     viewModel.onGameEvent({
-      type: GameEventType.LevelFinished,
+      type: GameEventTypeDto.LevelFinished,
       result: { status: "LOST", reason: "OUT_OF_ATTEMPTS" }
     });
 

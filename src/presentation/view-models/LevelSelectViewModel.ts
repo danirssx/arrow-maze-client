@@ -1,13 +1,17 @@
 import { manualLevels } from "@/application/level-build/fixtures";
 import { LevelKind } from "@/application/level-build/LevelDefinition";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
+import type { DifficultyDto } from "@/application/dto/DifficultyDto";
 import type { ILevelCatalogRepository, LevelCatalogSummary } from "@/application/ports/ILevelCatalogRepository";
-import type { Difficulty } from "@/domain/value-objects/Difficulty";
+
+const DIFFICULTY_STARS: Record<DifficultyDto, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
+const DIFFICULTY_LABEL: Record<DifficultyDto, string> = { EASY: "Easy", MEDIUM: "Medium", HARD: "Hard" };
 
 export type LevelListItem = {
   readonly id: string;
   readonly order: number;
-  readonly difficulty: Difficulty;
+  readonly difficultyStars: number;
+  readonly difficultyLabel: string;
   readonly arrowCount: number;
   readonly timed: boolean;
 };
@@ -17,8 +21,9 @@ export type LevelListItem = {
  *
  * Exposes the ordered manual level catalog as plain list items for the
  * `LevelSelectScreen` and resolves a tapped level back to its `LevelDefinition`
- * for the gameplay ViewModel. It reads the application fixtures only; it never
- * builds boards or evaluates solvability itself.
+ * for the gameplay ViewModel. It reads the application fixtures/port only; it
+ * never builds boards, evaluates solvability, or holds a domain type — difficulty
+ * reaches the view as ready-to-consume `difficultyStars`/`difficultyLabel`.
  */
 export class LevelSelectViewModel {
   constructor(private readonly remote?: ILevelCatalogRepository) {}
@@ -27,7 +32,8 @@ export class LevelSelectViewModel {
     return manualLevels.map((level) => ({
       id: level.id,
       order: level.order,
-      difficulty: level.difficulty,
+      difficultyStars: LevelSelectViewModel.starsFor(level.difficulty),
+      difficultyLabel: LevelSelectViewModel.labelFor(level.difficulty),
       arrowCount: level.arrowCount,
       timed: level.definition.kind === LevelKind.Timed
     }));
@@ -52,9 +58,18 @@ export class LevelSelectViewModel {
     return {
       id: level.levelId,
       order: index + 1,
-      difficulty: level.difficulty,
+      difficultyStars: LevelSelectViewModel.starsFor(level.difficulty),
+      difficultyLabel: LevelSelectViewModel.labelFor(level.difficulty),
       arrowCount: level.arrowCount,
       timed: level.timeLimitSeconds !== undefined,
     };
+  }
+
+  private static starsFor(difficulty: DifficultyDto): number {
+    return DIFFICULTY_STARS[difficulty] ?? 1;
+  }
+
+  private static labelFor(difficulty: DifficultyDto): string {
+    return DIFFICULTY_LABEL[difficulty] ?? difficulty;
   }
 }

@@ -65,4 +65,25 @@ describe("LevelSelectViewModel", () => {
     ]);
     expect(levels[1]?.timed).toBe(true);
   });
+
+  it("should_expose_ready_to_consume_difficulty_fields", async () => {
+    const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels();
+
+    expect(levels[0]).toMatchObject({ difficultyStars: 1, difficultyLabel: "Easy" });
+    expect(levels[1]).toMatchObject({ difficultyStars: 2, difficultyLabel: "Medium" });
+    for (const level of levels) {
+      expect(level.difficultyStars).toBeGreaterThanOrEqual(1);
+      expect(level.difficultyStars).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it("should_map_manual_levels_to_star_ratings", () => {
+    const levels = new LevelSelectViewModel().getLevels();
+
+    for (const level of levels) {
+      expect(level.difficultyStars).toBeGreaterThanOrEqual(1);
+      expect(level.difficultyStars).toBeLessThanOrEqual(3);
+      expect(typeof level.difficultyLabel).toBe("string");
+    }
+  });
 });

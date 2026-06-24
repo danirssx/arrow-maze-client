@@ -6,18 +6,20 @@ interface LevelCardProps {
   onPress: (levelId: string) => void;
 }
 
-const DIFFICULTY_STARS: Record<string, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
-
 /**
  * Level grid tile — shows the level number and a difficulty star rating.
+ *
+ * Difficulty arrives ready-to-consume from the ViewState (`difficultyStars` /
+ * `difficultyLabel`); the card maps no domain difficulty itself.
  */
 export function LevelCard({ level, onPress }: LevelCardProps) {
-  const stars = DIFFICULTY_STARS[level.difficulty] ?? 1;
+  const stars = level.difficultyStars;
 
   return (
     <Pressable
       testID={`level-card-${level.id}`}
       accessibilityRole="button"
+      accessibilityLabel={`Level ${level.order}, ${level.difficultyLabel}`}
       onPress={() => onPress(level.id)}
       className="h-24 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft active:opacity-80"
     >
