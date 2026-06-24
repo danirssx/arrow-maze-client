@@ -58,6 +58,11 @@ module.exports = [
               "target": "./src/application",
               "from": "./src/framework",
               "message": "Application must not depend on framework code."
+            },
+            {
+              "target": "./src/presentation",
+              "from": "./src/domain",
+              "message": "Presentation must consume application DTOs, not domain types."
             }
           ]
         }

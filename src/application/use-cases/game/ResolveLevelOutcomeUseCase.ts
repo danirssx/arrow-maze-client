@@ -2,6 +2,7 @@ import type { IScoringStrategy } from "../../../domain/scoring/IScoringStrategy"
 import { ScoreContext } from "../../../domain/scoring/ScoreContext";
 import type { GameSession } from "./GameSession";
 import type { LevelOutcomeDto } from "./LevelOutcomeDto";
+import { toLevelStatusDto } from "./GameSnapshotMapper";
 
 /**
  * Resolve the already-calculated outcome of the current game.
@@ -21,7 +22,7 @@ export class ResolveLevelOutcomeUseCase {
     const score = this.scoring.score(ScoreContext.create({ result, elapsedMs })).value;
 
     return {
-      status: result.status,
+      status: toLevelStatusDto(result.status),
       won: result.isWon(),
       score,
       timeSeconds: Math.max(1, Math.floor(elapsedMs / 1000)),
