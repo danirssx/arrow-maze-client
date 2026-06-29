@@ -15,7 +15,14 @@ export interface LoginInput {
   rawPassword: string;
 }
 
+export interface RefreshTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
 export interface IAuthRepository {
   register(input: RegisterInput): Promise<RegisterOutput>;
   login(input: LoginInput): Promise<AuthSession>;
+  refresh(refreshToken: string): Promise<RefreshTokens>;
+  logout(refreshToken: string): Promise<void>;
 }

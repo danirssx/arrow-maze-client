@@ -30,6 +30,7 @@ const session: AuthSession = {
   username: "alice",
   role: "USER",
   accessToken: "token-1",
+  refreshToken: "refresh-1",
 };
 
 function ProtectedContent() {

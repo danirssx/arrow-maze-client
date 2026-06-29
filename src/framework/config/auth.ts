@@ -18,7 +18,7 @@ export function createAuthViewModel(): AuthViewModel {
   return new AuthViewModel(
     new LoginUseCase(authRepository, sessionManager),
     new RegisterUseCase(authRepository),
-    new LogoutUseCase(sessionManager),
+    new LogoutUseCase(sessionManager, authRepository),
     new GetCurrentSessionUseCase(sessionManager)
   );
 }

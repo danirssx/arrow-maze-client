@@ -5,26 +5,49 @@ import { HttpError } from './HttpError';
 
 /** Called when an authed request is rejected with 401, so the session can be invalidated. */
 export type UnauthorizedHandler = () => void | Promise<void>;
+/** Attempts to refresh the access token; resolves to the new token, or null if refresh is not possible. */
+export type RefreshHandler = () => Promise<string | null>;
+
+// Marks a request that was already retried after a refresh, so a second 401 does
+// not trigger another refresh (avoids an infinite refresh/retry loop).
+const RETRY_FLAG = '_arrowMazeRefreshRetried';
 
 export class AxiosHttpClientAdapter implements IHttpClient {
   private readonly client: AxiosInstance;
 
-  constructor(baseURL: string, onUnauthorized?: UnauthorizedHandler) {
+  constructor(baseURL: string, onUnauthorized?: UnauthorizedHandler, tryRefresh?: RefreshHandler) {
     this.client = axios.create({ baseURL });
-    if (onUnauthorized !== undefined) {
-      // On a 401 for a request that carried an Authorization header, signal that
-      // the session must be invalidated, then re-reject so callers still receive
-      // the mapped HttpError. Anonymous 401s (login, public GETs) are ignored.
+    if (onUnauthorized !== undefined || tryRefresh !== undefined) {
+      // On a 401 for a request that carried an Authorization header: try to
+      // refresh the access token and retry the request once with the new token;
+      // if refresh is unavailable/fails, invalidate the session and re-reject so
+      // callers still receive the mapped HttpError. Anonymous 401s are ignored.
       this.client.interceptors.response.use(
         (response) => response,
         async (error: AxiosError) => {
           if (error.response?.status === 401 && AxiosHttpClientAdapter.hadAuthorization(error.config)) {
-            await onUnauthorized();
+            if (tryRefresh !== undefined && error.config !== undefined && !AxiosHttpClientAdapter.isRetried(error.config)) {
+              const newToken = await tryRefresh();
+              if (newToken !== null && newToken !== '') {
+                return this.retryWithToken(error.config, newToken);
+              }
+            }
+            if (onUnauthorized !== undefined) await onUnauthorized();
           }
           return Promise.reject(error);
         },
       );
     }
+  }
+
+  private retryWithToken(config: NonNullable<AxiosError['config']>, token: string): Promise<unknown> {
+    const headers = { ...(config.headers as Record<string, unknown> | undefined), Authorization: `Bearer ${token}` };
+    const retryConfig: Record<string, unknown> = { ...config, headers, [RETRY_FLAG]: true };
+    return this.client.request(retryConfig as never);
+  }
+
+  private static isRetried(config: NonNullable<AxiosError['config']>): boolean {
+    return (config as unknown as Record<string, unknown>)[RETRY_FLAG] === true;
   }
 
   private static hadAuthorization(config: AxiosError['config']): boolean {

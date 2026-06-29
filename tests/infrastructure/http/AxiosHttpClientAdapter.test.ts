@@ -13,6 +13,7 @@ describe('AxiosHttpClientAdapter', () => {
     post: jest.fn(),
     put: jest.fn(),
     delete: jest.fn(),
+    request: jest.fn(),
     interceptors: { response: { use: jest.fn() } },
   };
 
@@ -154,6 +155,61 @@ describe('AxiosHttpClientAdapter', () => {
       new AxiosHttpClientAdapter('https://api.example.com');
 
       expect(mockAxiosInstance.interceptors.response.use).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('response interceptor (refresh and retry)', () => {
+    type RejectHandler = (error: unknown) => Promise<unknown>;
+    const authed401 = { response: { status: 401 }, config: { headers: { Authorization: 'Bearer old' } } };
+
+    function handlerWith(onUnauthorized: jest.Mock, tryRefresh: jest.Mock): RejectHandler {
+      new AxiosHttpClientAdapter('https://api.example.com', onUnauthorized, tryRefresh);
+      return mockAxiosInstance.interceptors.response.use.mock.calls[0][1] as RejectHandler;
+    }
+
+    it('should_refresh_and_retry_once_with_the_new_token_on_an_authed_401', async () => {
+      const onUnauthorized = jest.fn();
+      const tryRefresh = jest.fn(async () => 'new-token');
+      mockAxiosInstance.request.mockResolvedValue({ data: { ok: true }, status: 200 });
+      const reject = handlerWith(onUnauthorized, tryRefresh);
+
+      const result = await reject(authed401);
+
+      expect(tryRefresh).toHaveBeenCalledTimes(1);
+      expect(mockAxiosInstance.request).toHaveBeenCalledTimes(1);
+      const retried = mockAxiosInstance.request.mock.calls[0][0] as { headers: Record<string, unknown> };
+      expect(retried.headers['Authorization']).toBe('Bearer new-token');
+      expect(onUnauthorized).not.toHaveBeenCalled();
+      expect(result).toEqual({ data: { ok: true }, status: 200 });
+    });
+
+    it('should_invalidate_the_session_when_the_refresh_yields_null', async () => {
+      const onUnauthorized = jest.fn();
+      const tryRefresh = jest.fn(async () => null);
+      const reject = handlerWith(onUnauthorized, tryRefresh);
+
+      await expect(reject(authed401)).rejects.toBe(authed401);
+
+      expect(mockAxiosInstance.request).not.toHaveBeenCalled();
+      expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    });
+
+    it('should_not_refresh_again_for_an_already_retried_request', async () => {
+      const onUnauthorized = jest.fn();
+      const tryRefresh = jest.fn(async () => 'new-token');
+      mockAxiosInstance.request.mockResolvedValue({ data: 1, status: 200 });
+      const reject = handlerWith(onUnauthorized, tryRefresh);
+
+      await reject(authed401);
+      const retriedConfig = mockAxiosInstance.request.mock.calls[0][0];
+      tryRefresh.mockClear();
+      onUnauthorized.mockClear();
+
+      const retried401 = { response: { status: 401 }, config: retriedConfig };
+      await expect(reject(retried401)).rejects.toBe(retried401);
+
+      expect(tryRefresh).not.toHaveBeenCalled();
+      expect(onUnauthorized).toHaveBeenCalledTimes(1);
     });
   });
 
