@@ -1,5 +1,5 @@
 import { act, waitFor } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { AppState, Text } from "react-native";
 
 import type { AuthSession } from "@/application/auth/AuthSession";
 import { useProgressSync } from "@/framework/progress/useProgressSync";
@@ -44,6 +44,10 @@ describe("useProgressSync", () => {
     mockDrainPendingProgress.mockResolvedValue(false);
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("should_drain_for_signed_in_session_when_connectivity_returns", async () => {
     const netInfo = jest.requireMock("@react-native-community/netinfo") as NetInfoMock;
     mockUseAuthSession.mockReturnValue({
@@ -63,5 +67,43 @@ describe("useProgressSync", () => {
     });
 
     await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1", "token-1"));
+  });
+
+  it("should_drain_for_signed_in_session_when_app_returns_to_foreground", async () => {
+    let appStateListener: ((state: string) => void) | undefined;
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_event, listener) => {
+      appStateListener = listener as (state: string) => void;
+      return { remove: jest.fn() } as never;
+    });
+    mockUseAuthSession.mockReturnValue({
+      loading: false,
+      session,
+      refreshSession: jest.fn(),
+      clearSession: jest.fn(),
+    });
+
+    renderWithProviders(<ProgressSyncProbe />);
+
+    await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1", "token-1"));
+    mockDrainPendingProgress.mockClear();
+
+    act(() => {
+      appStateListener?.("active");
+    });
+
+    await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1", "token-1"));
+  });
+
+  it("should_not_drain_when_signed_out", () => {
+    mockUseAuthSession.mockReturnValue({
+      loading: false,
+      session: null,
+      refreshSession: jest.fn(),
+      clearSession: jest.fn(),
+    });
+
+    renderWithProviders(<ProgressSyncProbe />);
+
+    expect(mockDrainPendingProgress).not.toHaveBeenCalled();
   });
 });
