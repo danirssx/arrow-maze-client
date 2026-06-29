@@ -8,11 +8,13 @@ import { ScreenContainer } from "@/presentation/components/ScreenContainer";
 
 interface HomeScreenProps {
   coins?: number;
+  username?: string;
   onPlay: () => void;
   onChallenges: () => void;
   onLeaderboard: () => void;
   onProgress: () => void;
   onSettings: () => void;
+  onLogout?: () => void;
 }
 
 interface InfoCardProps {
@@ -52,11 +54,13 @@ function InfoCard({ icon, title, subtitle, onPress, testID }: InfoCardProps) {
  */
 export function HomeScreen({
   coins = 0,
+  username,
   onPlay,
   onChallenges,
   onLeaderboard,
   onProgress,
-  onSettings
+  onSettings,
+  onLogout
 }: HomeScreenProps) {
   const { t } = useTranslation();
 
@@ -67,6 +71,18 @@ export function HomeScreen({
         <View className="gap-8 pb-8">
           <View className="items-center gap-2 pt-4">
             <Brand />
+            {username !== undefined ? (
+              <View className="items-center gap-1">
+                <Text testID="home-username" className="text-sm font-bold text-primary-700">
+                  {username}
+                </Text>
+                {onLogout !== undefined ? (
+                  <Pressable testID="home-logout" accessibilityRole="button" onPress={onLogout}>
+                    <Text className="text-xs font-semibold text-text-secondary">{t("auth.logout")}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
             <Text className="text-xs font-semibold uppercase tracking-[3px] text-text-secondary">
               {t("home.greeting")}
             </Text>

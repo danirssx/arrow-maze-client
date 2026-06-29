@@ -120,36 +120,6 @@ scoring, and persistence are intentionally out of scope.
 
 ---
 
-# AI Usage Log: Branch Workflow Setup
-
-## Task / Problem
-
-Configure the repository branch workflow after `main` and `develop` were created.
-
-## Tool and Model
-
-Codex / GPT-5.
-
-## Prompt Used
-
-The user asked Codex to configure branches for the client and backend repositories and clarify what must be set in GitHub before starting the workflow.
-
-## Result Obtained
-
-Updated worktree scripts and agent/contribution documentation so feature work starts from `origin/develop`, feature PRs target `develop`, and only human-approved release PRs target `main`.
-
-## Team Modifications Pending Human Review
-
-- Confirm whether the team wants `develop` or `main` as the GitHub default branch.
-- Configure branch protection rules in GitHub for `main` and `develop`.
-
-## Lessons / Limitations
-
-When a project uses both `main` and `develop`, agent instructions must be explicit about PR targets to avoid accidental release-branch work.
-
-
----
-
 # AI Usage Log: MAZ-123 Expo SDK 54 Upgrade
 
 ## Task / Problem
@@ -185,6 +155,36 @@ Updated Expo and related native/runtime packages to SDK 54-compatible versions, 
 ## Lessons / Limitations
 
 Expo SDK upgrades must be validated with `expo-doctor`, not only by changing the `expo` package version. Expo Router and Reanimated require direct peer dependencies under SDK 54.
+
+
+---
+
+# AI Usage Log: Branch Workflow Setup
+
+## Task / Problem
+
+Configure the repository branch workflow after `main` and `develop` were created.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked Codex to configure branches for the client and backend repositories and clarify what must be set in GitHub before starting the workflow.
+
+## Result Obtained
+
+Updated worktree scripts and agent/contribution documentation so feature work starts from `origin/develop`, feature PRs target `develop`, and only human-approved release PRs target `main`.
+
+## Team Modifications Pending Human Review
+
+- Confirm whether the team wants `develop` or `main` as the GitHub default branch.
+- Configure branch protection rules in GitHub for `main` and `develop`.
+
+## Lessons / Limitations
+
+When a project uses both `main` and `develop`, agent instructions must be explicit about PR targets to avoid accidental release-branch work.
 
 
 ---
@@ -277,50 +277,6 @@ Updated `AGENTS.md` with a mandatory Section 6 and Section 7 compliance section,
 ## Lessons / Limitations
 
 Compliance rules should live where agents cannot miss them: `AGENTS.md`, with a README summary for human contributors and evaluators.
-
-
----
-
-# AI Usage Log: Agent Role Traceability Documentation
-
-## Task / Problem
-
-Clarify whether ticket work has been following the configured `.agents/` workflow and update documentation so future `ai-log/` entries explicitly record which agent roles were used and how.
-
-## Tool and Model
-
-Codex / GPT-5.
-
-## Prompt Used
-
-The user asked whether each ticket has used the configured agents from each repo and requested documentation changes so every `ai-log/` records why and how each agent was used.
-
-## Agent Roles Used
-
-| Agent | Status | How it was used | Evidence |
-| --- | --- | --- | --- |
-| Spec Partner | Referenced | Reviewed the role boundary to distinguish actual spec alignment from referencing an approved Linear spec. | `.agents/spec-partner.md`, `AGENTS.md` |
-| Planner/Slicer | Referenced | Reviewed planner responsibilities and documented when existing Linear tickets count as referenced planning rather than a new planner run. | `.agents/planner.md`, `docs/zed-worktree-agents.md` |
-| TDD Implementer | Referenced | Updated logging requirements for implementation tickets that use test-guided or TDD-style work. | `.agents/tdd-implementer.md`, `docs/ai-log-template.md` |
-| Judge | Referenced | Added guidance for recording self-audit versus a separate judge review. | `.agents/judge.md`, `docs/zed-worktree-agents.md` |
-| Mutation Tester | Referenced | Added explicit `Not used` / future `Used` guidance until mutation tooling is configured. | `.agents/mutation.md`, `docs/ai-log-template.md` |
-
-## Result Obtained
-
-Updated client documentation so future logs must include an `Agent Roles Used` table with `Used`, `Referenced`, or `Not used` status for every configured role. Added `docs/ai-log-template.md` as the source template for future logs.
-
-## Verification
-
-- Documentation-only change; reviewed modified Markdown files.
-
-## Team Modifications Pending Human Review
-
-- Decide whether prior historical `ai-log/` entries should be retroactively annotated or left as-is to avoid overstating past agent usage.
-- Decide whether future PR templates should also require checking the `Agent Roles Used` section.
-
-## Lessons / Limitations
-
-Past work followed `AGENTS.md` constraints and role intent, but logs did not make the distinction between literal agent execution and same-session referenced roles. Future logs must be explicit and auditable.
 
 
 ---
@@ -1240,6 +1196,50 @@ All 44 tests pass. typecheck clean.
 
 ---
 
+# AI Usage Log: Agent Role Traceability Documentation
+
+## Task / Problem
+
+Clarify whether ticket work has been following the configured `.agents/` workflow and update documentation so future `ai-log/` entries explicitly record which agent roles were used and how.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked whether each ticket has used the configured agents from each repo and requested documentation changes so every `ai-log/` records why and how each agent was used.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Referenced | Reviewed the role boundary to distinguish actual spec alignment from referencing an approved Linear spec. | `.agents/spec-partner.md`, `AGENTS.md` |
+| Planner/Slicer | Referenced | Reviewed planner responsibilities and documented when existing Linear tickets count as referenced planning rather than a new planner run. | `.agents/planner.md`, `docs/zed-worktree-agents.md` |
+| TDD Implementer | Referenced | Updated logging requirements for implementation tickets that use test-guided or TDD-style work. | `.agents/tdd-implementer.md`, `docs/ai-log-template.md` |
+| Judge | Referenced | Added guidance for recording self-audit versus a separate judge review. | `.agents/judge.md`, `docs/zed-worktree-agents.md` |
+| Mutation Tester | Referenced | Added explicit `Not used` / future `Used` guidance until mutation tooling is configured. | `.agents/mutation.md`, `docs/ai-log-template.md` |
+
+## Result Obtained
+
+Updated client documentation so future logs must include an `Agent Roles Used` table with `Used`, `Referenced`, or `Not used` status for every configured role. Added `docs/ai-log-template.md` as the source template for future logs.
+
+## Verification
+
+- Documentation-only change; reviewed modified Markdown files.
+
+## Team Modifications Pending Human Review
+
+- Decide whether prior historical `ai-log/` entries should be retroactively annotated or left as-is to avoid overstating past agent usage.
+- Decide whether future PR templates should also require checking the `Agent Roles Used` section.
+
+## Lessons / Limitations
+
+Past work followed `AGENTS.md` constraints and role intent, but logs did not make the distinction between literal agent execution and same-session referenced roles. Future logs must be explicit and auditable.
+
+
+---
+
 # AI Log - AM-043 - Implement mobile auth session and backend contract tests
 
 ## Task / problem
@@ -1540,60 +1540,6 @@ Created / updated:
 - DoD "docs align with actual commands": all commands verified against package.json
   scripts (start/android/ios/web/lint/typecheck/test/test:coverage/verify/build)
 - Contract tests make no real network calls — static fixtures only
-
-
----
-
-# AI Log - Fix Leaderboard Authenticated Score Submit
-
-## Task / Problem
-
-Update the mobile client after the backend changed `POST /leaderboard/scores` to require JWT authentication and to read `userId` from the token instead of accepting it in the request body.
-
-Also verify the M4 mobile integration ports around HTTP, auth/session, progress, leaderboard, storage, and contract tests.
-
-## Tool and Model
-
-- Tool: Codex CLI coding agent.
-- Model: GPT-5 based Codex session.
-
-## Prompt Used
-
-The user asked to verify the M4 milestone port connections and implement the frontend fix for `POST /leaderboard/scores`:
-
-- Remove `userId` from the request body.
-- Add `Authorization: Bearer <token>` to the request.
-- Keep `GET /leaderboard/:levelId` unauthenticated.
-- Validate the integration.
-
-## Agent Roles Used
-
-| Agent | Status | How it was used | Evidence |
-| --- | --- | --- | --- |
-| Spec Partner | Referenced | Used the backend change description as the accepted spec and kept scope limited to the mobile integration contract. | User-provided Fix #8; backend `LeaderboardController`/routes inspection. |
-| Planner/Slicer | Referenced | Mapped the fix to application port, facade, repository, and contract-test updates without touching domain/gameplay. | `ILeaderboardRepository`, `LeaderboardFacade`, `HttpLeaderboardRepository`, contract tests. |
-| TDD Implementer | Referenced | Updated tests around expected behavior first, then adjusted the port/repository implementation to pass them. | Leaderboard facade, repository, and contract tests. |
-| Judge | Referenced | Checked dependency direction and verified that M4 integration tests pass without React Native, UI, or backend runtime coupling. | `npm run verify`; M4 targeted Jest suites. |
-| Mutation Tester | Not used | Mutation testing is not configured in this repository. | N/A |
-
-## Result Obtained
-
-- `SubmitScoreInput` no longer includes `userId`.
-- `ILeaderboardRepository.submitScore` and `LeaderboardFacade.submitScore` now require an `accessToken` argument.
-- `HttpLeaderboardRepository.submitScore` sends `Authorization: Bearer <token>` and posts a body without `userId`.
-- `GET /leaderboard/:levelId` remains unauthenticated.
-- Contract tests now represent authenticated score submission without spoofable `userId`.
-- M4 integration tests for auth, progress, leaderboard, HTTP, storage, session, and contracts pass.
-
-## Team Modifications Pending Human Review
-
-- Backend Swagger/OpenAPI currently still documents `userId` inside `SubmitScoreRequest` and does not mark `POST /leaderboard/scores` with bearer auth in `origin/develop`; that should be fixed in the backend docs/contract.
-- Future UI/ViewModel callers must pass the stored session token when submitting leaderboard scores.
-
-## Lessons / Limitations
-
-- The fix is compile-time enforced by removing `userId` from `SubmitScoreInput`.
-- No real network request was executed; validation used repository and contract tests with mocked HTTP clients.
 
 
 ---
@@ -1909,49 +1855,56 @@ A snapshot-driven ViewModel (read the `GameSnapshotDto` returned by each facade 
 
 ---
 
-# AI Usage Log: FlechaGo logo + Outfit font (no ticket, direct PR)
+# AI Log - Fix Leaderboard Authenticated Score Submit
 
 ## Task / Problem
 
-Per the user's direct request (no Linear ticket): (1) place the `design/logo-go.svg` logo in the app, and (2) adopt the Google "Outfit" font across the app. Constraint (MEMORY): `react-native-svg` is **not** wired, so an SVG cannot be rendered directly. Based on `develop`.
+Update the mobile client after the backend changed `POST /leaderboard/scores` to require JWT authentication and to read `userId` from the token instead of accepting it in the request body.
+
+Also verify the M4 mobile integration ports around HTTP, auth/session, progress, leaderboard, storage, and contract tests.
 
 ## Tool and Model
 
-Claude Code / Claude Opus 4.8.
+- Tool: Codex CLI coding agent.
+- Model: GPT-5 based Codex session.
 
 ## Prompt Used
 
-The user asked to add the logo where appropriate and to implement the Outfit font (gave the Google Fonts `@import` URL), as a single PR with no ticket — following both repos' `AGENTS.md`, `MEMORY.md`, AI logging, validation, MEMORY/AGENTS update check, commit/push/PR.
+The user asked to verify the M4 milestone port connections and implement the frontend fix for `POST /leaderboard/scores`:
+
+- Remove `userId` from the request body.
+- Add `Authorization: Bearer <token>` to the request.
+- Keep `GET /leaderboard/:levelId` unauthenticated.
+- Validate the integration.
 
 ## Agent Roles Used
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
-| Spec Partner | Used | Clarified the two constraints that shaped the design: no `react-native-svg` (→ rasterize the SVG to PNG) and RN does not inherit `fontFamily` while NativeWind feeds `style` from `className` (→ a `defaultProps` font default cannot work). | this log |
-| Planner/Slicer | Used | Scoped to: bundle the logo as a PNG + render it in `Brand`; load Outfit via `useFonts`; make it global with a weight-aware host-render patch. Presentation/framework only. | this log |
-| TDD Implementer | Referenced | No new unit test (visual/asset + global font); leaned on the existing `HomeScreen` test (which imports `Brand` → the PNG) plus full `npm run verify` to prove nothing regressed. | `tests/presentation/screens/HomeScreen.test.tsx` |
-| Judge | Referenced | Pre-PR audit: full `npm run verify`; confirmed the font patch is idempotent, injects family *under* explicit styles, and maps `fontWeight` → real Outfit weight files; verified the PNG import is typed (`images.d.ts`) and resolves in jest. | `npm run verify` |
-| Mutation Tester | Not used | StrykerJS not configured; asset/UI change. | N/A |
+| Spec Partner | Referenced | Used the backend change description as the accepted spec and kept scope limited to the mobile integration contract. | User-provided Fix #8; backend `LeaderboardController`/routes inspection. |
+| Planner/Slicer | Referenced | Mapped the fix to application port, facade, repository, and contract-test updates without touching domain/gameplay. | `ILeaderboardRepository`, `LeaderboardFacade`, `HttpLeaderboardRepository`, contract tests. |
+| TDD Implementer | Referenced | Updated tests around expected behavior first, then adjusted the port/repository implementation to pass them. | Leaderboard facade, repository, and contract tests. |
+| Judge | Referenced | Checked dependency direction and verified that M4 integration tests pass without React Native, UI, or backend runtime coupling. | `npm run verify`; M4 targeted Jest suites. |
+| Mutation Tester | Not used | Mutation testing is not configured in this repository. | N/A |
 
 ## Result Obtained
 
-- **Logo:** `design/logo-go.svg` wraps a base64 PNG; extracted it and downscaled (`sips -Z 768`) to `assets/images/logo-go.png` (768×614, alpha, ~175 KB). Rendered in `Brand` (logo mark above the wordmark), so it shows on the Home hub. Added `images.d.ts` so `*.png` imports are typed.
-- **Outfit font:** installed `@expo-google-fonts/outfit`; `app/_layout.tsx` loads Regular/Medium/SemiBold/Bold/Black via `useFonts` and holds the UI until ready. `src/framework/fonts/registerDefaultFont.ts` patches the host `Text` renderer once to inject the Outfit weight family that matches the resolved `fontWeight`, *under* the element's own style — so the whole app renders in Outfit with **zero per-component edits**, and `font-bold`/`font-semibold`/`font-black` resolve to the real weight files (not synthetic bold).
-
-## Verification
-
-- `npm run verify` (lint + typecheck + coverage) → **52 suites / 233 tests passing**.
-- `tsc --noEmit` clean after adding `images.d.ts`; `HomeScreen` test (imports the PNG) green.
+- `SubmitScoreInput` no longer includes `userId`.
+- `ILeaderboardRepository.submitScore` and `LeaderboardFacade.submitScore` now require an `accessToken` argument.
+- `HttpLeaderboardRepository.submitScore` sends `Authorization: Bearer <token>` and posts a body without `userId`.
+- `GET /leaderboard/:levelId` remains unauthenticated.
+- Contract tests now represent authenticated score submission without spoofable `userId`.
+- M4 integration tests for auth, progress, leaderboard, HTTP, storage, session, and contracts pass.
 
 ## Team Modifications Pending Human Review
 
-- New runtime dependency `@expo-google-fonts/outfit` (+ `package-lock.json`); `expo-font` was already present.
-- The render patch targets `Text` (RN forwardRef with `.render`); `TextInput` is skipped (class component, no static `.render`) — inputs keep the system font. Easy to extend later if desired.
-- Logo is a raster (no `react-native-svg`); if a crisp vector is needed later, wire `react-native-svg` + transformer.
+- Backend Swagger/OpenAPI currently still documents `userId` inside `SubmitScoreRequest` and does not mark `POST /leaderboard/scores` with bearer auth in `origin/develop`; that should be fixed in the backend docs/contract.
+- Future UI/ViewModel callers must pass the stored session token when submitting leaderboard scores.
 
 ## Lessons / Limitations
 
-The two RN realities that drove the design: (1) `fontFamily` does not inherit and NativeWind sets the `style` prop from `className`, so `Text.defaultProps.style` never applies — wrapping the host `render` and injecting the family *under* the existing style is the reliable global-font seam; (2) an "SVG" exported from design tools is often just a PNG in a `<pattern>`, so extracting the embedded raster avoids pulling in `react-native-svg`.
+- The fix is compile-time enforced by removing `userId` from `SubmitScoreInput`.
+- No real network request was executed; validation used repository and contract tests with mocked HTTP clients.
 
 
 ---
@@ -2251,6 +2204,53 @@ RN `Animated` + react-native-svg is the long-proven way to animate `strokeDashof
 callback, whereas the react-native-svg + Reanimated-v4 `animatedProps` pairing was
 not animating here. When an effect can't be verified on a simulator from the agent
 environment, prefer the device-proven animation driver over the newer one.
+
+
+---
+
+# AI Usage Log: FlechaGo logo + Outfit font (no ticket, direct PR)
+
+## Task / Problem
+
+Per the user's direct request (no Linear ticket): (1) place the `design/logo-go.svg` logo in the app, and (2) adopt the Google "Outfit" font across the app. Constraint (MEMORY): `react-native-svg` is **not** wired, so an SVG cannot be rendered directly. Based on `develop`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to add the logo where appropriate and to implement the Outfit font (gave the Google Fonts `@import` URL), as a single PR with no ticket — following both repos' `AGENTS.md`, `MEMORY.md`, AI logging, validation, MEMORY/AGENTS update check, commit/push/PR.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner | Used | Clarified the two constraints that shaped the design: no `react-native-svg` (→ rasterize the SVG to PNG) and RN does not inherit `fontFamily` while NativeWind feeds `style` from `className` (→ a `defaultProps` font default cannot work). | this log |
+| Planner/Slicer | Used | Scoped to: bundle the logo as a PNG + render it in `Brand`; load Outfit via `useFonts`; make it global with a weight-aware host-render patch. Presentation/framework only. | this log |
+| TDD Implementer | Referenced | No new unit test (visual/asset + global font); leaned on the existing `HomeScreen` test (which imports `Brand` → the PNG) plus full `npm run verify` to prove nothing regressed. | `tests/presentation/screens/HomeScreen.test.tsx` |
+| Judge | Referenced | Pre-PR audit: full `npm run verify`; confirmed the font patch is idempotent, injects family *under* explicit styles, and maps `fontWeight` → real Outfit weight files; verified the PNG import is typed (`images.d.ts`) and resolves in jest. | `npm run verify` |
+| Mutation Tester | Not used | StrykerJS not configured; asset/UI change. | N/A |
+
+## Result Obtained
+
+- **Logo:** `design/logo-go.svg` wraps a base64 PNG; extracted it and downscaled (`sips -Z 768`) to `assets/images/logo-go.png` (768×614, alpha, ~175 KB). Rendered in `Brand` (logo mark above the wordmark), so it shows on the Home hub. Added `images.d.ts` so `*.png` imports are typed.
+- **Outfit font:** installed `@expo-google-fonts/outfit`; `app/_layout.tsx` loads Regular/Medium/SemiBold/Bold/Black via `useFonts` and holds the UI until ready. `src/framework/fonts/registerDefaultFont.ts` patches the host `Text` renderer once to inject the Outfit weight family that matches the resolved `fontWeight`, *under* the element's own style — so the whole app renders in Outfit with **zero per-component edits**, and `font-bold`/`font-semibold`/`font-black` resolve to the real weight files (not synthetic bold).
+
+## Verification
+
+- `npm run verify` (lint + typecheck + coverage) → **52 suites / 233 tests passing**.
+- `tsc --noEmit` clean after adding `images.d.ts`; `HomeScreen` test (imports the PNG) green.
+
+## Team Modifications Pending Human Review
+
+- New runtime dependency `@expo-google-fonts/outfit` (+ `package-lock.json`); `expo-font` was already present.
+- The render patch targets `Text` (RN forwardRef with `.render`); `TextInput` is skipped (class component, no static `.render`) — inputs keep the system font. Easy to extend later if desired.
+- Logo is a raster (no `react-native-svg`); if a crisp vector is needed later, wire `react-native-svg` + transformer.
+
+## Lessons / Limitations
+
+The two RN realities that drove the design: (1) `fontFamily` does not inherit and NativeWind sets the `style` prop from `className`, so `Text.defaultProps.style` never applies — wrapping the host `render` and injecting the family *under* the existing style is the reliable global-font seam; (2) an "SVG" exported from design tools is often just a PNG in a `<pattern>`, so extracting the embedded raster avoids pulling in `react-native-svg`.
 
 
 ---
@@ -2688,29 +2688,6 @@ makes the feature visible from the database.
 
 ---
 
-# AI Usage Log: MAZ-167 [CA-014] Enforce `reglas_clean_arch.md` strictly in the judge
-
-## Task / Problem
-
-Cross-repo docs/chore ticket (`MAZ-167`, temporary id `CA-014`,
-milestone `M8 - Clean Architecture Remediation`). The client judge already
-checked the dependency rule and MVVM, but did not force reading/applying the
-**whole** `reglas_clean_arch.md` checklist, nor force every `src`-touching ticket
-to declare its per-layer impact through a `Clean Architecture contract`. There
-was also no spec/ticket template carrying that contract.
-
-## Tool and Model
-
-Claude Code / claude-opus-4-8.
-
-## Prompt Used
-
-User asked to implement MAZ-167 following the repo agent rules: read both
-`AGENTS.md`, the root `MEMORY.md`, `Linear_MCP_Guideline.md`, work in a fresh
-worktree, log AI usage + run `compile-ai-usage.sh`, commit/push/PR and update
-Linear. Read before implementing: `AGENTS.md`, root `MEMORY.md`,
-`reglas_clean_arch.md`, the Linear ticket body, `.agents/*` and existing specs.
-No secrets pasted.
 # AI Usage Log: MAZ-164 Flatten boundary DTOs and keep domain types out of presentation
 
 ## Task / Problem
@@ -2743,54 +2720,6 @@ context and the affected tickets.
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
-| Spec Partner (`.agents/spec-partner.md`) | Referenced | This ticket edits the prompt itself: added a mandatory `## Clean Architecture contract` step (incl. MVVM) pointing at `specs/_TEMPLATE.spec.md`. No separate spec-partner session was run. | `.agents/spec-partner.md` |
-| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Edited the prompt to require each `src`-touching slice/ticket carry the `Clean Architecture contract`. No separate planner session. | `.agents/planner.md` |
-| TDD Implementer (`.agents/tdd-implementer.md`) | Not used | Docs-only ticket; no production code or tests. | N/A |
-| Judge (`.agents/judge.md`) | Referenced | Main target of the change: tightened protocol step 1/3, verdict checklist and hard rules; followed its own MVVM/dependency constraints while editing. No separate judge session run against a PR. | `.agents/judge.md` |
-| Mutation Tester (`.agents/mutation.md`) | Not used | No production code changed; nothing to mutate. | N/A |
-
-## Scenario Coverage (@s ↔ test)
-
-Not applicable — docs/chore ticket. Acceptance criteria are non-functional and
-validated by manual dry-run of the judge protocol against this ticket's own
-`Clean Architecture contract` (embedded in the Linear description).
-
-## Result Obtained
-
-- `specs/_TEMPLATE.spec.md` — new client spec/ticket template with the mandatory
-  `## Clean Architecture contract` section, including the MVVM rules (View dumb,
-  ViewModel only presentation, composition root in framework) and per-layer
-  impact (Domain/Application/Infrastructure/Presentation/Framework).
-- `.agents/judge.md` — protocol step 1 now reads `docs/reglas_clean_arch.md`
-  (mirror of canonical `../reglas_clean_arch.md`) and requires applying the
-  **whole** checklist; step 3 requires the contract follow the template and
-  declare impact per layer; verdict checklist adds a per-layer-impact line, a
-  reinforced MVVM line and a note requiring one PASS/FAIL per applicable rule;
-  two new hard rules.
-- `.agents/spec-partner.md` / `.agents/planner.md` — require the contract in the
-  generated spec and in every `src`-touching Linear ticket.
-
-## Verification
-
-- Docs-only change under `.agents/` and `specs/` (markdown); no `src`, `tests`
-  or build config touched, so `npm run verify` is unaffected.
-- Dry-run: MAZ-167's Linear description already carries a `## Clean Architecture
-  contract` block (all layers `no previsto`, docs-only) — the judge protocol
-  processes it and would not reject, satisfying the Definition of Done example.
-
-## Team Modifications Pending Human Review
-
-- The canonical `reglas_clean_arch.md` is mirrored into each repo's `docs/`.
-  Path strategy kept as `docs/reglas_clean_arch.md` (self-contained per repo)
-  with `../reglas_clean_arch.md` documented as the canonical fallback.
-- Confirm `specs/_TEMPLATE.spec.md` (underscore prefix) is the desired template
-  location and naming.
-
-## Lessons / Limitations
-
-- Much of CA-014's judge changes had already landed in prior commits; the real
-  remaining gap was the missing spec/ticket template and wiring spec-partner +
-  planner to it. Verified the existing state before adding, to avoid duplication.
 | Spec Partner (`.agents/spec-partner.md`) | Referenced | Distilled the approved CA-011 scope from `Clean_Architecture_Fix_Tickets_Proposal.md` + the actual code violations into a local spec; no separate session. | `specs/boundary-dtos.spec.md` |
 | Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored the executable `.feature` (`@s1..@s9`) from the already-approved ticket ACs. | `specs/boundary-dtos.feature` |
 | TDD Implementer (`.agents/tdd-implementer.md`) | Used | Implemented the DTO-owned literals + boundary mappers and the difficulty ViewState, with mapper/ViewModel/component tests and a lint-guard probe. | tests below + `@s → test` map |
@@ -2868,6 +2797,164 @@ New: `tests/application/dto/BoundaryDtos.test.ts` (5 tests), `tests/presentation
   so it is out of scope.
 - The eslint zone is the real enforcement of "presentation never imports domain"; a
   throwaway probe file confirmed it errors before the change could regress.
+
+
+---
+
+# AI Usage Log: MAZ-167 [CA-014] Enforce `reglas_clean_arch.md` strictly in the judge
+
+## Task / Problem
+
+Cross-repo docs/chore ticket (`MAZ-167`, temporary id `CA-014`,
+milestone `M8 - Clean Architecture Remediation`). The client judge already
+checked the dependency rule and MVVM, but did not force reading/applying the
+**whole** `reglas_clean_arch.md` checklist, nor force every `src`-touching ticket
+to declare its per-layer impact through a `Clean Architecture contract`. There
+was also no spec/ticket template carrying that contract.
+
+## Tool and Model
+
+Claude Code / claude-opus-4-8.
+
+## Prompt Used
+
+User asked to implement MAZ-167 following the repo agent rules: read both
+`AGENTS.md`, the root `MEMORY.md`, `Linear_MCP_Guideline.md`, work in a fresh
+worktree, log AI usage + run `compile-ai-usage.sh`, commit/push/PR and update
+Linear. Read before implementing: `AGENTS.md`, root `MEMORY.md`,
+`reglas_clean_arch.md`, the Linear ticket body, `.agents/*` and existing specs.
+No secrets pasted.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | This ticket edits the prompt itself: added a mandatory `## Clean Architecture contract` step (incl. MVVM) pointing at `specs/_TEMPLATE.spec.md`. No separate spec-partner session was run. | `.agents/spec-partner.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Edited the prompt to require each `src`-touching slice/ticket carry the `Clean Architecture contract`. No separate planner session. | `.agents/planner.md` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Not used | Docs-only ticket; no production code or tests. | N/A |
+| Judge (`.agents/judge.md`) | Referenced | Main target of the change: tightened protocol step 1/3, verdict checklist and hard rules; followed its own MVVM/dependency constraints while editing. No separate judge session run against a PR. | `.agents/judge.md` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | No production code changed; nothing to mutate. | N/A |
+
+## Scenario Coverage (@s ↔ test)
+
+Not applicable — docs/chore ticket. Acceptance criteria are non-functional and
+validated by manual dry-run of the judge protocol against this ticket's own
+`Clean Architecture contract` (embedded in the Linear description).
+
+## Result Obtained
+
+- `specs/_TEMPLATE.spec.md` — new client spec/ticket template with the mandatory
+  `## Clean Architecture contract` section, including the MVVM rules (View dumb,
+  ViewModel only presentation, composition root in framework) and per-layer
+  impact (Domain/Application/Infrastructure/Presentation/Framework).
+- `.agents/judge.md` — protocol step 1 now reads `docs/reglas_clean_arch.md`
+  (mirror of canonical `../reglas_clean_arch.md`) and requires applying the
+  **whole** checklist; step 3 requires the contract follow the template and
+  declare impact per layer; verdict checklist adds a per-layer-impact line, a
+  reinforced MVVM line and a note requiring one PASS/FAIL per applicable rule;
+  two new hard rules.
+- `.agents/spec-partner.md` / `.agents/planner.md` — require the contract in the
+  generated spec and in every `src`-touching Linear ticket.
+
+## Verification
+
+- Docs-only change under `.agents/` and `specs/` (markdown); no `src`, `tests`
+  or build config touched, so `npm run verify` is unaffected.
+- Dry-run: MAZ-167's Linear description already carries a `## Clean Architecture
+  contract` block (all layers `no previsto`, docs-only) — the judge protocol
+  processes it and would not reject, satisfying the Definition of Done example.
+
+## Team Modifications Pending Human Review
+
+- The canonical `reglas_clean_arch.md` is mirrored into each repo's `docs/`.
+  Path strategy kept as `docs/reglas_clean_arch.md` (self-contained per repo)
+  with `../reglas_clean_arch.md` documented as the canonical fallback.
+- Confirm `specs/_TEMPLATE.spec.md` (underscore prefix) is the desired template
+  location and naming.
+
+## Lessons / Limitations
+
+- Much of CA-014's judge changes had already landed in prior commits; the real
+  remaining gap was the missing spec/ticket template and wiring spec-partner +
+  planner to it. Verified the existing state before adding, to avoid duplication.
+
+
+---
+
+# AI Usage Log: MAZ-179 Enforce mandatory auth gate on mobile launch
+
+## Task / Problem
+
+Client ticket `MAZ-179`: make mobile login mandatory after the existing
+MAZ-139 login flow by bootstrapping the persisted session at launch, guarding
+protected routes, removing gameplay guest rendering, and exposing visible
+identity/logout controls.
+
+## Tool and Model
+
+Codex CLI / GPT-5.
+
+## Prompt Used
+
+User asked to implement MAZ-179 following both repo `AGENTS.md` files, the root
+`MEMORY.md`, `Linear_MCP_Guideline.md`, a fresh worktree, AI usage logging,
+checks, commit/push/PR, and Linear update. The Linear issue was read through the
+local Linear GraphQL workflow without exposing secrets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Read and applied the role constraints to distill the Linear issue into a local executable contract without running a separate agent session. | `specs/mandatory-auth-gate.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Read and applied the Gherkin/planning rules to create tagged scenarios and keep the slice within the approved Clean Architecture contract. | `specs/mandatory-auth-gate.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Followed red-green-refactor locally: added failing AuthGate/Home/Settings tests first, then implemented the route gate and UI props. | `tests/framework/auth/AuthGate.test.tsx`, `tests/presentation/screens/HomeScreen.test.tsx`, `tests/presentation/screens/SettingsScreen.test.tsx` |
+| Judge (`.agents/judge.md`) | Not used | No separate judge review was run in this session. | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | This ticket changed framework routing and presentation behavior only; no domain/application rule was added. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` unauthenticated protected route redirects to `/login` | `tests/framework/auth/AuthGate.test.tsx` -> `should_redirect_to_login_when_protected_route_has_no_session` |
+| `@s2` persisted session renders protected content | `tests/framework/auth/AuthGate.test.tsx` -> `should_render_protected_content_when_session_bootstraps` |
+| `@s3` logout clears session and returns to login | `tests/framework/auth/AuthGate.test.tsx` -> `should_clear_session_and_redirect_to_login_when_logout_runs` |
+| `@s4` Home/Settings show username and logout | `tests/presentation/screens/HomeScreen.test.tsx` and `tests/presentation/screens/SettingsScreen.test.tsx` -> `should_show_username_and_logout_when_session_identity_is_provided` |
+| `@s5` game route is protected before guest gameplay can render | `tests/framework/auth/AuthGate.test.tsx` -> `should_redirect_to_login_when_game_route_has_no_session` |
+
+## Result Obtained
+
+- Added `AuthGate` in `src/framework/auth` to bootstrap persisted session,
+  protect every non-login route, redirect authenticated users away from
+  `/login`, and expose session/clear/refresh through framework context.
+- Wrapped the Expo Router stack in `app/_layout.tsx`.
+- Updated login success to refresh the auth context and replace navigation with
+  Home.
+- Updated Home and Settings routes/screens to show username and a logout action.
+- Updated game and progress routes to consume the auth context instead of
+  tolerating guest session data.
+- Added `clearCurrentSession()` in the framework session composition helper.
+
+## Verification
+
+- `npm run typecheck` GREEN.
+- `npm run lint` GREEN.
+- `npm test -- --runInBand tests/framework/auth/AuthGate.test.tsx tests/presentation/screens/HomeScreen.test.tsx tests/presentation/screens/SettingsScreen.test.tsx` GREEN (3 suites / 15 tests).
+- `npm run verify` GREEN (lint, typecheck, coverage; 60 suites / 301 tests). Existing React Native `Animated(View)` act warnings still appear in unrelated UI coverage tests.
+
+## Team Modifications Pending Human Review
+
+- Confirm the product decision that persisted-session presence is sufficient for
+  MAZ-179. Token validation through `GET /users/me` and global 401 handling is
+  intentionally deferred to MAZ-180.
+- Review that Settings no longer routes authenticated users to `/login` for
+  account management; the visible account action for this slice is logout.
+
+## Lessons / Limitations
+
+- A framework-level gate avoids duplicated per-route checks and catches deep
+  links consistently.
+- Presentation screens stayed UI-only by receiving identity/logout props instead
+  of reading storage or navigation directly.
 
 
 <!-- AI_LOG_ENTRIES_END -->
