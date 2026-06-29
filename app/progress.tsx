@@ -14,7 +14,6 @@ export default function ProgressRoute() {
     <ProgressScreen
       viewModel={viewModel}
       userId={session?.userId ?? null}
-      accessToken={session?.accessToken ?? null}
       onBack={() => router.back()}
     />
   );

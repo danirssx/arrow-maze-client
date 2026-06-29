@@ -82,7 +82,7 @@ export default function GameRoute() {
     const { score, timeSeconds, movesCount } = facade.getLevelOutcome();
     const completedAt = new Date().toISOString();
 
-    void progressFacade.completeLevel(session.userId, session.accessToken, {
+    void progressFacade.completeLevel(session.userId, {
       levelId,
       score,
       timeSeconds,
@@ -98,7 +98,7 @@ export default function GameRoute() {
       score,
       timeSeconds,
       movesCount,
-    }, session.accessToken).catch(() => undefined);
+    }).catch(() => undefined);
   }, [facade, gameState.extractedArrowIds.length, gameState.overlay, leaderboardFacade, levelId, progressFacade, session]);
 
   useEffect(() => {

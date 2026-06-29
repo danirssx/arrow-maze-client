@@ -12,10 +12,10 @@ export class ProgressFacade {
     private readonly remote: IRemoteProgressRepository,
   ) {}
 
-  async load(userId: string, accessToken: string): Promise<LocalProgress> {
+  async load(userId: string): Promise<LocalProgress> {
     const cached = await this.local.load(userId);
     if (cached !== null) return cached;
-    const remote = await this.remote.fetchRemote(accessToken);
+    const remote = await this.remote.fetchRemote();
     await this.local.save(remote);
     return remote;
   }
@@ -24,7 +24,7 @@ export class ProgressFacade {
     await this.local.save({ ...progress, pendingSync: true });
   }
 
-  async completeLevel(userId: string, accessToken: string, completedLevel: CompletedLevelData): Promise<LocalProgress> {
+  async completeLevel(userId: string, completedLevel: CompletedLevelData): Promise<LocalProgress> {
     // The backend rejects a non-UUID levelId with 422; never persist/sync a slug fallback id.
     if (!isUuid(completedLevel.levelId)) {
       const current = await this.local.load(userId);
@@ -38,16 +38,16 @@ export class ProgressFacade {
     );
     await this.local.save({ ...updated, pendingSync: true });
 
-    await this.remote.completeLevel(accessToken, completedLevel);
-    const remote = await this.remote.fetchRemote(accessToken);
+    await this.remote.completeLevel(completedLevel);
+    const remote = await this.remote.fetchRemote();
     await this.local.save({ ...remote, pendingSync: false });
     return remote;
   }
 
-  async sync(userId: string, accessToken: string): Promise<LocalProgress> {
+  async sync(userId: string): Promise<LocalProgress> {
     const local = await this.local.load(userId);
     const levels: CompletedLevelData[] = local?.completedLevels ?? [];
-    const merged = await this.remote.sync(accessToken, levels);
+    const merged = await this.remote.sync(levels);
     await this.local.save({ ...merged, pendingSync: false });
     return merged;
   }
