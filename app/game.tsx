@@ -4,7 +4,7 @@ import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { createLeaderboardFacade } from "@/framework/config/leaderboard";
 import { createLevelSelectViewModel } from "@/framework/config/levelCatalog";
 import { createProgressFacade } from "@/framework/config/progress";
-import { useCurrentSession } from "@/framework/hooks/useCurrentSession";
+import { useAuthSession } from "@/framework/auth/AuthGate";
 import { GameScreen } from "@/presentation/screens/GameScreen";
 import { useGameSession } from "@/presentation/hooks/useGameSession";
 import { useViewModelState } from "@/presentation/hooks/useViewModelState";
@@ -33,7 +33,7 @@ export default function GameRoute() {
   const catalog = useMemo(() => createLevelSelectViewModel(), []);
   const progressFacade = useMemo(() => createProgressFacade(), []);
   const leaderboardFacade = useMemo(() => createLeaderboardFacade(), []);
-  const { session } = useCurrentSession();
+  const { loading: sessionLoading, session } = useAuthSession();
   const [definition, setDefinition] = useState<LevelDefinition | undefined>(() => catalog.getDefinition(levelId));
   const [levels, setLevels] = useState(() => catalog.getLevels());
   const [loadingLevel, setLoadingLevel] = useState(true);
@@ -72,7 +72,8 @@ export default function GameRoute() {
   }, [catalog, levelId]);
 
   useEffect(() => {
-    if (gameState.overlay !== GameOverlay.Victory || session === null || levelId.length === 0) return;
+    if (gameState.overlay !== GameOverlay.Victory || levelId.length === 0) return;
+    if (session === null) return;
 
     const victoryKey = `${session.userId}:${levelId}:${gameState.extractedArrowIds.length}`;
     if (submittedVictoryKey.current === victoryKey) return;
@@ -107,7 +108,7 @@ export default function GameRoute() {
     }
   }, [gameState.overlay]);
 
-  if (loadingLevel) {
+  if (sessionLoading || session === null || loadingLevel) {
     return (
       <ScreenContainer>
         <LoadingState />

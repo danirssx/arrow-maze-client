@@ -43,4 +43,23 @@ describe('SettingsScreen', () => {
     );
     expect(getByText('Ajustes')).toBeTruthy();
   });
+
+  it('should_show_username_and_logout_when_session_identity_is_provided', () => {
+    const onLogout = jest.fn();
+    const { getByText, getByTestId } = renderWithProviders(
+      <SettingsScreen
+        settings={defaultSettings}
+        onLanguageChange={jest.fn()}
+        onMuteChange={jest.fn()}
+        username="alice"
+        onLogout={onLogout}
+      />,
+    );
+
+    expect(getByText('alice')).toBeTruthy();
+
+    fireEvent.press(getByTestId('settings-logout'));
+
+    expect(onLogout).toHaveBeenCalledTimes(1);
+  });
 });
