@@ -8,7 +8,7 @@ function completion(overrides: {
   completedAt?: string;
 }) {
   return {
-    levelId: overrides.levelId ?? "level-1",
+    levelId: overrides.levelId ?? "550e8400-e29b-41d4-a716-446655440010",
     score: overrides.score ?? 500,
     timeSeconds: overrides.timeSeconds ?? 20,
     movesCount: overrides.movesCount ?? 5,
@@ -77,8 +77,8 @@ describe("ProgressMergePolicy", () => {
 
   it("should_append_incoming_completion_when_level_was_not_completed_before", () => {
     const policy = new ProgressMergePolicy();
-    const existing = completion({ levelId: "level-1", score: 500 });
-    const incoming = completion({ levelId: "level-2", score: 100 });
+    const existing = completion({ levelId: "550e8400-e29b-41d4-a716-446655440010", score: 500 });
+    const incoming = completion({ levelId: "550e8400-e29b-41d4-a716-446655440011", score: 100 });
 
     const merged = policy.mergeCompletion([existing], incoming);
 
@@ -87,9 +87,9 @@ describe("ProgressMergePolicy", () => {
 
   it("should_preserve_other_completed_levels_when_replacing_one_completion", () => {
     const policy = new ProgressMergePolicy();
-    const other = completion({ levelId: "level-2", score: 200 });
-    const existing = completion({ levelId: "level-1", score: 100 });
-    const incoming = completion({ levelId: "level-1", score: 500 });
+    const other = completion({ levelId: "550e8400-e29b-41d4-a716-446655440011", score: 200 });
+    const existing = completion({ levelId: "550e8400-e29b-41d4-a716-446655440010", score: 100 });
+    const incoming = completion({ levelId: "550e8400-e29b-41d4-a716-446655440010", score: 500 });
 
     const merged = policy.mergeCompletion([other, existing], incoming);
 

@@ -2,10 +2,13 @@ import { ProgressFacade } from '@/application/facades/ProgressFacade';
 import type { CompletedLevelData, IProgressRepository, LocalProgress } from '@/application/ports/IProgressRepository';
 import type { IRemoteProgressRepository } from '@/application/ports/IRemoteProgressRepository';
 
+const LEVEL_UUID_1 = '550e8400-e29b-41d4-a716-446655440010';
+const LEVEL_UUID_2 = '550e8400-e29b-41d4-a716-446655440011';
+
 const REMOTE_PROGRESS: LocalProgress = {
   progressId: 'p-remote', userId: 'user-1', version: 2,
   updatedAt: '2026-06-18T00:00:00.000Z',
-  completedLevels: [{ levelId: 'level-1', score: 200, timeSeconds: 25, movesCount: 8, completedAt: '2026-06-18T00:00:00.000Z' }],
+  completedLevels: [{ levelId: LEVEL_UUID_1, score: 200, timeSeconds: 25, movesCount: 8, completedAt: '2026-06-18T00:00:00.000Z' }],
   pendingSync: false,
 };
 
@@ -104,7 +107,7 @@ describe('ProgressFacade', () => {
 
   it('should_complete_level_remotely_and_cache_latest_progress', async () => {
     const completedLevel: CompletedLevelData = {
-      levelId: 'level-2',
+      levelId: LEVEL_UUID_2,
       score: 900,
       timeSeconds: 10,
       movesCount: 2,
@@ -119,7 +122,7 @@ describe('ProgressFacade', () => {
 
   it('should_keep_existing_best_completion_when_saving_pending_local_completion', async () => {
     const existingBest: CompletedLevelData = {
-      levelId: 'level-1',
+      levelId: LEVEL_UUID_1,
       score: 500,
       timeSeconds: 20,
       movesCount: 8,
@@ -129,7 +132,7 @@ describe('ProgressFacade', () => {
     local.saved.length = 0;
 
     await facade.completeLevel('user-1', 'token-placeholder', {
-      levelId: 'level-1',
+      levelId: LEVEL_UUID_1,
       score: 100,
       timeSeconds: 10,
       movesCount: 2,
@@ -142,7 +145,7 @@ describe('ProgressFacade', () => {
 
   it('should_create_pending_local_progress_when_completing_without_cached_progress', async () => {
     const completedLevel: CompletedLevelData = {
-      levelId: 'level-1',
+      levelId: LEVEL_UUID_1,
       score: 500,
       timeSeconds: 10,
       movesCount: 2,
@@ -157,6 +160,36 @@ describe('ProgressFacade', () => {
       pendingSync: true,
       completedLevels: [completedLevel],
     });
+  });
+
+  it('should_not_write_progress_when_level_id_is_not_a_uuid', async () => {
+    await facade.completeLevel('user-1', 'token-placeholder', {
+      levelId: 'manual-001-first-knot',
+      score: 500,
+      timeSeconds: 10,
+      movesCount: 2,
+      completedAt: '2026-06-18T00:00:00.000Z',
+    });
+
+    expect(local.saved).toHaveLength(0);
+    expect(remote.completed).toBeNull();
+  });
+
+  it('should_return_existing_progress_without_writing_when_level_id_is_not_a_uuid', async () => {
+    await local.save(LOCAL_PROGRESS);
+    local.saved.length = 0;
+
+    const result = await facade.completeLevel('user-1', 'token-placeholder', {
+      levelId: 'manual-001-first-knot',
+      score: 500,
+      timeSeconds: 10,
+      movesCount: 2,
+      completedAt: '2026-06-18T00:00:00.000Z',
+    });
+
+    expect(result.progressId).toBe('p-local');
+    expect(local.saved).toHaveLength(0);
+    expect(remote.completed).toBeNull();
   });
 
   it('should_report_pending_sync_true_when_flagged', async () => {
