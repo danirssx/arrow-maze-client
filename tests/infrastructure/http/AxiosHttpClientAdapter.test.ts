@@ -13,6 +13,7 @@ describe('AxiosHttpClientAdapter', () => {
     post: jest.fn(),
     put: jest.fn(),
     delete: jest.fn(),
+    interceptors: { response: { use: jest.fn() } },
   };
 
   beforeEach(() => {
@@ -75,6 +76,84 @@ describe('AxiosHttpClientAdapter', () => {
 
       // Act & Assert
       await expect(adapter.get('/test')).rejects.toMatchObject({ code: 'NETWORK_ERROR' });
+    });
+  });
+
+  describe('response interceptor (401 handling)', () => {
+    type RejectHandler = (error: unknown) => Promise<never>;
+
+    const authed401 = { response: { status: 401 }, config: { headers: { Authorization: 'Bearer x' } } };
+    const anon401 = { response: { status: 401 }, config: { headers: {} } };
+    const authed500 = { response: { status: 500 }, config: { headers: { Authorization: 'Bearer x' } } };
+
+    function rejectHandlerFor(onUnauthorized: () => void): RejectHandler {
+      new AxiosHttpClientAdapter('https://api.example.com', onUnauthorized);
+      return mockAxiosInstance.interceptors.response.use.mock.calls[0][1] as RejectHandler;
+    }
+
+    it('should_call_onUnauthorized_and_rethrow_when_an_authed_request_returns_401', async () => {
+      const onUnauthorized = jest.fn();
+      const reject = rejectHandlerFor(onUnauthorized);
+
+      await expect(reject(authed401)).rejects.toBe(authed401);
+      expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    });
+
+    it('should_not_call_onUnauthorized_when_the_request_had_no_authorization_header', async () => {
+      const onUnauthorized = jest.fn();
+      const reject = rejectHandlerFor(onUnauthorized);
+
+      await expect(reject(anon401)).rejects.toBe(anon401);
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('should_not_call_onUnauthorized_on_a_non_401_error', async () => {
+      const onUnauthorized = jest.fn();
+      const reject = rejectHandlerFor(onUnauthorized);
+
+      await expect(reject(authed500)).rejects.toBe(authed500);
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('should_call_onUnauthorized_when_a_lowercase_authorization_header_was_present', async () => {
+      const onUnauthorized = jest.fn();
+      const reject = rejectHandlerFor(onUnauthorized);
+      const lowercase401 = { response: { status: 401 }, config: { headers: { authorization: 'Bearer x' } } };
+
+      await expect(reject(lowercase401)).rejects.toBe(lowercase401);
+      expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    });
+
+    it('should_not_call_onUnauthorized_when_the_request_config_has_no_headers', async () => {
+      const onUnauthorized = jest.fn();
+      const reject = rejectHandlerFor(onUnauthorized);
+      const noHeaders401 = { response: { status: 401 }, config: {} };
+
+      await expect(reject(noHeaders401)).rejects.toBe(noHeaders401);
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('should_not_call_onUnauthorized_on_a_network_error_without_a_response', async () => {
+      const onUnauthorized = jest.fn();
+      const reject = rejectHandlerFor(onUnauthorized);
+      const networkError = { config: { headers: { Authorization: 'Bearer x' } } };
+
+      await expect(reject(networkError)).rejects.toBe(networkError);
+      expect(onUnauthorized).not.toHaveBeenCalled();
+    });
+
+    it('should_pass_through_successful_responses_unchanged', () => {
+      new AxiosHttpClientAdapter('https://api.example.com', jest.fn());
+      const onFulfilled = mockAxiosInstance.interceptors.response.use.mock.calls[0][0] as (r: unknown) => unknown;
+      const response = { data: 1, status: 200 };
+
+      expect(onFulfilled(response)).toBe(response);
+    });
+
+    it('should_not_register_a_response_interceptor_when_no_handler_is_given', () => {
+      new AxiosHttpClientAdapter('https://api.example.com');
+
+      expect(mockAxiosInstance.interceptors.response.use).not.toHaveBeenCalled();
     });
   });
 

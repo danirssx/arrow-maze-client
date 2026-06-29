@@ -3174,19 +3174,76 @@ local Linear GraphQL workflow without exposing secrets.
 
 ---
 
-# AI Usage Log: MAZ-185 — Robust victory persistence and progress drain
+# AI Usage Log: MAZ-180 — Handle 401: clear session and redirect to login
 
 ## Task / Problem
 
-Implement `MAZ-185` on the mobile client: retain failed victory progress writes, add an application-level drain operation for pending progress, and trigger that drain when the app starts, returns to foreground, or reconnects. The ticket builds on the auth/session work and UUID level-id guard from `MAZ-179` and `MAZ-183`; backend changes were reviewed as unnecessary for this slice.
+There was no 401 handling: `AxiosHttpClientAdapter` mapped a 401 to `HttpError('UNAUTHORIZED')` (a generic
+error) and nothing cleared the session or redirected. An expired/invalid token left a stale session in
+storage while authed calls silently failed and the user still "appeared" logged in. This slice makes a
+401 on an authed request clear the session and route the user to `/login`.
 
 ## Tool and Model
 
-Codex / GPT-5.
+Claude Opus 4.8 (1M context) via Claude Code CLI.
 
 ## Prompt Used
 
-User requested implementing `MAZ-185` while following both repository `AGENTS.md` files, root `MEMORY.md`, `Linear_MCP_Guideline.md`, the approved worktree flow, AI usage logging, checks, commit/push/PR, Linear update, and a context review of affected tickets. The existing approved spec and Gherkin contract were used from `specs/mobile-progress-sync-MAZ-185.spec.md` and `specs/mobile-progress-sync-MAZ-185.feature`.
+User requested starting MAZ-180 following the team workflow (review both AGENTS.md, new worktree,
+root MEMORY.md + Linear_MCP_Guideline.md, register AI usage, run all checks, update MEMORY/AGENTS,
+commit/push/PR/Linear). The `.feature` (@s1..@s6) and the 4 decisions (notify-don't-navigate via an
+Observer + the AuthGate; fire only on authed 401s and re-reject; pure Observer module; base on develop)
+were human-approved before TDD.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Followed AGENTS §0.2; read the AuthGate (MAZ-179) + adapter + session wiring and distilled the CA spec. | `specs/handle-401-logout-MAZ-180.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored 6 `@s` scenarios (interceptor fires/ignores/re-rejects, Observer notify/unsubscribe, AuthGate clear+redirect); single human gate. | `specs/handle-401-logout-MAZ-180.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Red→Green→Refactor in batches: Observer → adapter response interceptor → httpClient wiring + AuthGate subscription. | tests, src, this entry |
+| Judge (`.agents/judge.md`) | Referenced | Self-review vs `docs/reglas_clean_arch.md`: infra depends on an injected callback (not session/navigation); the AuthGate owns the session lifecycle; no imperative nav (no redirect bounce); domain/application untouched; `@s → test` complete. Verdict: PASS. | this entry, spec CA block |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Stryker scoped to the new logic. Killed all 5 new-logic survivors in the adapter (success pass-through, optional-chain network path, undefined-headers guard, lowercase `authorization` branch). `sessionInvalidation.ts` 100%. | `reports/mutation/index.html` |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+|----------|------|------|
+| @s1 — authed 401 → onUnauthorized fired | `should_call_onUnauthorized_and_rethrow_when_an_authed_request_returns_401` | `tests/infrastructure/http/AxiosHttpClientAdapter.test.ts` |
+| @s2 — 401 without Authorization → not fired | `should_not_call_onUnauthorized_when_the_request_had_no_authorization_header` | `…/AxiosHttpClientAdapter.test.ts` |
+| @s3 — non-401 → not fired | `should_not_call_onUnauthorized_on_a_non_401_error` | `…/AxiosHttpClientAdapter.test.ts` |
+| @s4 — interceptor re-rejects | `…rejects.toBe(error)` assertion in every interceptor test | `…/AxiosHttpClientAdapter.test.ts` |
+| @s5 — Observer notify/unsubscribe | `should_call_subscribed_listener_when_notified` (+ unsubscribe / all-subscribers / no-subscribers) | `tests/framework/auth/sessionInvalidation.test.ts` |
+| @s6 — AuthGate clears + redirects on invalidation | `should_clear_session_and_redirect_to_login_when_session_is_invalidated` | `tests/framework/auth/AuthGate.test.tsx` |
+
+## Result Obtained
+
+- **New** `src/framework/auth/sessionInvalidation.ts` — a pure, dependency-free Observer channel (`onSessionInvalidated`/`notifySessionInvalidated`).
+- `src/infrastructure/http/AxiosHttpClientAdapter.ts` — new `UnauthorizedHandler` type + a response interceptor that, on a 401 whose request carried an `Authorization` header (capital or lowercase), calls `onUnauthorized` then re-rejects; anonymous 401s and non-401s are ignored. Replaced the dead `defaultHeaders` ctor param with `onUnauthorized`.
+- `src/framework/config/httpClient.ts` — wires `onUnauthorized = notifySessionInvalidated`.
+- `src/framework/auth/AuthGate.tsx` — subscribes to `onSessionInvalidated` and reacts via its existing `clearSession()` (clears storage + React state), which makes its existing `<Redirect href="/login" />` fire reactively. No imperative navigation.
+
+## Verification
+
+- `npm run verify` — lint 0, typecheck 0, **66 suites / 349 tests** passing.
+- Scoped Stryker on the new logic: `sessionInvalidation.ts` **100%**; the adapter's new interceptor + `hadAuthorization` are fully killed (5 edge-case mutants killed: success pass-through, `error.response?` optional chain, undefined-headers guard, lowercase `authorization`).
+  - The adapter's overall file score is dragged by **pre-existing** `put`/`delete`/`toAxiosConfig`/`mapError` gaps that this ticket did not touch; all of these framework/infra files are **outside the default Stryker `mutate` scope** (domain+application).
+
+## Team Modifications Pending Human Review
+
+1. **Notify-don't-navigate:** the 401 handler emits a session-invalidation event; the AuthGate (the session owner) clears + redirects. This avoids the redirect bounce that an imperative `router.replace('/login')` would cause (the gate's React session state stays non-null on the `/login` route → `/login → / → /login`).
+2. **Base = develop** (not stacked on MAZ-181). MAZ-181 (unmerged) also extends the adapter constructor; the eventual merge combines the two optional params into `(baseURL, tokenProvider?, onUnauthorized?)` — mechanical.
+3. **No refresh yet** (MAZ-175 deferred): a 401 always forces re-login. When MAZ-175 ships, the interceptor can refresh-and-retry before notifying.
+
+## Lessons / Limitations
+
+- Infrastructure must not import the session/storage layer or navigation; an injected callback + a pure Observer keeps the dependency rule intact and lets the AuthGate own the clear+redirect.
+- Reacting through the gate's React session state (not imperative nav) is what prevents the redirect bounce — the gate only redirects to `/login` when its in-memory `session` is null.
+- Stryker surfaced real edge cases on the `hadAuthorization`/optional-chain logic (lowercase header, undefined headers, missing `response`); added targeted tests to kill them.
+
+
+---
+
 # AI Usage Log: MAZ-184 Leaderboard empty state and replay submit UX planning
 
 ## Task / Problem
@@ -3210,55 +3267,6 @@ was read through the local GraphQL script without exposing secrets.
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
-| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used the approved spec decisions as the source of truth; no separate agent session was run in this implementation turn. | `specs/mobile-progress-sync-MAZ-185.spec.md` |
-| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Followed the seven approved `@s` scenarios as the executable contract; no new scenario was invented. | `specs/mobile-progress-sync-MAZ-185.feature` |
-| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Ran Red-Green cycles for application drain/failure retention and framework reconnect/foreground triggers, then refactored into application facade + framework coordinator/hook. | `tests/application/facades/ProgressFacade.test.ts`, `tests/framework/progress/*.test.*` |
-| Judge (`.agents/judge.md`) | Referenced | Reviewed layer boundaries: drain decision stays in application, NetInfo/AppState stay in framework wiring, and UI only mounts/logs. Verdict: PASS pending human review. | this entry, `rg "@react-native-community/netinfo|AppState"` |
-| Mutation Tester (`.agents/mutation.md`) | Referenced | Ran Stryker scoped to the changed application facade after the full repo mutation run projected ~40 minutes and was cancelled at 3%. Scoped score: 95.24%. | `reports/mutation/index.html`, command output |
-
-## Scenario Coverage (@s ↔ test)
-
-| Scenario | Test | File |
-| --- | --- | --- |
-| @s1 — Draining sends pending progress to the backend | `should_drain_pending_progress_by_syncing_when_pending` | `tests/application/facades/ProgressFacade.test.ts` |
-| @s2 — Draining is a no-op when nothing is pending | `should_not_drain_when_no_pending_progress` | `tests/application/facades/ProgressFacade.test.ts` |
-| @s3 — A failed remote completion is retained, not dropped | `should_retain_pending_local_completion_when_remote_completion_fails` | `tests/application/facades/ProgressFacade.test.ts` |
-| @s4 — Retained pending progress is retried on the next drain | `should_retry_retained_completion_on_next_drain_after_remote_failure` | `tests/application/facades/ProgressFacade.test.ts` |
-| @s5 — The sync coordinator drains immediately on start | `should_drain_once_immediately_when_started` | `tests/framework/progress/startProgressSync.test.ts` |
-| @s6 — The sync coordinator drains on foreground/reconnect and stops after unsubscribe | `should_drain_on_foreground_and_reconnect_until_unsubscribed` | `tests/framework/progress/startProgressSync.test.ts` |
-| @s7 — The hook drains for a signed-in session when connectivity returns | `should_drain_for_signed_in_session_when_connectivity_returns` | `tests/framework/progress/useProgressSync.test.tsx` |
-| @s7 (resume) — The hook drains for a signed-in session on app foreground | `should_drain_for_signed_in_session_when_app_returns_to_foreground` | `tests/framework/progress/useProgressSync.test.tsx` |
-| edge — The hook stays idle while signed out | `should_not_drain_when_signed_out` | `tests/framework/progress/useProgressSync.test.tsx` |
-
-## Result Obtained
-
-New behavior:
-
-- `ProgressFacade.drainPendingProgress(userId, accessToken)` checks local `pendingSync`; it calls existing `sync()` only when needed and reports whether a drain ran.
-- `startProgressSync()` drains immediately, subscribes to foreground and reconnect triggers, and unsubscribes cleanly.
-- `useProgressSync()` wires signed-in sessions to `AppState` and `@react-native-community/netinfo`, logging drain failures while leaving pending progress retained.
-- Root layout mounts the sync hook under `AuthGate`, so it only runs with session context.
-- Victory progress and leaderboard writes in `app/game.tsx` now log failures instead of silently swallowing them.
-- Added NetInfo dependency plus Jest manual mock.
-
-## Verification
-
-- `npm test -- --runInBand tests/application/facades/ProgressFacade.test.ts` — 17 tests passed.
-- `npm test -- --runInBand tests/framework/progress/startProgressSync.test.ts tests/framework/progress/useProgressSync.test.tsx` — 3 tests passed.
-- `npm run verify` — lint, typecheck, and coverage passed; 65 suites / 334 tests passed. Existing React Native Animated `act(...)` warnings were emitted by presentation tests.
-- `npm run mutation -- --mutate src/application/facades/ProgressFacade.ts` — 95.24% mutation score, above the 80 break threshold.
-
-## Team Modifications Pending Human Review
-
-- Review that mounting `useProgressSync()` under `AuthGate` is the intended app-wide drain point.
-- Review the logging-only behavior for victory write failures; no blocking UI was added because replay/UX is out of scope for `MAZ-185`.
-- Full `npm run mutation` was intentionally stopped after ~3% because the repo-wide run projected ~40 minutes. The scoped application mutation passed.
-
-## Lessons / Limitations
-
-- The retained-completion tests must use UUID level ids; otherwise the existing `MAZ-183` guard returns before exercising remote failure behavior.
-- The hook test should not partially mock all of `react-native`; NetInfo can be isolated with a manual mock while React Native's Jest environment stays intact.
-- NetInfo/AppState behavior is verified with Jest mocks, not on a real device.
 | Spec Partner (`.agents/spec-partner.md`) | Referenced | Read and applied the role constraints to distill the Linear issue and code context into a local spec. No separate agent session was run. | `specs/leaderboard-replay-ux-MAZ-184.spec.md` |
 | Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Read and applied the Gherkin/planning rules to create tagged executable scenarios. No separate planner session was run. | `specs/leaderboard-replay-ux-MAZ-184.feature` |
 | TDD Implementer (`.agents/tdd-implementer.md`) | Not used | MAZ-184 is still in Linear Backlog and the executable contract has not been human-approved, so TDD is intentionally blocked. | N/A |
@@ -3314,6 +3322,77 @@ implementation must map:
   "already recorded"; the spec intentionally requires generic success copy.
 - MAZ-184 should not hide real submit failures, but it also should not couple
   presentation directly to concrete HTTP/adapter errors.
+
+
+---
+
+# AI Usage Log: MAZ-185 — Robust victory persistence and progress drain
+
+## Task / Problem
+
+Implement `MAZ-185` on the mobile client: retain failed victory progress writes, add an application-level drain operation for pending progress, and trigger that drain when the app starts, returns to foreground, or reconnects. The ticket builds on the auth/session work and UUID level-id guard from `MAZ-179` and `MAZ-183`; backend changes were reviewed as unnecessary for this slice.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+User requested implementing `MAZ-185` while following both repository `AGENTS.md` files, root `MEMORY.md`, `Linear_MCP_Guideline.md`, the approved worktree flow, AI usage logging, checks, commit/push/PR, Linear update, and a context review of affected tickets. The existing approved spec and Gherkin contract were used from `specs/mobile-progress-sync-MAZ-185.spec.md` and `specs/mobile-progress-sync-MAZ-185.feature`.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used the approved spec decisions as the source of truth; no separate agent session was run in this implementation turn. | `specs/mobile-progress-sync-MAZ-185.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Followed the seven approved `@s` scenarios as the executable contract; no new scenario was invented. | `specs/mobile-progress-sync-MAZ-185.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Ran Red-Green cycles for application drain/failure retention and framework reconnect/foreground triggers, then refactored into application facade + framework coordinator/hook. | `tests/application/facades/ProgressFacade.test.ts`, `tests/framework/progress/*.test.*` |
+| Judge (`.agents/judge.md`) | Referenced | Reviewed layer boundaries: drain decision stays in application, NetInfo/AppState stay in framework wiring, and UI only mounts/logs. Verdict: PASS pending human review. | this entry, `rg "@react-native-community/netinfo|AppState"` |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Ran Stryker scoped to the changed application facade after the full repo mutation run projected ~40 minutes and was cancelled at 3%. Scoped score: 95.24%. | `reports/mutation/index.html`, command output |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+| --- | --- | --- |
+| @s1 — Draining sends pending progress to the backend | `should_drain_pending_progress_by_syncing_when_pending` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s2 — Draining is a no-op when nothing is pending | `should_not_drain_when_no_pending_progress` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s3 — A failed remote completion is retained, not dropped | `should_retain_pending_local_completion_when_remote_completion_fails` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s4 — Retained pending progress is retried on the next drain | `should_retry_retained_completion_on_next_drain_after_remote_failure` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s5 — The sync coordinator drains immediately on start | `should_drain_once_immediately_when_started` | `tests/framework/progress/startProgressSync.test.ts` |
+| @s6 — The sync coordinator drains on foreground/reconnect and stops after unsubscribe | `should_drain_on_foreground_and_reconnect_until_unsubscribed` | `tests/framework/progress/startProgressSync.test.ts` |
+| @s7 — The hook drains for a signed-in session when connectivity returns | `should_drain_for_signed_in_session_when_connectivity_returns` | `tests/framework/progress/useProgressSync.test.tsx` |
+| @s7 (resume) — The hook drains for a signed-in session on app foreground | `should_drain_for_signed_in_session_when_app_returns_to_foreground` | `tests/framework/progress/useProgressSync.test.tsx` |
+| edge — The hook stays idle while signed out | `should_not_drain_when_signed_out` | `tests/framework/progress/useProgressSync.test.tsx` |
+
+## Result Obtained
+
+New behavior:
+
+- `ProgressFacade.drainPendingProgress(userId, accessToken)` checks local `pendingSync`; it calls existing `sync()` only when needed and reports whether a drain ran.
+- `startProgressSync()` drains immediately, subscribes to foreground and reconnect triggers, and unsubscribes cleanly.
+- `useProgressSync()` wires signed-in sessions to `AppState` and `@react-native-community/netinfo`, logging drain failures while leaving pending progress retained.
+- Root layout mounts the sync hook under `AuthGate`, so it only runs with session context.
+- Victory progress and leaderboard writes in `app/game.tsx` now log failures instead of silently swallowing them.
+- Added NetInfo dependency plus Jest manual mock.
+
+## Verification
+
+- `npm test -- --runInBand tests/application/facades/ProgressFacade.test.ts` — 17 tests passed.
+- `npm test -- --runInBand tests/framework/progress/startProgressSync.test.ts tests/framework/progress/useProgressSync.test.tsx` — 3 tests passed.
+- `npm run verify` — lint, typecheck, and coverage passed; 65 suites / 334 tests passed. Existing React Native Animated `act(...)` warnings were emitted by presentation tests.
+- `npm run mutation -- --mutate src/application/facades/ProgressFacade.ts` — 95.24% mutation score, above the 80 break threshold.
+
+## Team Modifications Pending Human Review
+
+- Review that mounting `useProgressSync()` under `AuthGate` is the intended app-wide drain point.
+- Review the logging-only behavior for victory write failures; no blocking UI was added because replay/UX is out of scope for `MAZ-185`.
+- Full `npm run mutation` was intentionally stopped after ~3% because the repo-wide run projected ~40 minutes. The scoped application mutation passed.
+
+## Lessons / Limitations
+
+- The retained-completion tests must use UUID level ids; otherwise the existing `MAZ-183` guard returns before exercising remote failure behavior.
+- The hook test should not partially mock all of `react-native`; NetInfo can be isolated with a manual mock while React Native's Jest environment stays intact.
+- NetInfo/AppState behavior is verified with Jest mocks, not on a real device.
 
 
 <!-- AI_LOG_ENTRIES_END -->

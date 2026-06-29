@@ -1,15 +1,36 @@
 // Pattern: Adapter
-import axios, { type AxiosInstance, type AxiosRequestConfig, isAxiosError } from 'axios';
+import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, isAxiosError } from 'axios';
 import type { IHttpClient, HttpRequestConfig, HttpResponse } from '@/application/ports/IHttpClient';
 import { HttpError } from './HttpError';
+
+/** Called when an authed request is rejected with 401, so the session can be invalidated. */
+export type UnauthorizedHandler = () => void | Promise<void>;
 
 export class AxiosHttpClientAdapter implements IHttpClient {
   private readonly client: AxiosInstance;
 
-  constructor(baseURL: string, defaultHeaders?: Record<string, string>) {
-    const createConfig: AxiosRequestConfig = { baseURL };
-    if (defaultHeaders !== undefined) createConfig.headers = defaultHeaders;
-    this.client = axios.create(createConfig);
+  constructor(baseURL: string, onUnauthorized?: UnauthorizedHandler) {
+    this.client = axios.create({ baseURL });
+    if (onUnauthorized !== undefined) {
+      // On a 401 for a request that carried an Authorization header, signal that
+      // the session must be invalidated, then re-reject so callers still receive
+      // the mapped HttpError. Anonymous 401s (login, public GETs) are ignored.
+      this.client.interceptors.response.use(
+        (response) => response,
+        async (error: AxiosError) => {
+          if (error.response?.status === 401 && AxiosHttpClientAdapter.hadAuthorization(error.config)) {
+            await onUnauthorized();
+          }
+          return Promise.reject(error);
+        },
+      );
+    }
+  }
+
+  private static hadAuthorization(config: AxiosError['config']): boolean {
+    const headers = config?.headers as Record<string, unknown> | undefined;
+    if (headers === undefined) return false;
+    return headers['Authorization'] !== undefined || headers['authorization'] !== undefined;
   }
 
   async get<T = unknown>(url: string, config?: HttpRequestConfig): Promise<HttpResponse<T>> {
