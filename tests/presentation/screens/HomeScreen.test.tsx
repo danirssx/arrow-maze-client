@@ -36,4 +36,17 @@ describe("HomeScreen", () => {
 
     expect(onSettings).toHaveBeenCalledTimes(1);
   });
+
+  it("should_show_username_and_logout_when_session_identity_is_provided", () => {
+    const onLogout = jest.fn();
+    const { getByText, getByTestId } = renderWithProviders(
+      <HomeScreen {...handlers} username="alice" onLogout={onLogout} />,
+    );
+
+    expect(getByText("alice")).toBeTruthy();
+
+    fireEvent.press(getByTestId("home-logout"));
+
+    expect(onLogout).toHaveBeenCalledTimes(1);
+  });
 });
