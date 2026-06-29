@@ -32,7 +32,7 @@ describe("ProgressViewModel", () => {
   it("should_expose_loaded_when_levels_completed", async () => {
     const viewModel = new ProgressViewModel(facadeReturning(progressWith(2)));
 
-    await viewModel.load("user-1", "token");
+    await viewModel.load("user-1");
 
     expect(viewModel.getState().status).toBe(AsyncStatus.Loaded);
     expect(viewModel.getState().data?.completedLevels).toHaveLength(2);
@@ -41,7 +41,7 @@ describe("ProgressViewModel", () => {
   it("should_expose_empty_when_no_levels_completed", async () => {
     const viewModel = new ProgressViewModel(facadeReturning(progressWith(0)));
 
-    await viewModel.load("user-1", "token");
+    await viewModel.load("user-1");
 
     expect(viewModel.getState().status).toBe(AsyncStatus.Empty);
   });
@@ -49,7 +49,7 @@ describe("ProgressViewModel", () => {
   it("should_expose_error_when_facade_fails", async () => {
     const viewModel = new ProgressViewModel(facadeReturning(new Error("storage")));
 
-    await viewModel.load("user-1", "token");
+    await viewModel.load("user-1");
 
     expect(viewModel.getState().status).toBe(AsyncStatus.Error);
   });

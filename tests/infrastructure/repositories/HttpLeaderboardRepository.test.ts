@@ -56,13 +56,13 @@ describe('HttpLeaderboardRepository', () => {
     expect(http.lastGetConfig).toBeUndefined();
   });
 
-  it('should_submit_score_with_authorization_header_and_without_user_id_body', async () => {
+  it('should_submit_score_without_a_hand_rolled_authorization_header', async () => {
     http.postResponse = { status: 'success', data: null };
     await expect(repo.submitScore({
       leaderboardId: 'lb-1', entryId: 'e-2',
       levelId: '550e8400-e29b-41d4-a716-446655440010', usernameSnapshot: 'player',
       score: 800, timeSeconds: 60, movesCount: 20,
-    }, 'jwt-token-1')).resolves.not.toThrow();
+    })).resolves.not.toThrow();
 
     expect(http.lastPostUrl).toBe('/leaderboard/scores');
     expect(http.lastPostBody).toEqual({
@@ -75,8 +75,7 @@ describe('HttpLeaderboardRepository', () => {
       movesCount: 20,
     });
     expect(http.lastPostBody).not.toHaveProperty('userId');
-    expect(http.lastPostConfig).toEqual({
-      headers: { Authorization: 'Bearer jwt-token-1' },
-    });
+    // The Bearer token is now attached centrally by the http client interceptor.
+    expect(http.lastPostConfig).toBeUndefined();
   });
 });

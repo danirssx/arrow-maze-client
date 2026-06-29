@@ -11,3 +11,16 @@
  */
 jest.mock("react-native-svg");
 jest.mock("react-native-reanimated");
+
+// AsyncStorage is a native module; route it to an in-memory mock so any module
+// that transitively imports the session/storage layer (e.g. the http client's
+// token provider) can be unit-tested without the native binding.
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn(() => Promise.resolve(null)),
+    setItem: jest.fn(() => Promise.resolve()),
+    removeItem: jest.fn(() => Promise.resolve()),
+    clear: jest.fn(() => Promise.resolve()),
+  },
+}));

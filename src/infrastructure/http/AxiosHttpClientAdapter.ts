@@ -1,15 +1,27 @@
 // Pattern: Adapter
-import axios, { type AxiosInstance, type AxiosRequestConfig, isAxiosError } from 'axios';
+import axios, { type AxiosInstance, type AxiosRequestConfig, type InternalAxiosRequestConfig, isAxiosError } from 'axios';
 import type { IHttpClient, HttpRequestConfig, HttpResponse } from '@/application/ports/IHttpClient';
 import { HttpError } from './HttpError';
+
+/** Supplies the current access token (or null) for the auth request interceptor. */
+export type AuthTokenProvider = () => Promise<string | null>;
 
 export class AxiosHttpClientAdapter implements IHttpClient {
   private readonly client: AxiosInstance;
 
-  constructor(baseURL: string, defaultHeaders?: Record<string, string>) {
-    const createConfig: AxiosRequestConfig = { baseURL };
-    if (defaultHeaders !== undefined) createConfig.headers = defaultHeaders;
-    this.client = axios.create(createConfig);
+  constructor(baseURL: string, tokenProvider?: AuthTokenProvider) {
+    this.client = axios.create({ baseURL });
+    if (tokenProvider !== undefined) {
+      // Attach the session Bearer token to every request so repositories and
+      // screens never hand-roll the Authorization header.
+      this.client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+        const token = await tokenProvider();
+        if (token !== null && token !== '' && config.headers['Authorization'] === undefined) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+      });
+    }
   }
 
   async get<T = unknown>(url: string, config?: HttpRequestConfig): Promise<HttpResponse<T>> {

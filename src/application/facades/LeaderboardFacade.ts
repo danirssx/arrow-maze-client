@@ -9,9 +9,9 @@ export class LeaderboardFacade {
     return this.repository.getTopScores(levelId);
   }
 
-  async submitScore(input: SubmitScoreInput, accessToken: string): Promise<void> {
+  async submitScore(input: SubmitScoreInput): Promise<void> {
     // The backend rejects a non-UUID levelId with 422; never POST a slug fallback id.
     if (!isUuid(input.levelId)) return;
-    return this.repository.submitScore(input, accessToken);
+    return this.repository.submitScore(input);
   }
 }
