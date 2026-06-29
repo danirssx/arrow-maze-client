@@ -3174,19 +3174,6 @@ local Linear GraphQL workflow without exposing secrets.
 
 ---
 
-# AI Usage Log: MAZ-185 — Robust victory persistence and progress drain
-
-## Task / Problem
-
-Implement `MAZ-185` on the mobile client: retain failed victory progress writes, add an application-level drain operation for pending progress, and trigger that drain when the app starts, returns to foreground, or reconnects. The ticket builds on the auth/session work and UUID level-id guard from `MAZ-179` and `MAZ-183`; backend changes were reviewed as unnecessary for this slice.
-
-## Tool and Model
-
-Codex / GPT-5.
-
-## Prompt Used
-
-User requested implementing `MAZ-185` while following both repository `AGENTS.md` files, root `MEMORY.md`, `Linear_MCP_Guideline.md`, the approved worktree flow, AI usage logging, checks, commit/push/PR, Linear update, and a context review of affected tickets. The existing approved spec and Gherkin contract were used from `specs/mobile-progress-sync-MAZ-185.spec.md` and `specs/mobile-progress-sync-MAZ-185.feature`.
 # AI Usage Log: MAZ-184 Leaderboard empty state and replay submit UX planning
 
 ## Task / Problem
@@ -3210,55 +3197,6 @@ was read through the local GraphQL script without exposing secrets.
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
-| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used the approved spec decisions as the source of truth; no separate agent session was run in this implementation turn. | `specs/mobile-progress-sync-MAZ-185.spec.md` |
-| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Followed the seven approved `@s` scenarios as the executable contract; no new scenario was invented. | `specs/mobile-progress-sync-MAZ-185.feature` |
-| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Ran Red-Green cycles for application drain/failure retention and framework reconnect/foreground triggers, then refactored into application facade + framework coordinator/hook. | `tests/application/facades/ProgressFacade.test.ts`, `tests/framework/progress/*.test.*` |
-| Judge (`.agents/judge.md`) | Referenced | Reviewed layer boundaries: drain decision stays in application, NetInfo/AppState stay in framework wiring, and UI only mounts/logs. Verdict: PASS pending human review. | this entry, `rg "@react-native-community/netinfo|AppState"` |
-| Mutation Tester (`.agents/mutation.md`) | Referenced | Ran Stryker scoped to the changed application facade after the full repo mutation run projected ~40 minutes and was cancelled at 3%. Scoped score: 95.24%. | `reports/mutation/index.html`, command output |
-
-## Scenario Coverage (@s ↔ test)
-
-| Scenario | Test | File |
-| --- | --- | --- |
-| @s1 — Draining sends pending progress to the backend | `should_drain_pending_progress_by_syncing_when_pending` | `tests/application/facades/ProgressFacade.test.ts` |
-| @s2 — Draining is a no-op when nothing is pending | `should_not_drain_when_no_pending_progress` | `tests/application/facades/ProgressFacade.test.ts` |
-| @s3 — A failed remote completion is retained, not dropped | `should_retain_pending_local_completion_when_remote_completion_fails` | `tests/application/facades/ProgressFacade.test.ts` |
-| @s4 — Retained pending progress is retried on the next drain | `should_retry_retained_completion_on_next_drain_after_remote_failure` | `tests/application/facades/ProgressFacade.test.ts` |
-| @s5 — The sync coordinator drains immediately on start | `should_drain_once_immediately_when_started` | `tests/framework/progress/startProgressSync.test.ts` |
-| @s6 — The sync coordinator drains on foreground/reconnect and stops after unsubscribe | `should_drain_on_foreground_and_reconnect_until_unsubscribed` | `tests/framework/progress/startProgressSync.test.ts` |
-| @s7 — The hook drains for a signed-in session when connectivity returns | `should_drain_for_signed_in_session_when_connectivity_returns` | `tests/framework/progress/useProgressSync.test.tsx` |
-| @s7 (resume) — The hook drains for a signed-in session on app foreground | `should_drain_for_signed_in_session_when_app_returns_to_foreground` | `tests/framework/progress/useProgressSync.test.tsx` |
-| edge — The hook stays idle while signed out | `should_not_drain_when_signed_out` | `tests/framework/progress/useProgressSync.test.tsx` |
-
-## Result Obtained
-
-New behavior:
-
-- `ProgressFacade.drainPendingProgress(userId, accessToken)` checks local `pendingSync`; it calls existing `sync()` only when needed and reports whether a drain ran.
-- `startProgressSync()` drains immediately, subscribes to foreground and reconnect triggers, and unsubscribes cleanly.
-- `useProgressSync()` wires signed-in sessions to `AppState` and `@react-native-community/netinfo`, logging drain failures while leaving pending progress retained.
-- Root layout mounts the sync hook under `AuthGate`, so it only runs with session context.
-- Victory progress and leaderboard writes in `app/game.tsx` now log failures instead of silently swallowing them.
-- Added NetInfo dependency plus Jest manual mock.
-
-## Verification
-
-- `npm test -- --runInBand tests/application/facades/ProgressFacade.test.ts` — 17 tests passed.
-- `npm test -- --runInBand tests/framework/progress/startProgressSync.test.ts tests/framework/progress/useProgressSync.test.tsx` — 3 tests passed.
-- `npm run verify` — lint, typecheck, and coverage passed; 65 suites / 334 tests passed. Existing React Native Animated `act(...)` warnings were emitted by presentation tests.
-- `npm run mutation -- --mutate src/application/facades/ProgressFacade.ts` — 95.24% mutation score, above the 80 break threshold.
-
-## Team Modifications Pending Human Review
-
-- Review that mounting `useProgressSync()` under `AuthGate` is the intended app-wide drain point.
-- Review the logging-only behavior for victory write failures; no blocking UI was added because replay/UX is out of scope for `MAZ-185`.
-- Full `npm run mutation` was intentionally stopped after ~3% because the repo-wide run projected ~40 minutes. The scoped application mutation passed.
-
-## Lessons / Limitations
-
-- The retained-completion tests must use UUID level ids; otherwise the existing `MAZ-183` guard returns before exercising remote failure behavior.
-- The hook test should not partially mock all of `react-native`; NetInfo can be isolated with a manual mock while React Native's Jest environment stays intact.
-- NetInfo/AppState behavior is verified with Jest mocks, not on a real device.
 | Spec Partner (`.agents/spec-partner.md`) | Referenced | Read and applied the role constraints to distill the Linear issue and code context into a local spec. No separate agent session was run. | `specs/leaderboard-replay-ux-MAZ-184.spec.md` |
 | Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Read and applied the Gherkin/planning rules to create tagged executable scenarios. No separate planner session was run. | `specs/leaderboard-replay-ux-MAZ-184.feature` |
 | TDD Implementer (`.agents/tdd-implementer.md`) | Not used | MAZ-184 is still in Linear Backlog and the executable contract has not been human-approved, so TDD is intentionally blocked. | N/A |
@@ -3314,6 +3252,176 @@ implementation must map:
   "already recorded"; the spec intentionally requires generic success copy.
 - MAZ-184 should not hide real submit failures, but it also should not couple
   presentation directly to concrete HTTP/adapter errors.
+
+
+---
+
+# AI Usage Log: MAZ-185 — Robust victory persistence and progress drain
+
+## Task / Problem
+
+Implement `MAZ-185` on the mobile client: retain failed victory progress writes, add an application-level drain operation for pending progress, and trigger that drain when the app starts, returns to foreground, or reconnects. The ticket builds on the auth/session work and UUID level-id guard from `MAZ-179` and `MAZ-183`; backend changes were reviewed as unnecessary for this slice.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+User requested implementing `MAZ-185` while following both repository `AGENTS.md` files, root `MEMORY.md`, `Linear_MCP_Guideline.md`, the approved worktree flow, AI usage logging, checks, commit/push/PR, Linear update, and a context review of affected tickets. The existing approved spec and Gherkin contract were used from `specs/mobile-progress-sync-MAZ-185.spec.md` and `specs/mobile-progress-sync-MAZ-185.feature`.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used the approved spec decisions as the source of truth; no separate agent session was run in this implementation turn. | `specs/mobile-progress-sync-MAZ-185.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Followed the seven approved `@s` scenarios as the executable contract; no new scenario was invented. | `specs/mobile-progress-sync-MAZ-185.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Ran Red-Green cycles for application drain/failure retention and framework reconnect/foreground triggers, then refactored into application facade + framework coordinator/hook. | `tests/application/facades/ProgressFacade.test.ts`, `tests/framework/progress/*.test.*` |
+| Judge (`.agents/judge.md`) | Referenced | Reviewed layer boundaries: drain decision stays in application, NetInfo/AppState stay in framework wiring, and UI only mounts/logs. Verdict: PASS pending human review. | this entry, `rg "@react-native-community/netinfo|AppState"` |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Ran Stryker scoped to the changed application facade after the full repo mutation run projected ~40 minutes and was cancelled at 3%. Scoped score: 95.24%. | `reports/mutation/index.html`, command output |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+| --- | --- | --- |
+| @s1 — Draining sends pending progress to the backend | `should_drain_pending_progress_by_syncing_when_pending` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s2 — Draining is a no-op when nothing is pending | `should_not_drain_when_no_pending_progress` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s3 — A failed remote completion is retained, not dropped | `should_retain_pending_local_completion_when_remote_completion_fails` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s4 — Retained pending progress is retried on the next drain | `should_retry_retained_completion_on_next_drain_after_remote_failure` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s5 — The sync coordinator drains immediately on start | `should_drain_once_immediately_when_started` | `tests/framework/progress/startProgressSync.test.ts` |
+| @s6 — The sync coordinator drains on foreground/reconnect and stops after unsubscribe | `should_drain_on_foreground_and_reconnect_until_unsubscribed` | `tests/framework/progress/startProgressSync.test.ts` |
+| @s7 — The hook drains for a signed-in session when connectivity returns | `should_drain_for_signed_in_session_when_connectivity_returns` | `tests/framework/progress/useProgressSync.test.tsx` |
+| @s7 (resume) — The hook drains for a signed-in session on app foreground | `should_drain_for_signed_in_session_when_app_returns_to_foreground` | `tests/framework/progress/useProgressSync.test.tsx` |
+| edge — The hook stays idle while signed out | `should_not_drain_when_signed_out` | `tests/framework/progress/useProgressSync.test.tsx` |
+
+## Result Obtained
+
+New behavior:
+
+- `ProgressFacade.drainPendingProgress(userId, accessToken)` checks local `pendingSync`; it calls existing `sync()` only when needed and reports whether a drain ran.
+- `startProgressSync()` drains immediately, subscribes to foreground and reconnect triggers, and unsubscribes cleanly.
+- `useProgressSync()` wires signed-in sessions to `AppState` and `@react-native-community/netinfo`, logging drain failures while leaving pending progress retained.
+- Root layout mounts the sync hook under `AuthGate`, so it only runs with session context.
+- Victory progress and leaderboard writes in `app/game.tsx` now log failures instead of silently swallowing them.
+- Added NetInfo dependency plus Jest manual mock.
+
+## Verification
+
+- `npm test -- --runInBand tests/application/facades/ProgressFacade.test.ts` — 17 tests passed.
+- `npm test -- --runInBand tests/framework/progress/startProgressSync.test.ts tests/framework/progress/useProgressSync.test.tsx` — 3 tests passed.
+- `npm run verify` — lint, typecheck, and coverage passed; 65 suites / 334 tests passed. Existing React Native Animated `act(...)` warnings were emitted by presentation tests.
+- `npm run mutation -- --mutate src/application/facades/ProgressFacade.ts` — 95.24% mutation score, above the 80 break threshold.
+
+## Team Modifications Pending Human Review
+
+- Review that mounting `useProgressSync()` under `AuthGate` is the intended app-wide drain point.
+- Review the logging-only behavior for victory write failures; no blocking UI was added because replay/UX is out of scope for `MAZ-185`.
+- Full `npm run mutation` was intentionally stopped after ~3% because the repo-wide run projected ~40 minutes. The scoped application mutation passed.
+
+## Lessons / Limitations
+
+- The retained-completion tests must use UUID level ids; otherwise the existing `MAZ-183` guard returns before exercising remote failure behavior.
+- The hook test should not partially mock all of `react-native`; NetInfo can be isolated with a manual mock while React Native's Jest environment stays intact.
+- NetInfo/AppState behavior is verified with Jest mocks, not on a real device.
+
+
+---
+
+# AI Usage Log: MAZ-186 (M9/C8) — Client cleanups + victory-submit integration test
+
+## Task / Problem
+
+Four bundled cleanups plus the one missing integration test on the mobile client:
+1. `ProgressScreen` rendered the raw `levelId` (UUID) as the visible label — show the
+   human-readable catalog level name instead.
+2. `app/victory.tsx` was a dead route (rendered `VictoryScreen` with no submit; the
+   real victory UX is the overlay inside `app/game.tsx`).
+3. `SubmitScoreRequestDto` declared an unused `userId` (the runtime body omits it;
+   the backend derives `userId` from the JWT) — a dead/misleading type field.
+4. No integration test covered the most important path — winning a level submits
+   score + progress with the right ids.
+
+## Tool and Model
+
+Claude Opus 4.8 via Claude Code CLI.
+
+## Prompt Used
+
+User requested implementing `MAZ-186` following both repository `AGENTS.md` files,
+root `MEMORY.md`, `Linear_MCP_Guideline.md`, the worktree flow, AI usage logging,
+checks, commit/push/PR, Linear update, and a context review of affected tickets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Used | Wrote the spec after reading `ProgressScreen`, `app/victory.tsx`, `LeaderboardDtos`, `app/game.tsx`, `LevelSelectViewModel`, `manualLevels`, and the catalog ports. Found `VictoryScreen` is still used by the in-game overlay (keep it) and that the contract test already mirrors the leaner submit DTO. | `specs/mobile-cleanups-MAZ-186.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Used | Distilled 6 Gherkin scenarios (`@s1..@s6`): catalog name, screen name + id fallback, leaner DTO, and the victory completeLevel/submitScore path. | `specs/mobile-cleanups-MAZ-186.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red→Green per cleanup: contract test imports the production `SubmitScoreRequestDto` (RED via typecheck: fixture missing `userId`) → drop `userId` (GREEN); name tests on `LevelSelectViewModel` + `ProgressScreen` → surface `name`; victory-submit integration test drives the real engine to victory. | tests, code, `@s → test` map below |
+| Judge (`.agents/judge.md`) | Referenced | Applied the CA checklist in-session: name is plain catalog display data on existing types; the screen stays dumb (name map built in the composition root); no new use case/pattern; DTO stays a primitive record. | CA contract in `specs/mobile-cleanups-MAZ-186.spec.md` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | The DoD requires only `npm run verify` + `ai-log/` (no mutation gate, unlike feature tickets). The only change inside the Stryker `mutate` scope (`src/application/**`) is the trivial `name` data field in the 10.6k-line `manualLevels.ts` fixtures; a full run there mutates level-coordinate data and is impractical/meaningless. Presentation/infra changes are outside the default scope. | N/A |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+|----------|------|------|
+| @s1 — catalog exposes a human-readable name | `should_expose_a_human_readable_name_for_each_offline_level`, `should_expose_the_remote_level_name` | `tests/presentation/view-models/LevelSelectViewModel.test.ts` |
+| @s2 — progress screen shows the name | `should_show_the_level_name_when_a_mapping_exists` | `tests/presentation/screens/ProgressScreen.test.tsx` |
+| @s3 — progress screen falls back to the id | `should_fall_back_to_the_raw_level_id_when_no_mapping_exists` | `tests/presentation/screens/ProgressScreen.test.tsx` |
+| @s4 — submit DTO has no userId | `should_not_include_user_id_because_backend_reads_it_from_jwt` (now typed against the production DTO) | `tests/contract/leaderboard.contract.test.ts` |
+| @s5 — winning persists the completion | `should_persist_completion_and_submit_score_with_uuid_level_id_when_a_level_is_won` | `tests/integration/gameVictorySubmit.test.tsx` |
+| @s6 — winning submits the score | `should_persist_completion_and_submit_score_with_uuid_level_id_when_a_level_is_won` + `should_submit_only_once_per_win` | `tests/integration/gameVictorySubmit.test.tsx` |
+
+## Result Obtained
+
+**New files:**
+- `specs/mobile-cleanups-MAZ-186.{spec.md,feature}` — CA spec + 6 scenarios
+- `tests/presentation/screens/ProgressScreen.test.tsx` — name + id-fallback render tests
+- `tests/integration/gameVictorySubmit.test.tsx` — victory-submit integration test
+
+**Modified source files:**
+- `src/application/level-build/fixtures/manualLevels.ts` — `ManualLevelFixture` gains `name`; mapped from the draft name (fallback `Level N`)
+- `src/presentation/view-models/LevelSelectViewModel.ts` — `LevelListItem` gains `name`; both offline `getLevels` and remote `toListItem` carry it
+- `src/presentation/screens/ProgressScreen.tsx` — optional `levelNameById` map; renders `name ?? levelId`
+- `app/progress.tsx` — builds the `levelId → name` map from the catalog and passes it
+- `src/infrastructure/mappers/leaderboard/LeaderboardDtos.ts` — dropped the unused `userId`
+
+**Deleted:**
+- `app/victory.tsx` — dead route (the in-game overlay in `GameScreen` is the real victory UX; `VictoryScreen` the component is unchanged and still used there)
+
+**Modified test files:**
+- `tests/presentation/view-models/LevelSelectViewModel.test.ts` — name assertions
+- `tests/contract/leaderboard.contract.test.ts` — imports the production `SubmitScoreRequestDto` instead of a local copy (ties the contract to the real type)
+- `tests/presentation/components/LevelCard.test.tsx` — fixture carries the now-required `name`
+
+## Verification
+
+- `npm run verify` — GREEN: lint + typecheck + 67 suites / 342 tests. Pre-existing
+  React Native `Animated` `act(...)` warnings are emitted by the board's tap
+  animations in the integration test (non-blocking; same as other presentation tests).
+
+## Team Modifications Pending Human Review
+
+1. **`LevelListItem`/`ManualLevelFixture` gained `name`.** Sourced from the existing
+   `LevelCatalogSummary.name` (remote) and the fixture draft name (offline). Any
+   new `LevelListItem` literal must now supply `name`.
+2. **`SubmitScoreRequestDto` no longer has `userId`.** The wire body already omitted
+   it; the contract test is now typed against the production DTO so the two cannot
+   drift again.
+3. **`app/victory.tsx` deleted.** If a read-only post-game results route is wanted
+   later, reintroduce it without submit logic.
+
+## Lessons / Limitations
+
+- The integration test drives the real game engine to victory by tapping a valid
+  extraction order (computed from the fixture), with the framework facades mocked,
+  so it asserts the route's victory effect end-to-end: `completeLevel` +
+  `submitScore` fire once each with the UUID `levelId`, the session ids, the
+  username snapshot, and arrow-count moves. Score/elapsed-time are clock-derived, so
+  they are not asserted to exact values.
+- Tying the contract test to the production type via `import type` turns a
+  duplicated mirror into a compile-time guard — the missing-`userId` fixture failed
+  typecheck until the production field was removed (a clean Red→Green).
 
 
 <!-- AI_LOG_ENTRIES_END -->

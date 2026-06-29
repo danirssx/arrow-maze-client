@@ -19,10 +19,11 @@ export interface LeaderboardResponseDto {
   };
 }
 
+// The backend derives userId from the authenticated JWT, so the request body
+// never carries it; keeping a userId field here was dead and misleading.
 export interface SubmitScoreRequestDto {
   leaderboardId: string;
   entryId: string;
-  userId: string;
   levelId: string;
   usernameSnapshot: string;
   score: number;

@@ -24,6 +24,7 @@ type LevelDraft = {
 
 export type ManualLevelFixture = {
   readonly id: string;
+  readonly name: string;
   readonly order: number;
   readonly difficulty: Difficulty;
   readonly arrowCount: number;
@@ -10620,6 +10621,7 @@ function toDefinition(draft: LevelDraft): LevelDefinition {
 
 export const manualLevels: readonly ManualLevelFixture[] = LEVEL_DRAFTS.map((draft, index) => ({
   id: draft.id,
+  name: draft.name ?? `Level ${index + 1}`,
   order: index + 1,
   difficulty: draft.difficulty,
   arrowCount: draft.arrowCount,
