@@ -1,6 +1,7 @@
 import { manualLevels } from "@/application/level-build/fixtures";
 import type { ILevelCatalogRepository, LevelCatalogSummary } from "@/application/ports/ILevelCatalogRepository";
 import { LevelSelectViewModel } from "@/presentation/view-models/LevelSelectViewModel";
+import { isUuid } from "@/shared/isUuid";
 
 // Subject to human review — presentation ViewModel test
 
@@ -46,11 +47,22 @@ describe("LevelSelectViewModel", () => {
       .filter((level) => level.timed)
       .map((level) => level.id);
 
-    expect(timed).toContain("manual-007-rush");
+    expect(timed).toContain("550e8400-e29b-41d4-a716-446655440016");
+  });
+
+  it("should_expose_only_uuid_level_ids", () => {
+    const levels = new LevelSelectViewModel().getLevels();
+
+    for (const level of levels) {
+      expect(isUuid(level.id)).toBe(true);
+    }
+    for (const fixture of manualLevels) {
+      expect(isUuid(fixture.definition.id)).toBe(true);
+    }
   });
 
   it("should_resolve_definition_for_a_known_level", () => {
-    expect(new LevelSelectViewModel().getDefinition("manual-001-first-knot")).toBeDefined();
+    expect(new LevelSelectViewModel().getDefinition("550e8400-e29b-41d4-a716-446655440010")).toBeDefined();
   });
 
   it("should_return_undefined_for_an_unknown_level", () => {
