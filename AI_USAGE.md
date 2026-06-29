@@ -2906,49 +2906,6 @@ User requested starting MAZ-182 following the established team workflow (read bo
 `AGENTS.md`, root `MEMORY.md`, `Linear_MCP_Guideline.md`, the M9 memory; new
 worktree; spec → Gherkin → TDD; ai-log + compile usage; commit/push/PR; update
 Linear), noting it is a refactor so the related M9 tickets must be reviewed.
-# AI Usage Log: MAZ-183 — Guarantee a UUID levelId reaches submit & leaderboard
-
-## Task / Problem
-
-The backend requires a v4 **UUID** `levelId` and returns **422** otherwise. The client's offline
-fallback catalog (`manualLevels.ts`) used **slug** ids (`"manual-001-first-knot"`). The `levelId`
-sent to the three network sinks is the raw route param (`app/game.tsx:31`), equal to the selected
-`LevelListItem.id` — a slug whenever the remote catalog is not the active source (initial render
-before `loadLevels()` resolves, or any `.catch()` offline fallback). So winning a level offline
-POSTed a slug to `POST /progress/levels/<slug>/complete` and `POST /leaderboard/scores` and read
-`GET /leaderboard/<slug>` — all 422. The breakage was invisible because every test used slug ids.
-There was no UUID validation and no `LevelId` value object anywhere.
-
-## Tool and Model
-
-Claude Opus 4.8 (1M context) via Claude Code CLI.
-
-## Prompt Used
-
-User requested starting MAZ-183 following the team workflow (review both AGENTS.md, new worktree,
-root MEMORY.md + Linear_MCP_Guideline.md, register AI usage, run all checks, update MEMORY/AGENTS,
-commit/push/PR/Linear). The `.feature` (@s1..@s8) plus the 3 decisions (adopt the 15 backend seed
-UUIDs as fixture ids; add an `isUuid` guard at the application boundary; migrate slug-id tests to
-UUIDs) were approved by the human (Daniel) before any TDD.
-# AI Usage Log: MAZ-179 Enforce mandatory auth gate on mobile launch
-
-## Task / Problem
-
-Client ticket `MAZ-179`: make mobile login mandatory after the existing
-MAZ-139 login flow by bootstrapping the persisted session at launch, guarding
-protected routes, removing gameplay guest rendering, and exposing visible
-identity/logout controls.
-
-## Tool and Model
-
-Codex CLI / GPT-5.
-
-## Prompt Used
-
-User asked to implement MAZ-179 following both repo `AGENTS.md` files, the root
-`MEMORY.md`, `Linear_MCP_Guideline.md`, a fresh worktree, AI usage logging,
-checks, commit/push/PR, and Linear update. The Linear issue was read through the
-local Linear GraphQL workflow without exposing secrets.
 
 ## Agent Roles Used
 
@@ -2959,11 +2916,6 @@ local Linear GraphQL workflow without exposing secrets.
 | TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red→Green per file: SecureStorageAdapter test (confirmed RED: module not found) → adapter; MigratingSessionStorage test (RED) → decorator; then wired `createSessionManager`. Added the expo-secure-store manual mock + jest.setup activation. | tests, code, `@s → test` map below |
 | Judge (`.agents/judge.md`) | Referenced | Applied the `docs/reglas_clean_arch.md` checklist in-session: `expo-secure-store` confined to `src/infrastructure`; `ILocalStorage` port unchanged; composition root stays in framework; no domain/application/presentation change. No separate judge session run. | CA contract in `specs/mobile-secure-store-MAZ-182.spec.md` |
 | Mutation Tester (`.agents/mutation.md`) | Used | Ran `stryker` scoped to the two new infra files (infra is outside the project's default mutate globs — `domain`/`application` only). First run 76% (1 real ConditionalExpression survivor on the migration null-guard + StringLiteral message survivors). Added a "no migration when empty" assertion + exact-message assertions; re-run 96%, `MigratingSessionStorage.ts` 100%. | scores below |
-| Spec Partner (`.agents/spec-partner.md`) | Referenced | Followed the role discipline from AGENTS.md §0.2 (no separate `.agents/` session). A read-only sub-agent mapped the full levelId data flow with file:line; distilled into the CA spec. | `specs/uuid-levelid-MAZ-183.spec.md` |
-| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored 8 `@s` scenarios (fixtures-are-UUIDs, isUuid, the 2 facade guards × on/off, the VM guard × on/off); presented for the single human gate. | `specs/uuid-levelid-MAZ-183.feature` |
-| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Red→Green→Refactor in batches: isUuid (red→green), facade/VM guard tests (red→green), then fixtures→UUIDs, then slug-id test migration. | tests, src, this entry |
-| Judge (`.agents/judge.md`) | Referenced | Self-review vs `docs/reglas_clean_arch.md`: `isUuid` is a leaf util (no new cross-layer edges); facades keep orchestration-only (format guard, not a business rule); VM stays presentation-only; domain untouched; `@s → test` complete. Verdict: PASS. | this entry, spec CA block |
-| Mutation Tester (`.agents/mutation.md`) | Referenced | Stryker scoped to the 4 changed files. First run 91.55% (6 survivors). Killed the 3 in the new logic (2 isUuid anchors + the guard `??` branch). Second run **95.77%**; isUuid + LeaderboardFacade **100%**. | `reports/mutation/index.html` |
 
 ## Scenario Coverage (@s ↔ test)
 
@@ -3000,14 +2952,6 @@ local Linear GraphQL workflow without exposing secrets.
   AsyncStorageAdapter)`. Mutation surfaced a real survivor (`if (legacyValue ===
   null)` → `if (false)`); the null test didn't assert "no migration attempted".
   Added that assertion + exact error-message assertions. 96% / decorator 100%.
-| @s1 — fixtures expose only UUID ids | `should_expose_only_uuid_level_ids` | `tests/presentation/view-models/LevelSelectViewModel.test.ts` |
-| @s2 — isUuid true/false | `should_return_true_when_value_is_a_v4_uuid` (+ slug/empty/non-v4/prefix/suffix) | `tests/shared/isUuid.test.ts` |
-| @s3 — submit no-op on non-UUID | `should_not_submit_score_when_level_id_is_not_a_uuid` | `tests/application/facades/LeaderboardFacade.test.ts` |
-| @s4 — submit delegates on UUID | `should_delegate_submit_score_to_repository_when_level_id_is_a_uuid` | `tests/application/facades/LeaderboardFacade.test.ts` |
-| @s5 — read Empty without request on non-UUID | `should_expose_empty_without_requesting_when_level_id_is_not_a_uuid` | `tests/presentation/view-models/LeaderboardViewModel.test.ts` |
-| @s6 — read fetches on UUID | `should_expose_loaded_when_entries_exist` | `tests/presentation/view-models/LeaderboardViewModel.test.ts` |
-| @s7 — completeLevel no-op on non-UUID | `should_not_write_progress_when_level_id_is_not_a_uuid` (+ `should_return_existing_progress_without_writing...`) | `tests/application/facades/ProgressFacade.test.ts` |
-| @s8 — completeLevel persists+syncs on UUID | `should_complete_level_remotely_and_cache_latest_progress` | `tests/application/facades/ProgressFacade.test.ts` |
 
 ## Result Obtained
 
@@ -3063,6 +3007,61 @@ local Linear GraphQL workflow without exposing secrets.
 - Mutation caught a genuine gap: "returns null" alone didn't pin "doesn't attempt a
   spurious migration" — asserting the absence of the secure write killed the
   conditional mutant.
+
+
+---
+
+# AI Usage Log: MAZ-183 — Guarantee a UUID levelId reaches submit & leaderboard
+
+## Task / Problem
+
+The backend requires a v4 **UUID** `levelId` and returns **422** otherwise. The client's offline
+fallback catalog (`manualLevels.ts`) used **slug** ids (`"manual-001-first-knot"`). The `levelId`
+sent to the three network sinks is the raw route param (`app/game.tsx:31`), equal to the selected
+`LevelListItem.id` — a slug whenever the remote catalog is not the active source (initial render
+before `loadLevels()` resolves, or any `.catch()` offline fallback). So winning a level offline
+POSTed a slug to `POST /progress/levels/<slug>/complete` and `POST /leaderboard/scores` and read
+`GET /leaderboard/<slug>` — all 422. The breakage was invisible because every test used slug ids.
+There was no UUID validation and no `LevelId` value object anywhere.
+
+## Tool and Model
+
+Claude Opus 4.8 (1M context) via Claude Code CLI.
+
+## Prompt Used
+
+User requested starting MAZ-183 following the team workflow (review both AGENTS.md, new worktree,
+root MEMORY.md + Linear_MCP_Guideline.md, register AI usage, run all checks, update MEMORY/AGENTS,
+commit/push/PR/Linear). The `.feature` (@s1..@s8) plus the 3 decisions (adopt the 15 backend seed
+UUIDs as fixture ids; add an `isUuid` guard at the application boundary; migrate slug-id tests to
+UUIDs) were approved by the human (Daniel) before any TDD.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Followed the role discipline from AGENTS.md §0.2 (no separate `.agents/` session). A read-only sub-agent mapped the full levelId data flow with file:line; distilled into the CA spec. | `specs/uuid-levelid-MAZ-183.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored 8 `@s` scenarios (fixtures-are-UUIDs, isUuid, the 2 facade guards × on/off, the VM guard × on/off); presented for the single human gate. | `specs/uuid-levelid-MAZ-183.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Red→Green→Refactor in batches: isUuid (red→green), facade/VM guard tests (red→green), then fixtures→UUIDs, then slug-id test migration. | tests, src, this entry |
+| Judge (`.agents/judge.md`) | Referenced | Self-review vs `docs/reglas_clean_arch.md`: `isUuid` is a leaf util (no new cross-layer edges); facades keep orchestration-only (format guard, not a business rule); VM stays presentation-only; domain untouched; `@s → test` complete. Verdict: PASS. | this entry, spec CA block |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Stryker scoped to the 4 changed files. First run 91.55% (6 survivors). Killed the 3 in the new logic (2 isUuid anchors + the guard `??` branch). Second run **95.77%**; isUuid + LeaderboardFacade **100%**. | `reports/mutation/index.html` |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+|----------|------|------|
+| @s1 — fixtures expose only UUID ids | `should_expose_only_uuid_level_ids` | `tests/presentation/view-models/LevelSelectViewModel.test.ts` |
+| @s2 — isUuid true/false | `should_return_true_when_value_is_a_v4_uuid` (+ slug/empty/non-v4/prefix/suffix) | `tests/shared/isUuid.test.ts` |
+| @s3 — submit no-op on non-UUID | `should_not_submit_score_when_level_id_is_not_a_uuid` | `tests/application/facades/LeaderboardFacade.test.ts` |
+| @s4 — submit delegates on UUID | `should_delegate_submit_score_to_repository_when_level_id_is_a_uuid` | `tests/application/facades/LeaderboardFacade.test.ts` |
+| @s5 — read Empty without request on non-UUID | `should_expose_empty_without_requesting_when_level_id_is_not_a_uuid` | `tests/presentation/view-models/LeaderboardViewModel.test.ts` |
+| @s6 — read fetches on UUID | `should_expose_loaded_when_entries_exist` | `tests/presentation/view-models/LeaderboardViewModel.test.ts` |
+| @s7 — completeLevel no-op on non-UUID | `should_not_write_progress_when_level_id_is_not_a_uuid` (+ `should_return_existing_progress_without_writing...`) | `tests/application/facades/ProgressFacade.test.ts` |
+| @s8 — completeLevel persists+syncs on UUID | `should_complete_level_remotely_and_cache_latest_progress` | `tests/application/facades/ProgressFacade.test.ts` |
+
+## Result Obtained
+
+**New files:**
 - `src/shared/isUuid.ts` — pure v4-UUID validator (parallel to `createUuid.ts`).
 - `specs/uuid-levelid-MAZ-183.{spec.md,feature}`.
 - `tests/shared/isUuid.test.ts`.
@@ -3093,6 +3092,34 @@ No facade signatures changed. No new entity/use-case/pattern (only a `src/shared
 - The network `levelId` is the route param, never re-derived from the loaded definition — so the fix had to make the *id source* (fixtures) emit UUIDs, plus guard the application boundary, rather than touch `app/game.tsx`.
 - Stryker's anchor mutations (`^`/`$` removal on the UUID regex) are real: a validator without prefix/suffix tests passes embedded-junk strings. Added leading/trailing-junk cases to kill them.
 - New git worktree: `npm ci` inside it (don't symlink `node_modules`); jest runs via `--experimental-vm-modules`.
+
+
+---
+
+# AI Usage Log: MAZ-179 Enforce mandatory auth gate on mobile launch
+
+## Task / Problem
+
+Client ticket `MAZ-179`: make mobile login mandatory after the existing
+MAZ-139 login flow by bootstrapping the persisted session at launch, guarding
+protected routes, removing gameplay guest rendering, and exposing visible
+identity/logout controls.
+
+## Tool and Model
+
+Codex CLI / GPT-5.
+
+## Prompt Used
+
+User asked to implement MAZ-179 following both repo `AGENTS.md` files, the root
+`MEMORY.md`, `Linear_MCP_Guideline.md`, a fresh worktree, AI usage logging,
+checks, commit/push/PR, and Linear update. The Linear issue was read through the
+local Linear GraphQL workflow without exposing secrets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
 | Spec Partner (`.agents/spec-partner.md`) | Referenced | Read and applied the role constraints to distill the Linear issue into a local executable contract without running a separate agent session. | `specs/mandatory-auth-gate.spec.md` |
 | Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Read and applied the Gherkin/planning rules to create tagged scenarios and keep the slice within the approved Clean Architecture contract. | `specs/mandatory-auth-gate.feature` |
 | TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Followed red-green-refactor locally: added failing AuthGate/Home/Settings tests first, then implemented the route gate and UI props. | `tests/framework/auth/AuthGate.test.tsx`, `tests/presentation/screens/HomeScreen.test.tsx`, `tests/presentation/screens/SettingsScreen.test.tsx` |
@@ -3143,6 +3170,75 @@ No facade signatures changed. No new entity/use-case/pattern (only a `src/shared
   links consistently.
 - Presentation screens stayed UI-only by receiving identity/logout props instead
   of reading storage or navigation directly.
+
+
+---
+
+# AI Usage Log: MAZ-185 — Robust victory persistence and progress drain
+
+## Task / Problem
+
+Implement `MAZ-185` on the mobile client: retain failed victory progress writes, add an application-level drain operation for pending progress, and trigger that drain when the app starts, returns to foreground, or reconnects. The ticket builds on the auth/session work and UUID level-id guard from `MAZ-179` and `MAZ-183`; backend changes were reviewed as unnecessary for this slice.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+User requested implementing `MAZ-185` while following both repository `AGENTS.md` files, root `MEMORY.md`, `Linear_MCP_Guideline.md`, the approved worktree flow, AI usage logging, checks, commit/push/PR, Linear update, and a context review of affected tickets. The existing approved spec and Gherkin contract were used from `specs/mobile-progress-sync-MAZ-185.spec.md` and `specs/mobile-progress-sync-MAZ-185.feature`.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used the approved spec decisions as the source of truth; no separate agent session was run in this implementation turn. | `specs/mobile-progress-sync-MAZ-185.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Followed the seven approved `@s` scenarios as the executable contract; no new scenario was invented. | `specs/mobile-progress-sync-MAZ-185.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Ran Red-Green cycles for application drain/failure retention and framework reconnect/foreground triggers, then refactored into application facade + framework coordinator/hook. | `tests/application/facades/ProgressFacade.test.ts`, `tests/framework/progress/*.test.*` |
+| Judge (`.agents/judge.md`) | Referenced | Reviewed layer boundaries: drain decision stays in application, NetInfo/AppState stay in framework wiring, and UI only mounts/logs. Verdict: PASS pending human review. | this entry, `rg "@react-native-community/netinfo|AppState"` |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Ran Stryker scoped to the changed application facade after the full repo mutation run projected ~40 minutes and was cancelled at 3%. Scoped score: 95.24%. | `reports/mutation/index.html`, command output |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+| --- | --- | --- |
+| @s1 — Draining sends pending progress to the backend | `should_drain_pending_progress_by_syncing_when_pending` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s2 — Draining is a no-op when nothing is pending | `should_not_drain_when_no_pending_progress` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s3 — A failed remote completion is retained, not dropped | `should_retain_pending_local_completion_when_remote_completion_fails` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s4 — Retained pending progress is retried on the next drain | `should_retry_retained_completion_on_next_drain_after_remote_failure` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s5 — The sync coordinator drains immediately on start | `should_drain_once_immediately_when_started` | `tests/framework/progress/startProgressSync.test.ts` |
+| @s6 — The sync coordinator drains on foreground/reconnect and stops after unsubscribe | `should_drain_on_foreground_and_reconnect_until_unsubscribed` | `tests/framework/progress/startProgressSync.test.ts` |
+| @s7 — The hook drains for a signed-in session when connectivity returns | `should_drain_for_signed_in_session_when_connectivity_returns` | `tests/framework/progress/useProgressSync.test.tsx` |
+
+## Result Obtained
+
+New behavior:
+
+- `ProgressFacade.drainPendingProgress(userId, accessToken)` checks local `pendingSync`; it calls existing `sync()` only when needed and reports whether a drain ran.
+- `startProgressSync()` drains immediately, subscribes to foreground and reconnect triggers, and unsubscribes cleanly.
+- `useProgressSync()` wires signed-in sessions to `AppState` and `@react-native-community/netinfo`, logging drain failures while leaving pending progress retained.
+- Root layout mounts the sync hook under `AuthGate`, so it only runs with session context.
+- Victory progress and leaderboard writes in `app/game.tsx` now log failures instead of silently swallowing them.
+- Added NetInfo dependency plus Jest manual mock.
+
+## Verification
+
+- `npm test -- --runInBand tests/application/facades/ProgressFacade.test.ts` — 17 tests passed.
+- `npm test -- --runInBand tests/framework/progress/startProgressSync.test.ts tests/framework/progress/useProgressSync.test.tsx` — 3 tests passed.
+- `npm run verify` — lint, typecheck, and coverage passed; 65 suites / 334 tests passed. Existing React Native Animated `act(...)` warnings were emitted by presentation tests.
+- `npm run mutation -- --mutate src/application/facades/ProgressFacade.ts` — 95.24% mutation score, above the 80 break threshold.
+
+## Team Modifications Pending Human Review
+
+- Review that mounting `useProgressSync()` under `AuthGate` is the intended app-wide drain point.
+- Review the logging-only behavior for victory write failures; no blocking UI was added because replay/UX is out of scope for `MAZ-185`.
+- Full `npm run mutation` was intentionally stopped after ~3% because the repo-wide run projected ~40 minutes. The scoped application mutation passed.
+
+## Lessons / Limitations
+
+- The retained-completion tests must use UUID level ids; otherwise the existing `MAZ-183` guard returns before exercising remote failure behavior.
+- The hook test should not partially mock all of `react-native`; NetInfo can be isolated with a manual mock while React Native's Jest environment stays intact.
+- NetInfo/AppState behavior is verified with Jest mocks, not on a real device.
 
 
 <!-- AI_LOG_ENTRIES_END -->

@@ -57,6 +57,16 @@ export class ProgressFacade {
     return local?.pendingSync ?? false;
   }
 
+  // Drain offline progress: if a completion is pending (saved while offline or
+  // after a failed victory write), push it to the backend via sync(). Returns
+  // whether a drain actually happened so a trigger can avoid needless network.
+  async drainPendingProgress(userId: string, accessToken: string): Promise<boolean> {
+    const pending = await this.hasPendingSync(userId);
+    if (!pending) return false;
+    await this.sync(userId, accessToken);
+    return true;
+  }
+
   private static emptyProgress(userId: string, timestamp: string): LocalProgress {
     return {
       progressId: `local-${userId}`,

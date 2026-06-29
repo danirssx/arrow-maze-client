@@ -89,7 +89,9 @@ export default function GameRoute() {
       timeSeconds,
       movesCount,
       completedAt,
-    }).catch(() => undefined);
+    }).catch((error: unknown) => {
+      console.warn("Failed to persist completed level", error);
+    });
 
     void leaderboardFacade.submitScore({
       leaderboardId: createUuid(),
@@ -99,7 +101,9 @@ export default function GameRoute() {
       score,
       timeSeconds,
       movesCount,
-    }, session.accessToken).catch(() => undefined);
+    }, session.accessToken).catch((error: unknown) => {
+      console.warn("Failed to submit leaderboard score", error);
+    });
   }, [facade, gameState.extractedArrowIds.length, gameState.overlay, leaderboardFacade, levelId, progressFacade, session]);
 
   useEffect(() => {
