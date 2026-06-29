@@ -16,3 +16,16 @@ jest.mock("@react-native-community/netinfo");
 // expo-secure-store is a native keychain module; route it to the in-memory
 // manual mock in `__mocks__/expo-secure-store.js` so storage adapters are testable.
 jest.mock("expo-secure-store");
+
+// AsyncStorage is a native module; route it to an in-memory mock so any module
+// that transitively imports the session/storage layer (e.g. the http client's
+// refresh runner) can be unit-tested without the native binding.
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn(() => Promise.resolve(null)),
+    setItem: jest.fn(() => Promise.resolve()),
+    removeItem: jest.fn(() => Promise.resolve()),
+    clear: jest.fn(() => Promise.resolve()),
+  },
+}));
