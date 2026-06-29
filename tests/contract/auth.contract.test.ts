@@ -5,15 +5,24 @@
  * DoD: no secrets in fixtures (accessToken uses placeholder string).
  */
 import { AuthMapper } from '@/infrastructure/mappers/auth/AuthMapper';
-import type { LoginResponseDto, RegisterResponseDto } from '@/infrastructure/mappers/auth/AuthDtos';
+import type { LoginResponseDto, RefreshResponseDto, RegisterResponseDto } from '@/infrastructure/mappers/auth/AuthDtos';
 
 const LOGIN_FIXTURE: LoginResponseDto = {
   status: 'success',
   data: {
     accessToken: 'contract-test-token-placeholder',
+    refreshToken: 'contract-test-refresh-placeholder',
     userId: '550e8400-e29b-41d4-a716-446655440000',
     username: 'arrow_player',
     role: 'USER',
+  },
+};
+
+const REFRESH_FIXTURE: RefreshResponseDto = {
+  status: 'success',
+  data: {
+    accessToken: 'contract-test-rotated-access',
+    refreshToken: 'contract-test-rotated-refresh',
   },
 };
 
@@ -43,12 +52,27 @@ describe('Auth contract — LoginResponseDto', () => {
     expect(session.username).toBe(LOGIN_FIXTURE.data.username);
     expect(session.role).toBe(LOGIN_FIXTURE.data.role);
     expect(session.accessToken).toBe(LOGIN_FIXTURE.data.accessToken);
+    expect(session.refreshToken).toBe(LOGIN_FIXTURE.data.refreshToken);
   });
 
   it('should_not_expose_raw_password_in_session', () => {
     const session = AuthMapper.toSession(LOGIN_FIXTURE);
     expect(Object.keys(session)).not.toContain('rawPassword');
     expect(Object.keys(session)).not.toContain('password');
+  });
+});
+
+describe('Auth contract — RefreshResponseDto', () => {
+  it('should_have_rotated_access_and_refresh_tokens_in_data', () => {
+    expect(REFRESH_FIXTURE.status).toBe('success');
+    expect(typeof REFRESH_FIXTURE.data.accessToken).toBe('string');
+    expect(typeof REFRESH_FIXTURE.data.refreshToken).toBe('string');
+  });
+
+  it('should_map_to_rotated_tokens', () => {
+    const tokens = AuthMapper.toRefreshTokens(REFRESH_FIXTURE);
+    expect(tokens.accessToken).toBe(REFRESH_FIXTURE.data.accessToken);
+    expect(tokens.refreshToken).toBe(REFRESH_FIXTURE.data.refreshToken);
   });
 });
 

@@ -1,7 +1,8 @@
-import { fireEvent, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, waitFor } from "@testing-library/react-native";
 import { Pressable, Text } from "react-native";
 import type { AuthSession } from "@/application/auth/AuthSession";
 import { AuthGate, useAuthSession } from "@/framework/auth/AuthGate";
+import { notifySessionInvalidated } from "@/framework/auth/sessionInvalidation";
 import { renderWithProviders } from "../../presentation/testUtils";
 
 const mockRedirects: string[] = [];
@@ -29,6 +30,7 @@ const session: AuthSession = {
   username: "alice",
   role: "USER",
   accessToken: "token-1",
+  refreshToken: "refresh-1",
 };
 
 function ProtectedContent() {
@@ -97,6 +99,26 @@ describe("AuthGate", () => {
     );
     await waitFor(() => expect(screen.getByTestId("logout-probe")).toBeTruthy());
     fireEvent.press(screen.getByTestId("logout-probe"));
+
+    // Assert
+    await waitFor(() => expect(mockClearCurrentSession).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockRedirects).toContain("/login"));
+  });
+
+  it("should_clear_session_and_redirect_to_login_when_session_is_invalidated", async () => {
+    // Arrange
+    mockGetCurrentSession.mockResolvedValue(session);
+    const screen = renderWithProviders(
+      <AuthGate>
+        <ProtectedContent />
+      </AuthGate>,
+    );
+    await waitFor(() => expect(screen.getByTestId("protected-content")).toBeTruthy());
+
+    // Act
+    await act(async () => {
+      notifySessionInvalidated();
+    });
 
     // Assert
     await waitFor(() => expect(mockClearCurrentSession).toHaveBeenCalledTimes(1));

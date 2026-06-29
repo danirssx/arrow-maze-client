@@ -5,6 +5,7 @@ import type { AuthSession } from "@/application/auth/AuthSession";
 import { LoadingState } from "@/presentation/components/LoadingState";
 import { ScreenContainer } from "@/presentation/components/ScreenContainer";
 import { clearCurrentSession, getCurrentSession } from "@/framework/config/session";
+import { onSessionInvalidated } from "@/framework/auth/sessionInvalidation";
 
 type AuthGateState = {
   readonly loading: boolean;
@@ -56,6 +57,10 @@ export function AuthGate({ children }: AuthGateProps) {
     setSession(null);
     setLoading(false);
   }, []);
+
+  // A 401 on an authed request invalidates the session: clear it and let the
+  // redirect below send the user to login.
+  useEffect(() => onSessionInvalidated(() => void clearSession()), [clearSession]);
 
   useEffect(() => {
     let active = true;

@@ -5,4 +5,5 @@ export interface AuthSession {
   username: string;
   role: UserRole;
   accessToken: string;
+  refreshToken: string;
 }
