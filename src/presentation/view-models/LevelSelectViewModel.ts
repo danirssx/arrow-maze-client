@@ -9,6 +9,7 @@ const DIFFICULTY_LABEL: Record<DifficultyDto, string> = { EASY: "Easy", MEDIUM: 
 
 export type LevelListItem = {
   readonly id: string;
+  readonly name: string;
   readonly order: number;
   readonly difficultyStars: number;
   readonly difficultyLabel: string;
@@ -31,6 +32,7 @@ export class LevelSelectViewModel {
   getLevels(): readonly LevelListItem[] {
     return manualLevels.map((level) => ({
       id: level.id,
+      name: level.name,
       order: level.order,
       difficultyStars: LevelSelectViewModel.starsFor(level.difficulty),
       difficultyLabel: LevelSelectViewModel.labelFor(level.difficulty),
@@ -57,6 +59,7 @@ export class LevelSelectViewModel {
   private static toListItem(level: LevelCatalogSummary, index: number): LevelListItem {
     return {
       id: level.levelId,
+      name: level.name,
       order: index + 1,
       difficultyStars: LevelSelectViewModel.starsFor(level.difficulty),
       difficultyLabel: LevelSelectViewModel.labelFor(level.difficulty),

@@ -14,17 +14,20 @@ interface ProgressScreenProps {
   viewModel: ProgressViewModel | null;
   userId: string | null;
   accessToken: string | null;
+  levelNameById?: Record<string, string>;
   onBack: () => void;
 }
 
 function ProgressContent({
   viewModel,
   userId,
-  accessToken
+  accessToken,
+  levelNameById
 }: {
   viewModel: ProgressViewModel;
   userId: string;
   accessToken: string;
+  levelNameById: Record<string, string> | undefined;
 }) {
   const { t } = useTranslation();
   const state = useViewModelState(viewModel);
@@ -62,7 +65,9 @@ function ProgressContent({
             key={level.levelId}
             className="flex-row items-center justify-between rounded-2xl bg-background-card border border-border-soft p-4"
           >
-            <Text className="flex-1 text-base font-semibold text-text-primary">{level.levelId}</Text>
+            <Text className="flex-1 text-base font-semibold text-text-primary">
+              {levelNameById?.[level.levelId] ?? level.levelId}
+            </Text>
             <Text className="text-base font-bold text-text-secondary">
               {t("progress.bestScore", { score: level.score })}
             </Text>
@@ -80,14 +85,19 @@ function ProgressContent({
  * authenticated session it shows the empty state. It never calls storage or HTTP
  * directly.
  */
-export function ProgressScreen({ viewModel, userId, accessToken, onBack }: ProgressScreenProps) {
+export function ProgressScreen({ viewModel, userId, accessToken, levelNameById, onBack }: ProgressScreenProps) {
   const { t } = useTranslation();
 
   return (
     <ScreenContainer testID="progress-screen">
       <Header title={t("progress.title")} onBack={onBack} />
       {viewModel !== null && userId !== null && accessToken !== null ? (
-        <ProgressContent viewModel={viewModel} userId={userId} accessToken={accessToken} />
+        <ProgressContent
+          viewModel={viewModel}
+          userId={userId}
+          accessToken={accessToken}
+          levelNameById={levelNameById}
+        />
       ) : (
         <EmptyState variant="progress" />
       )}

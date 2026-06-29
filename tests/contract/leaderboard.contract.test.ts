@@ -3,6 +3,7 @@
  * matches what the client expects to consume.
  * Source of truth: arrow-maze-backend openApiSpec LeaderboardResponse schema.
  */
+import type { SubmitScoreRequestDto } from "@/infrastructure/mappers/leaderboard/LeaderboardDtos";
 
 interface LeaderboardEntryDto {
   entryId: string;
@@ -23,16 +24,6 @@ interface LeaderboardResponseDto {
     updatedAt: string;
     entries: LeaderboardEntryDto[];
   };
-}
-
-interface SubmitScoreRequestDto {
-  leaderboardId: string;
-  entryId: string;
-  levelId: string;
-  usernameSnapshot: string;
-  score: number;
-  timeSeconds: number;
-  movesCount: number;
 }
 
 const LEADERBOARD_FIXTURE: LeaderboardResponseDto = {
