@@ -4,6 +4,7 @@ import type { IRemoteProgressRepository } from '@/application/ports/IRemoteProgr
 
 const LEVEL_UUID_1 = '550e8400-e29b-41d4-a716-446655440010';
 const LEVEL_UUID_2 = '550e8400-e29b-41d4-a716-446655440011';
+const LEVEL_UUID_3 = '550e8400-e29b-41d4-a716-446655440012';
 
 const REMOTE_PROGRESS: LocalProgress = {
   progressId: 'p-remote', userId: 'user-1', version: 2,
@@ -42,8 +43,10 @@ class FakeHttpProgressRepo implements IRemoteProgressRepository {
   syncResult = REMOTE_PROGRESS;
   completed: CompletedLevelData | null = null;
   syncedLevels: CompletedLevelData[] | null = null;
+  completeError: Error | null = null;
   async fetchRemote(_token: string): Promise<LocalProgress> { return this.fetchResult; }
   async completeLevel(_token: string, completedLevel: CompletedLevelData): Promise<void> {
+    if (this.completeError) throw this.completeError;
     this.completed = completedLevel;
   }
   async sync(_token: string, levels: CompletedLevelData[]): Promise<LocalProgress> {
@@ -199,5 +202,60 @@ describe('ProgressFacade', () => {
 
   it('should_report_pending_sync_false_when_no_progress', async () => {
     expect(await facade.hasPendingSync('user-1')).toBe(false);
+  });
+
+  // --- MAZ-185: drain offline progress + robust victory persistence ---
+  it('should_drain_pending_progress_by_syncing_when_pending', async () => {
+    const completedLevel = REMOTE_PROGRESS.completedLevels[0]!;
+    await local.save({ ...LOCAL_PROGRESS, completedLevels: [completedLevel], pendingSync: true });
+
+    const drained = await facade.drainPendingProgress('user-1', 'token-placeholder');
+
+    expect(drained).toBe(true);
+    expect(remote.syncedLevels).toEqual([completedLevel]);
+    const stored = await local.load('user-1');
+    expect(stored?.pendingSync).toBe(false);
+  });
+
+  it('should_not_drain_when_no_pending_progress', async () => {
+    await local.save({ ...LOCAL_PROGRESS, pendingSync: false });
+
+    const drained = await facade.drainPendingProgress('user-1', 'token-placeholder');
+
+    expect(drained).toBe(false);
+    expect(remote.syncedLevels).toBeNull();
+  });
+
+  it('should_retain_pending_local_completion_when_remote_completion_fails', async () => {
+    remote.completeError = new Error('network down');
+    const completedLevel: CompletedLevelData = {
+      levelId: LEVEL_UUID_3, score: 700, timeSeconds: 12, movesCount: 4,
+      completedAt: '2026-06-19T00:00:00.000Z',
+    };
+
+    await expect(
+      facade.completeLevel('user-1', 'token-placeholder', completedLevel),
+    ).rejects.toThrow('network down');
+
+    const stored = await local.load('user-1');
+    expect(stored?.pendingSync).toBe(true);
+    expect(stored?.completedLevels).toContainEqual(completedLevel);
+  });
+
+  it('should_retry_retained_completion_on_next_drain_after_remote_failure', async () => {
+    remote.completeError = new Error('network down');
+    const completedLevel: CompletedLevelData = {
+      levelId: LEVEL_UUID_3, score: 700, timeSeconds: 12, movesCount: 4,
+      completedAt: '2026-06-19T00:00:00.000Z',
+    };
+    await expect(
+      facade.completeLevel('user-1', 'token-placeholder', completedLevel),
+    ).rejects.toThrow();
+
+    remote.completeError = null;
+    const drained = await facade.drainPendingProgress('user-1', 'token-placeholder');
+
+    expect(drained).toBe(true);
+    expect(remote.syncedLevels).toContainEqual(completedLevel);
   });
 });
