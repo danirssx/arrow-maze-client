@@ -2688,29 +2688,6 @@ makes the feature visible from the database.
 
 ---
 
-# AI Usage Log: MAZ-167 [CA-014] Enforce `reglas_clean_arch.md` strictly in the judge
-
-## Task / Problem
-
-Cross-repo docs/chore ticket (`MAZ-167`, temporary id `CA-014`,
-milestone `M8 - Clean Architecture Remediation`). The client judge already
-checked the dependency rule and MVVM, but did not force reading/applying the
-**whole** `reglas_clean_arch.md` checklist, nor force every `src`-touching ticket
-to declare its per-layer impact through a `Clean Architecture contract`. There
-was also no spec/ticket template carrying that contract.
-
-## Tool and Model
-
-Claude Code / claude-opus-4-8.
-
-## Prompt Used
-
-User asked to implement MAZ-167 following the repo agent rules: read both
-`AGENTS.md`, the root `MEMORY.md`, `Linear_MCP_Guideline.md`, work in a fresh
-worktree, log AI usage + run `compile-ai-usage.sh`, commit/push/PR and update
-Linear. Read before implementing: `AGENTS.md`, root `MEMORY.md`,
-`reglas_clean_arch.md`, the Linear ticket body, `.agents/*` and existing specs.
-No secrets pasted.
 # AI Usage Log: MAZ-164 Flatten boundary DTOs and keep domain types out of presentation
 
 ## Task / Problem
@@ -2743,54 +2720,6 @@ context and the affected tickets.
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
-| Spec Partner (`.agents/spec-partner.md`) | Referenced | This ticket edits the prompt itself: added a mandatory `## Clean Architecture contract` step (incl. MVVM) pointing at `specs/_TEMPLATE.spec.md`. No separate spec-partner session was run. | `.agents/spec-partner.md` |
-| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Edited the prompt to require each `src`-touching slice/ticket carry the `Clean Architecture contract`. No separate planner session. | `.agents/planner.md` |
-| TDD Implementer (`.agents/tdd-implementer.md`) | Not used | Docs-only ticket; no production code or tests. | N/A |
-| Judge (`.agents/judge.md`) | Referenced | Main target of the change: tightened protocol step 1/3, verdict checklist and hard rules; followed its own MVVM/dependency constraints while editing. No separate judge session run against a PR. | `.agents/judge.md` |
-| Mutation Tester (`.agents/mutation.md`) | Not used | No production code changed; nothing to mutate. | N/A |
-
-## Scenario Coverage (@s ↔ test)
-
-Not applicable — docs/chore ticket. Acceptance criteria are non-functional and
-validated by manual dry-run of the judge protocol against this ticket's own
-`Clean Architecture contract` (embedded in the Linear description).
-
-## Result Obtained
-
-- `specs/_TEMPLATE.spec.md` — new client spec/ticket template with the mandatory
-  `## Clean Architecture contract` section, including the MVVM rules (View dumb,
-  ViewModel only presentation, composition root in framework) and per-layer
-  impact (Domain/Application/Infrastructure/Presentation/Framework).
-- `.agents/judge.md` — protocol step 1 now reads `docs/reglas_clean_arch.md`
-  (mirror of canonical `../reglas_clean_arch.md`) and requires applying the
-  **whole** checklist; step 3 requires the contract follow the template and
-  declare impact per layer; verdict checklist adds a per-layer-impact line, a
-  reinforced MVVM line and a note requiring one PASS/FAIL per applicable rule;
-  two new hard rules.
-- `.agents/spec-partner.md` / `.agents/planner.md` — require the contract in the
-  generated spec and in every `src`-touching Linear ticket.
-
-## Verification
-
-- Docs-only change under `.agents/` and `specs/` (markdown); no `src`, `tests`
-  or build config touched, so `npm run verify` is unaffected.
-- Dry-run: MAZ-167's Linear description already carries a `## Clean Architecture
-  contract` block (all layers `no previsto`, docs-only) — the judge protocol
-  processes it and would not reject, satisfying the Definition of Done example.
-
-## Team Modifications Pending Human Review
-
-- The canonical `reglas_clean_arch.md` is mirrored into each repo's `docs/`.
-  Path strategy kept as `docs/reglas_clean_arch.md` (self-contained per repo)
-  with `../reglas_clean_arch.md` documented as the canonical fallback.
-- Confirm `specs/_TEMPLATE.spec.md` (underscore prefix) is the desired template
-  location and naming.
-
-## Lessons / Limitations
-
-- Much of CA-014's judge changes had already landed in prior commits; the real
-  remaining gap was the missing spec/ticket template and wiring spec-partner +
-  planner to it. Verified the existing state before adding, to avoid duplication.
 | Spec Partner (`.agents/spec-partner.md`) | Referenced | Distilled the approved CA-011 scope from `Clean_Architecture_Fix_Tickets_Proposal.md` + the actual code violations into a local spec; no separate session. | `specs/boundary-dtos.spec.md` |
 | Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored the executable `.feature` (`@s1..@s9`) from the already-approved ticket ACs. | `specs/boundary-dtos.feature` |
 | TDD Implementer (`.agents/tdd-implementer.md`) | Used | Implemented the DTO-owned literals + boundary mappers and the difficulty ViewState, with mapper/ViewModel/component tests and a lint-guard probe. | tests below + `@s → test` map |
@@ -2868,6 +2797,216 @@ New: `tests/application/dto/BoundaryDtos.test.ts` (5 tests), `tests/presentation
   so it is out of scope.
 - The eslint zone is the real enforcement of "presentation never imports domain"; a
   throwaway probe file confirmed it errors before the change could regress.
+
+
+---
+
+# AI Usage Log: MAZ-167 [CA-014] Enforce `reglas_clean_arch.md` strictly in the judge
+
+## Task / Problem
+
+Cross-repo docs/chore ticket (`MAZ-167`, temporary id `CA-014`,
+milestone `M8 - Clean Architecture Remediation`). The client judge already
+checked the dependency rule and MVVM, but did not force reading/applying the
+**whole** `reglas_clean_arch.md` checklist, nor force every `src`-touching ticket
+to declare its per-layer impact through a `Clean Architecture contract`. There
+was also no spec/ticket template carrying that contract.
+
+## Tool and Model
+
+Claude Code / claude-opus-4-8.
+
+## Prompt Used
+
+User asked to implement MAZ-167 following the repo agent rules: read both
+`AGENTS.md`, the root `MEMORY.md`, `Linear_MCP_Guideline.md`, work in a fresh
+worktree, log AI usage + run `compile-ai-usage.sh`, commit/push/PR and update
+Linear. Read before implementing: `AGENTS.md`, root `MEMORY.md`,
+`reglas_clean_arch.md`, the Linear ticket body, `.agents/*` and existing specs.
+No secrets pasted.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | This ticket edits the prompt itself: added a mandatory `## Clean Architecture contract` step (incl. MVVM) pointing at `specs/_TEMPLATE.spec.md`. No separate spec-partner session was run. | `.agents/spec-partner.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Edited the prompt to require each `src`-touching slice/ticket carry the `Clean Architecture contract`. No separate planner session. | `.agents/planner.md` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Not used | Docs-only ticket; no production code or tests. | N/A |
+| Judge (`.agents/judge.md`) | Referenced | Main target of the change: tightened protocol step 1/3, verdict checklist and hard rules; followed its own MVVM/dependency constraints while editing. No separate judge session run against a PR. | `.agents/judge.md` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | No production code changed; nothing to mutate. | N/A |
+
+## Scenario Coverage (@s ↔ test)
+
+Not applicable — docs/chore ticket. Acceptance criteria are non-functional and
+validated by manual dry-run of the judge protocol against this ticket's own
+`Clean Architecture contract` (embedded in the Linear description).
+
+## Result Obtained
+
+- `specs/_TEMPLATE.spec.md` — new client spec/ticket template with the mandatory
+  `## Clean Architecture contract` section, including the MVVM rules (View dumb,
+  ViewModel only presentation, composition root in framework) and per-layer
+  impact (Domain/Application/Infrastructure/Presentation/Framework).
+- `.agents/judge.md` — protocol step 1 now reads `docs/reglas_clean_arch.md`
+  (mirror of canonical `../reglas_clean_arch.md`) and requires applying the
+  **whole** checklist; step 3 requires the contract follow the template and
+  declare impact per layer; verdict checklist adds a per-layer-impact line, a
+  reinforced MVVM line and a note requiring one PASS/FAIL per applicable rule;
+  two new hard rules.
+- `.agents/spec-partner.md` / `.agents/planner.md` — require the contract in the
+  generated spec and in every `src`-touching Linear ticket.
+
+## Verification
+
+- Docs-only change under `.agents/` and `specs/` (markdown); no `src`, `tests`
+  or build config touched, so `npm run verify` is unaffected.
+- Dry-run: MAZ-167's Linear description already carries a `## Clean Architecture
+  contract` block (all layers `no previsto`, docs-only) — the judge protocol
+  processes it and would not reject, satisfying the Definition of Done example.
+
+## Team Modifications Pending Human Review
+
+- The canonical `reglas_clean_arch.md` is mirrored into each repo's `docs/`.
+  Path strategy kept as `docs/reglas_clean_arch.md` (self-contained per repo)
+  with `../reglas_clean_arch.md` documented as the canonical fallback.
+- Confirm `specs/_TEMPLATE.spec.md` (underscore prefix) is the desired template
+  location and naming.
+
+## Lessons / Limitations
+
+- Much of CA-014's judge changes had already landed in prior commits; the real
+  remaining gap was the missing spec/ticket template and wiring spec-partner +
+  planner to it. Verified the existing state before adding, to avoid duplication.
+
+
+---
+
+# AI Usage Log: MAZ-182 (M9/C4) — Client: store JWT in expo-secure-store instead of AsyncStorage
+
+## Task / Problem
+
+The persisted `AuthSession` (which embeds the 7-day `accessToken`) was written to
+**plaintext AsyncStorage** — `createSessionManager()` (`src/framework/config/session.ts`)
+wired `SessionManager` over `AsyncStorageAdapter`, and `expo-secure-store` was not
+even a dependency. For a mandatory-auth product the bearer token was recoverable
+from device storage.
+
+Goal: persist the session blob in the OS keychain/keystore via `expo-secure-store`
+and migrate any existing AsyncStorage session on first read so users are not logged
+out by the update. Infrastructure-only — no change to `SessionManager`,
+`ISessionManager`, `ILocalStorage`, `AuthSession`, or any use case.
+
+## Tool and Model
+
+Claude Opus 4.8 via Claude Code CLI.
+
+## Prompt Used
+
+User requested starting MAZ-182 following the established team workflow (read both
+`AGENTS.md`, root `MEMORY.md`, `Linear_MCP_Guideline.md`, the M9 memory; new
+worktree; spec → Gherkin → TDD; ai-log + compile usage; commit/push/PR; update
+Linear), noting it is a refactor so the related M9 tickets must be reviewed.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Used | Wrote the spec after reading `SessionManager`, `session.ts`, `AsyncStorageAdapter`, `ILocalStorage`, `AuthSession`, `StorageError`, and the existing storage tests. Confirmed the 422-adjacent auth scope is owned by sibling tickets (179/180/181, still Backlog) so this slice stays infra-only. | `specs/mobile-secure-store-MAZ-182.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Used | Distilled 7 Gherkin scenarios (`@s1..@s7`): save→secure+purge legacy, migrate-on-read, secure-first, null, remove-both, error→StorageError, clear-unsupported. | `specs/mobile-secure-store-MAZ-182.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red→Green per file: SecureStorageAdapter test (confirmed RED: module not found) → adapter; MigratingSessionStorage test (RED) → decorator; then wired `createSessionManager`. Added the expo-secure-store manual mock + jest.setup activation. | tests, code, `@s → test` map below |
+| Judge (`.agents/judge.md`) | Referenced | Applied the `docs/reglas_clean_arch.md` checklist in-session: `expo-secure-store` confined to `src/infrastructure`; `ILocalStorage` port unchanged; composition root stays in framework; no domain/application/presentation change. No separate judge session run. | CA contract in `specs/mobile-secure-store-MAZ-182.spec.md` |
+| Mutation Tester (`.agents/mutation.md`) | Used | Ran `stryker` scoped to the two new infra files (infra is outside the project's default mutate globs — `domain`/`application` only). First run 76% (1 real ConditionalExpression survivor on the migration null-guard + StringLiteral message survivors). Added a "no migration when empty" assertion + exact-message assertions; re-run 96%, `MigratingSessionStorage.ts` 100%. | scores below |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+|----------|------|------|
+| @s1 — save writes secure + purges legacy | `should_write_to_secure_and_purge_legacy_when_saving` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| @s2 — migrate legacy session on first read | `should_migrate_legacy_session_to_secure_when_secure_is_empty` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| @s3 — secure-first, legacy untouched | `should_read_from_secure_and_not_touch_legacy_when_secure_has_value` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| @s4 — null when both empty | `should_return_null_and_not_migrate_when_neither_store_has_value` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| @s5 — remove clears both | `should_remove_key_from_both_stores_when_clearing_session` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| @s6 — SecureStore failure → StorageError | `should_throw_StorageError_when_{read,write,delete}_fails` | `tests/infrastructure/storage/SecureStorageAdapter.test.ts` |
+| @s7 — clear unsupported | `should_throw_StorageError_when_called_because_secure_store_has_no_bulk_clear` | `tests/infrastructure/storage/SecureStorageAdapter.test.ts` |
+| (edge) migration write fails → legacy kept | `should_keep_legacy_copy_when_secure_write_fails_during_migration` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| (support) get/set/remove happy paths | `SecureStorageAdapter` get/set/remove tests | `tests/infrastructure/storage/SecureStorageAdapter.test.ts` |
+
+## TDD Cycles
+
+**Batch 1 — SecureStorageAdapter (RED → GREEN)**
+- RED: `SecureStorageAdapter.test.ts` → module not found (and confirmed the
+  expo-secure-store manual mock resolves).
+- GREEN: `SecureStorageAdapter implements ILocalStorage` over
+  `SecureStore.{getItemAsync,setItemAsync,deleteItemAsync}`, failures wrapped in
+  `StorageError`, `clear()` throws (no bulk-clear API). 8/8.
+
+**Batch 2 — MigratingSessionStorage decorator (RED → GREEN)**
+- RED: `MigratingSessionStorage.test.ts` → module not found.
+- GREEN: Decorator over (secure, legacy): secure-first read, one-time
+  legacy→secure migration on miss (write secure → remove legacy, in that order so
+  a failed write keeps the legacy copy), `setItem`/`removeItem` purge legacy,
+  `clear()` wipes legacy. 24/24 storage tests.
+
+**Batch 3 — wiring + mutation hardening**
+- `createSessionManager()` now wires `MigratingSessionStorage(SecureStorageAdapter,
+  AsyncStorageAdapter)`. Mutation surfaced a real survivor (`if (legacyValue ===
+  null)` → `if (false)`); the null test didn't assert "no migration attempted".
+  Added that assertion + exact error-message assertions. 96% / decorator 100%.
+
+## Result Obtained
+
+**New files:**
+- `src/infrastructure/storage/SecureStorageAdapter.ts` — Adapter over expo-secure-store
+- `src/infrastructure/storage/MigratingSessionStorage.ts` — Decorator (secure-primary + legacy migration)
+- `__mocks__/expo-secure-store.js` — in-memory manual mock
+- `specs/mobile-secure-store-MAZ-182.{spec.md,feature}` — CA spec + 7 scenarios
+- `tests/infrastructure/storage/{SecureStorageAdapter,MigratingSessionStorage}.test.ts`
+
+**Modified files:**
+- `src/framework/config/session.ts` — composition root points at the secure, migrating storage
+- `jest.setup.ts` — `jest.mock("expo-secure-store")` activates the manual mock globally
+- `package.json` / `package-lock.json` — added `expo-secure-store@~15.0.8` (via `expo install`)
+- `app.json` — `expo install` added the `expo-secure-store` config plugin (iOS keychain entitlement)
+
+**Unchanged on purpose:** `SessionManager`, `ISessionManager`, `ILocalStorage`,
+`AuthSession`, `LogoutUseCase`, `AsyncStorageAdapter`, `StorageError`.
+
+## Verification
+
+- `npm run verify` — GREEN: lint + typecheck + 61 suites / 309 tests.
+- Scoped Stryker on the two new files: 96% (`MigratingSessionStorage.ts` 100%,
+  `SecureStorageAdapter.ts` one cosmetic StringLiteral survivor — the `'__all__'`
+  key arg of the `clear()` `StorageError`, message asserted but not the key field).
+  Note: `src/infrastructure` is outside the project's default mutate globs
+  (domain/application only), so this scoped run is supplementary, not the gate.
+
+## Team Modifications Pending Human Review
+
+1. **Whole session blob → SecureStore** (not a token/profile split). The blob is
+   small (`userId`, `username`, `role`, `accessToken`) and the key
+   `arrow_maze_session` is SecureStore-valid, so AC1 (token via SecureStore) holds
+   with the smallest change and `SessionManager` untouched.
+2. **`app.json` gained the `expo-secure-store` plugin** (added by `expo install`).
+   A native rebuild is required for the keychain entitlement to apply on device.
+3. **Migration is lazy, inside the storage decorator** — it runs on the first
+   `get()` rather than a launch bootstrap (MAZ-179, not done yet). When MAZ-179
+   adds a bootstrap gate, no change is needed here; migration already happens on
+   the first session read.
+4. **`SecureStorageAdapter.clear()` throws** (SecureStore has no bulk clear). Never
+   reached by the session flow (logout uses `removeItem`).
+
+## Lessons / Limitations
+
+- `expo-secure-store` is a native module; it is verified against its contract via a
+  Jest manual mock, not the real keychain. Device validation (real keychain + the
+  AsyncStorage→SecureStore migration on a real upgrade) needs `expo run` and is out
+  of scope here.
+- The `__mocks__/*.js` manual mock needs `/* global jest */` (the existing svg/
+  reanimated mocks dodge this by not referencing `jest`); without it eslint's
+  `no-undef` fails the lint gate.
+- Mutation caught a genuine gap: "returns null" alone didn't pin "doesn't attempt a
+  spurious migration" — asserting the absence of the secure write killed the
+  conditional mutant.
 
 
 <!-- AI_LOG_ENTRIES_END -->
