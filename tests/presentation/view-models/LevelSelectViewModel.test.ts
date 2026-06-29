@@ -98,4 +98,20 @@ describe("LevelSelectViewModel", () => {
       expect(typeof level.difficultyLabel).toBe("string");
     }
   });
+
+  it("should_expose_a_human_readable_name_for_each_offline_level", () => {
+    const levels = new LevelSelectViewModel().getLevels();
+
+    for (const level of levels) {
+      expect(typeof level.name).toBe("string");
+      expect(level.name.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("should_expose_the_remote_level_name", async () => {
+    const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels();
+
+    expect(levels[0]?.name).toBe("First Knot");
+    expect(levels[1]?.name).toBe("Timed Knot");
+  });
 });

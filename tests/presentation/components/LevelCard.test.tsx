@@ -7,6 +7,7 @@ import { renderWithProviders } from "../testUtils";
 function item(overrides: Partial<LevelListItem> = {}): LevelListItem {
   return {
     id: "lvl-1",
+    name: "Test Level",
     order: 1,
     difficultyStars: 3,
     difficultyLabel: "Hard",
