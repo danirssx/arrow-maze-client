@@ -39,7 +39,7 @@ const LEADERBOARD_FIXTURE: LeaderboardResponseDto = {
   status: 'success',
   data: {
     leaderboardId: '550e8400-e29b-41d4-a716-446655440001',
-    levelId: 'level-001',
+    levelId: '550e8400-e29b-41d4-a716-446655440010',
     updatedAt: '2026-06-18T00:00:00.000Z',
     entries: [
       {
@@ -59,7 +59,7 @@ const LEADERBOARD_FIXTURE: LeaderboardResponseDto = {
 const SUBMIT_SCORE_REQUEST_FIXTURE: SubmitScoreRequestDto = {
   leaderboardId: '550e8400-e29b-41d4-a716-446655440001',
   entryId: '550e8400-e29b-41d4-a716-446655440002',
-  levelId: 'level-001',
+  levelId: '550e8400-e29b-41d4-a716-446655440010',
   usernameSnapshot: 'arrow_player',
   score: 1500,
   timeSeconds: 45,

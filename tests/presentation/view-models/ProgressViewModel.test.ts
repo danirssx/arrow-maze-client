@@ -13,7 +13,7 @@ function progressWith(levelCount: number): LocalProgress {
     updatedAt: "2026-01-01T00:00:00Z",
     pendingSync: false,
     completedLevels: Array.from({ length: levelCount }).map((_, index) => ({
-      levelId: `manual-00${index + 1}`,
+      levelId: `550e8400-e29b-41d4-a716-44665544001${index}`,
       score: 100,
       timeSeconds: 10,
       movesCount: 3,

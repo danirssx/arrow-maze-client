@@ -2,6 +2,7 @@
 import type { IProgressRepository, LocalProgress, CompletedLevelData } from '@/application/ports/IProgressRepository';
 import type { IRemoteProgressRepository } from '@/application/ports/IRemoteProgressRepository';
 import { ProgressMergePolicy } from '@/domain/progress';
+import { isUuid } from '@/shared/isUuid';
 
 export class ProgressFacade {
   private readonly progressMergePolicy = new ProgressMergePolicy();
@@ -24,6 +25,12 @@ export class ProgressFacade {
   }
 
   async completeLevel(userId: string, accessToken: string, completedLevel: CompletedLevelData): Promise<LocalProgress> {
+    // The backend rejects a non-UUID levelId with 422; never persist/sync a slug fallback id.
+    if (!isUuid(completedLevel.levelId)) {
+      const current = await this.local.load(userId);
+      return current ?? ProgressFacade.emptyProgress(userId, completedLevel.completedAt);
+    }
+
     const local = await this.local.load(userId);
     const updated = this.mergeCompletion(
       local ?? ProgressFacade.emptyProgress(userId, completedLevel.completedAt),

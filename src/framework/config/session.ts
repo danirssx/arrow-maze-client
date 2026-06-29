@@ -17,3 +17,7 @@ export function createSessionManager(): SessionManager {
 export async function getCurrentSession(): Promise<AuthSession | null> {
   return createSessionManager().get();
 }
+
+export async function clearCurrentSession(): Promise<void> {
+  await createSessionManager().clear();
+}

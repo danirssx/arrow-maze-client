@@ -29,7 +29,7 @@ const LEADERBOARD_FIXTURE: LeaderboardResponseDto = {
   status: 'success',
   data: {
     leaderboardId: 'lb-1',
-    levelId: 'level-001',
+    levelId: '550e8400-e29b-41d4-a716-446655440010',
     updatedAt: '2026-06-18T00:00:00.000Z',
     entries: [
       { entryId: 'e-1', userId: 'user-1', usernameSnapshot: 'player', score: 1500, timeSeconds: 45, movesCount: 30, rank: 1, submittedAt: '2026-06-18T00:00:00.000Z' },
@@ -48,11 +48,11 @@ describe('HttpLeaderboardRepository', () => {
 
   it('should_return_leaderboard_with_entries', async () => {
     http.getResponse = LEADERBOARD_FIXTURE;
-    const result = await repo.getTopScores('level-001');
-    expect(result.levelId).toBe('level-001');
+    const result = await repo.getTopScores('550e8400-e29b-41d4-a716-446655440010');
+    expect(result.levelId).toBe('550e8400-e29b-41d4-a716-446655440010');
     expect(result.entries).toHaveLength(1);
     expect(result.entries[0]?.rank).toBe(1);
-    expect(http.lastGetUrl).toBe('/leaderboard/level-001');
+    expect(http.lastGetUrl).toBe('/leaderboard/550e8400-e29b-41d4-a716-446655440010');
     expect(http.lastGetConfig).toBeUndefined();
   });
 
@@ -60,7 +60,7 @@ describe('HttpLeaderboardRepository', () => {
     http.postResponse = { status: 'success', data: null };
     await expect(repo.submitScore({
       leaderboardId: 'lb-1', entryId: 'e-2',
-      levelId: 'level-001', usernameSnapshot: 'player',
+      levelId: '550e8400-e29b-41d4-a716-446655440010', usernameSnapshot: 'player',
       score: 800, timeSeconds: 60, movesCount: 20,
     }, 'jwt-token-1')).resolves.not.toThrow();
 
@@ -68,7 +68,7 @@ describe('HttpLeaderboardRepository', () => {
     expect(http.lastPostBody).toEqual({
       leaderboardId: 'lb-1',
       entryId: 'e-2',
-      levelId: 'level-001',
+      levelId: '550e8400-e29b-41d4-a716-446655440010',
       usernameSnapshot: 'player',
       score: 800,
       timeSeconds: 60,

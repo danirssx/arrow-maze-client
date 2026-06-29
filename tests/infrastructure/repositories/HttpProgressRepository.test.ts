@@ -38,14 +38,14 @@ describe('HttpProgressRepository', () => {
     const repo = new HttpProgressRepository(http);
 
     await repo.completeLevel('jwt-token-1', {
-      levelId: 'level-1',
+      levelId: '550e8400-e29b-41d4-a716-446655440010',
       score: 900,
       timeSeconds: 10,
       movesCount: 2,
       completedAt: '2026-06-18T00:00:00.000Z',
     });
 
-    expect(http.lastPostUrl).toBe('/progress/levels/level-1/complete');
+    expect(http.lastPostUrl).toBe('/progress/levels/550e8400-e29b-41d4-a716-446655440010/complete');
     expect(http.lastPostBody).toEqual({
       score: 900,
       timeSeconds: 10,

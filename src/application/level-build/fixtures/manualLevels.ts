@@ -32,7 +32,7 @@ export type ManualLevelFixture = {
 
 const LEVEL_DRAFTS: readonly LevelDraft[] = [
   {
-    "id": "manual-001-first-knot",
+    "id": "550e8400-e29b-41d4-a716-446655440010",
     "name": "Packed Start",
     "difficulty": Difficulty.Easy,
     "arrowCount": 12,
@@ -353,7 +353,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-002-warm-up",
+    "id": "550e8400-e29b-41d4-a716-446655440011",
     "name": "Sidewinder",
     "difficulty": Difficulty.Easy,
     "arrowCount": 14,
@@ -720,7 +720,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-003-cross",
+    "id": "550e8400-e29b-41d4-a716-446655440012",
     "name": "Dense Crossings",
     "difficulty": Difficulty.Easy,
     "arrowCount": 16,
@@ -1161,7 +1161,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-004-tangle",
+    "id": "550e8400-e29b-41d4-a716-446655440013",
     "name": "Corner Weave",
     "difficulty": Difficulty.Easy,
     "arrowCount": 18,
@@ -1624,7 +1624,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-005-weave",
+    "id": "550e8400-e29b-41d4-a716-446655440014",
     "name": "Full Weave",
     "difficulty": Difficulty.Easy,
     "arrowCount": 20,
@@ -2145,7 +2145,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-006-stack",
+    "id": "550e8400-e29b-41d4-a716-446655440015",
     "name": "Medium Gridlock",
     "difficulty": Difficulty.Medium,
     "arrowCount": 22,
@@ -2740,7 +2740,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-007-rush",
+    "id": "550e8400-e29b-41d4-a716-446655440016",
     "name": "Rush Grid",
     "difficulty": Difficulty.Medium,
     "arrowCount": 24,
@@ -3390,7 +3390,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-008-lattice",
+    "id": "550e8400-e29b-41d4-a716-446655440017",
     "name": "Lattice Lock",
     "difficulty": Difficulty.Medium,
     "arrowCount": 26,
@@ -4117,7 +4117,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-009-pressure",
+    "id": "550e8400-e29b-41d4-a716-446655440018",
     "name": "Pressure Mesh",
     "difficulty": Difficulty.Medium,
     "arrowCount": 28,
@@ -4895,7 +4895,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-010-medium-finale",
+    "id": "550e8400-e29b-41d4-a716-446655440019",
     "name": "Medium Finale",
     "difficulty": Difficulty.Medium,
     "arrowCount": 30,
@@ -5735,7 +5735,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-011-hard-knot",
+    "id": "550e8400-e29b-41d4-a716-446655440020",
     "name": "Hard Stack",
     "difficulty": Difficulty.Hard,
     "arrowCount": 32,
@@ -6596,7 +6596,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-012-hard-timer",
+    "id": "550e8400-e29b-41d4-a716-446655440021",
     "name": "Hard Timer",
     "difficulty": Difficulty.Hard,
     "arrowCount": 34,
@@ -7524,7 +7524,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-013-hard-mesh",
+    "id": "550e8400-e29b-41d4-a716-446655440022",
     "name": "Hard Mesh",
     "difficulty": Difficulty.Hard,
     "arrowCount": 36,
@@ -8498,7 +8498,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-014-hard-snarl",
+    "id": "550e8400-e29b-41d4-a716-446655440023",
     "name": "Hard Snarl",
     "difficulty": Difficulty.Hard,
     "arrowCount": 38,
@@ -9522,7 +9522,7 @@ const LEVEL_DRAFTS: readonly LevelDraft[] = [
     ]
   },
   {
-    "id": "manual-015-hard-finale",
+    "id": "550e8400-e29b-41d4-a716-446655440024",
     "name": "Hard Finale",
     "difficulty": Difficulty.Hard,
     "arrowCount": 40,
