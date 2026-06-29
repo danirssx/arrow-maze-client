@@ -13,6 +13,7 @@ import {
 } from "@expo-google-fonts/outfit";
 
 import { registerDefaultFont } from "@/framework/fonts/registerDefaultFont";
+import { AuthGate } from "@/framework/auth/AuthGate";
 
 // Patch the host Text renderer once so Outfit becomes the default font everywhere.
 registerDefaultFont();
@@ -33,7 +34,9 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#F4F5FF" } }} />
+      <AuthGate>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#F4F5FF" } }} />
+      </AuthGate>
     </SafeAreaProvider>
   );
 }
