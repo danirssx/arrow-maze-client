@@ -17,9 +17,7 @@ export class HttpLeaderboardRepository implements ILeaderboardRepository {
     };
   }
 
-  async submitScore(input: SubmitScoreInput, accessToken: string): Promise<void> {
-    await this.http.post('/leaderboard/scores', input, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+  async submitScore(input: SubmitScoreInput): Promise<void> {
+    await this.http.post('/leaderboard/scores', input);
   }
 }

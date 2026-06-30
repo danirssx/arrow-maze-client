@@ -10,13 +10,11 @@ const LEADERBOARD: Leaderboard = {
 
 class FakeLeaderboardRepo implements ILeaderboardRepository {
   submitted: SubmitScoreInput | null = null;
-  submittedAccessToken: string | null = null;
   submitCalls = 0;
   async getTopScores(_levelId: string): Promise<Leaderboard> { return LEADERBOARD; }
-  async submitScore(input: SubmitScoreInput, accessToken: string): Promise<void> {
+  async submitScore(input: SubmitScoreInput): Promise<void> {
     this.submitCalls += 1;
     this.submitted = input;
-    this.submittedAccessToken = accessToken;
   }
 }
 
@@ -42,14 +40,13 @@ describe('LeaderboardFacade', () => {
   });
 
   it('should_delegate_submit_score_to_repository_when_level_id_is_a_uuid', async () => {
-    await facade.submitScore(submitInput(LEVEL_UUID), 'jwt-token-1');
+    await facade.submitScore(submitInput(LEVEL_UUID));
     expect(repo.submitted?.score).toBe(800);
     expect(repo.submitted).not.toHaveProperty('userId');
-    expect(repo.submittedAccessToken).toBe('jwt-token-1');
   });
 
   it('should_not_submit_score_when_level_id_is_not_a_uuid', async () => {
-    await facade.submitScore(submitInput('manual-001-first-knot'), 'jwt-token-1');
+    await facade.submitScore(submitInput('manual-001-first-knot'));
     expect(repo.submitCalls).toBe(0);
     expect(repo.submitted).toBeNull();
   });

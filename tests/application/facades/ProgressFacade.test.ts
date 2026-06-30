@@ -44,12 +44,12 @@ class FakeHttpProgressRepo implements IRemoteProgressRepository {
   completed: CompletedLevelData | null = null;
   syncedLevels: CompletedLevelData[] | null = null;
   completeError: Error | null = null;
-  async fetchRemote(_token: string): Promise<LocalProgress> { return this.fetchResult; }
-  async completeLevel(_token: string, completedLevel: CompletedLevelData): Promise<void> {
+  async fetchRemote(): Promise<LocalProgress> { return this.fetchResult; }
+  async completeLevel(completedLevel: CompletedLevelData): Promise<void> {
     if (this.completeError) throw this.completeError;
     this.completed = completedLevel;
   }
-  async sync(_token: string, levels: CompletedLevelData[]): Promise<LocalProgress> {
+  async sync(levels: CompletedLevelData[]): Promise<LocalProgress> {
     this.syncedLevels = levels;
     return this.syncResult;
   }
@@ -68,12 +68,12 @@ describe('ProgressFacade', () => {
 
   it('should_return_cached_progress_without_fetching_remote', async () => {
     await local.save(LOCAL_PROGRESS);
-    const result = await facade.load('user-1', 'token-placeholder');
+    const result = await facade.load('user-1');
     expect(result.progressId).toBe('p-local');
   });
 
   it('should_fetch_remote_and_cache_when_no_local_exists', async () => {
-    const result = await facade.load('user-1', 'token-placeholder');
+    const result = await facade.load('user-1');
     expect(result.progressId).toBe('p-remote');
     const cached = await local.load('user-1');
     expect(cached).not.toBeNull();
@@ -87,7 +87,7 @@ describe('ProgressFacade', () => {
 
   it('should_clear_pending_sync_after_successful_sync', async () => {
     await local.save({ ...LOCAL_PROGRESS, pendingSync: true });
-    const merged = await facade.sync('user-1', 'token-placeholder');
+    const merged = await facade.sync('user-1');
     expect(merged.pendingSync).toBe(false);
     const stored = await local.load('user-1');
     expect(stored?.pendingSync).toBe(false);
@@ -97,13 +97,13 @@ describe('ProgressFacade', () => {
     const completedLevel = REMOTE_PROGRESS.completedLevels[0]!;
     await local.save({ ...LOCAL_PROGRESS, completedLevels: [completedLevel], pendingSync: true });
 
-    await facade.sync('user-1', 'token-placeholder');
+    await facade.sync('user-1');
 
     expect(remote.syncedLevels).toEqual([completedLevel]);
   });
 
   it('should_sync_empty_completed_levels_when_no_local_progress_exists', async () => {
-    await facade.sync('user-1', 'token-placeholder');
+    await facade.sync('user-1');
 
     expect(remote.syncedLevels).toEqual([]);
   });
@@ -116,7 +116,7 @@ describe('ProgressFacade', () => {
       movesCount: 2,
       completedAt: '2026-06-18T00:00:00.000Z',
     };
-    const result = await facade.completeLevel('user-1', 'token-placeholder', completedLevel);
+    const result = await facade.completeLevel('user-1', completedLevel);
     expect(remote.completed).toEqual(completedLevel);
     expect(result.progressId).toBe('p-remote');
     const stored = await local.load('user-1');
@@ -134,7 +134,7 @@ describe('ProgressFacade', () => {
     await local.save({ ...LOCAL_PROGRESS, completedLevels: [existingBest] });
     local.saved.length = 0;
 
-    await facade.completeLevel('user-1', 'token-placeholder', {
+    await facade.completeLevel('user-1', {
       levelId: LEVEL_UUID_1,
       score: 100,
       timeSeconds: 10,
@@ -155,7 +155,7 @@ describe('ProgressFacade', () => {
       completedAt: '2026-06-18T00:00:00.000Z',
     };
 
-    await facade.completeLevel('user-1', 'token-placeholder', completedLevel);
+    await facade.completeLevel('user-1', completedLevel);
 
     expect(local.saved[0]).toMatchObject({
       progressId: 'local-user-1',
@@ -166,7 +166,7 @@ describe('ProgressFacade', () => {
   });
 
   it('should_not_write_progress_when_level_id_is_not_a_uuid', async () => {
-    await facade.completeLevel('user-1', 'token-placeholder', {
+    await facade.completeLevel('user-1', {
       levelId: 'manual-001-first-knot',
       score: 500,
       timeSeconds: 10,
@@ -182,7 +182,7 @@ describe('ProgressFacade', () => {
     await local.save(LOCAL_PROGRESS);
     local.saved.length = 0;
 
-    const result = await facade.completeLevel('user-1', 'token-placeholder', {
+    const result = await facade.completeLevel('user-1', {
       levelId: 'manual-001-first-knot',
       score: 500,
       timeSeconds: 10,
@@ -209,7 +209,7 @@ describe('ProgressFacade', () => {
     const completedLevel = REMOTE_PROGRESS.completedLevels[0]!;
     await local.save({ ...LOCAL_PROGRESS, completedLevels: [completedLevel], pendingSync: true });
 
-    const drained = await facade.drainPendingProgress('user-1', 'token-placeholder');
+    const drained = await facade.drainPendingProgress('user-1');
 
     expect(drained).toBe(true);
     expect(remote.syncedLevels).toEqual([completedLevel]);
@@ -220,7 +220,7 @@ describe('ProgressFacade', () => {
   it('should_not_drain_when_no_pending_progress', async () => {
     await local.save({ ...LOCAL_PROGRESS, pendingSync: false });
 
-    const drained = await facade.drainPendingProgress('user-1', 'token-placeholder');
+    const drained = await facade.drainPendingProgress('user-1');
 
     expect(drained).toBe(false);
     expect(remote.syncedLevels).toBeNull();
@@ -234,7 +234,7 @@ describe('ProgressFacade', () => {
     };
 
     await expect(
-      facade.completeLevel('user-1', 'token-placeholder', completedLevel),
+      facade.completeLevel('user-1', completedLevel),
     ).rejects.toThrow('network down');
 
     const stored = await local.load('user-1');
@@ -249,11 +249,11 @@ describe('ProgressFacade', () => {
       completedAt: '2026-06-19T00:00:00.000Z',
     };
     await expect(
-      facade.completeLevel('user-1', 'token-placeholder', completedLevel),
+      facade.completeLevel('user-1', completedLevel),
     ).rejects.toThrow();
 
     remote.completeError = null;
-    const drained = await facade.drainPendingProgress('user-1', 'token-placeholder');
+    const drained = await facade.drainPendingProgress('user-1');
 
     expect(drained).toBe(true);
     expect(remote.syncedLevels).toContainEqual(completedLevel);

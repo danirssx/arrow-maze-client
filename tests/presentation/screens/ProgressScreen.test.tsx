@@ -30,7 +30,6 @@ describe("ProgressScreen", () => {
       <ProgressScreen
         viewModel={makeViewModel()}
         userId="u1"
-        accessToken="t1"
         levelNameById={{ [LEVEL_UUID]: "Packed Start" }}
         onBack={jest.fn()}
       />,
@@ -45,7 +44,6 @@ describe("ProgressScreen", () => {
       <ProgressScreen
         viewModel={makeViewModel()}
         userId="u1"
-        accessToken="t1"
         levelNameById={{}}
         onBack={jest.fn()}
       />,
