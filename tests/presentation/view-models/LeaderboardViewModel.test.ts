@@ -25,8 +25,14 @@ function leaderboardWith(entryCount: number): Leaderboard {
   };
 }
 
-function facadeReturning(value: Leaderboard | Error): { facade: LeaderboardFacade; getTopScores: jest.Mock } {
-  const getTopScores = jest.fn(() => (value instanceof Error ? Promise.reject(value) : Promise.resolve(value)));
+function facadeReturning(value: Leaderboard): { facade: LeaderboardFacade; getTopScores: jest.Mock } {
+  const getTopScores = jest.fn(() => Promise.resolve(value));
+  const facade = { getTopScores, submitScore: jest.fn() } as unknown as LeaderboardFacade;
+  return { facade, getTopScores };
+}
+
+function facadeRejecting(error: unknown): { facade: LeaderboardFacade; getTopScores: jest.Mock } {
+  const getTopScores = jest.fn(() => Promise.reject(error));
   const facade = { getTopScores, submitScore: jest.fn() } as unknown as LeaderboardFacade;
   return { facade, getTopScores };
 }
@@ -53,12 +59,22 @@ describe("LeaderboardViewModel", () => {
   });
 
   it("should_expose_error_when_facade_fails", async () => {
-    const { facade } = facadeReturning(new Error("network"));
+    const { facade } = facadeRejecting(new Error("network"));
     const viewModel = new LeaderboardViewModel(facade);
 
     await viewModel.load(LEVEL_UUID);
 
     expect(viewModel.getState().status).toBe(AsyncStatus.Error);
+  });
+
+  it("should_expose_empty_when_backend_reports_missing_leaderboard", async () => {
+    const { facade } = facadeRejecting({ code: "NOT_FOUND" });
+    const viewModel = new LeaderboardViewModel(facade);
+
+    await viewModel.load(LEVEL_UUID);
+
+    expect(viewModel.getState().status).toBe(AsyncStatus.Empty);
+    expect(viewModel.getState().data).toEqual({ levelId: LEVEL_UUID, entries: [] });
   });
 
   it("should_expose_empty_without_requesting_when_level_id_is_not_a_uuid", async () => {

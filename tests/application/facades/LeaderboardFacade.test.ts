@@ -21,8 +21,7 @@ class FakeLeaderboardRepo implements ILeaderboardRepository {
 }
 
 const submitInput = (levelId: string): SubmitScoreInput => ({
-  leaderboardId: 'lb-1', entryId: 'e-2',
-  levelId, usernameSnapshot: 'player',
+  levelId,
   score: 800, timeSeconds: 60, movesCount: 20,
 });
 
@@ -45,6 +44,9 @@ describe('LeaderboardFacade', () => {
     await facade.submitScore(submitInput(LEVEL_UUID), 'jwt-token-1');
     expect(repo.submitted?.score).toBe(800);
     expect(repo.submitted).not.toHaveProperty('userId');
+    expect(repo.submitted).not.toHaveProperty('leaderboardId');
+    expect(repo.submitted).not.toHaveProperty('entryId');
+    expect(repo.submitted).not.toHaveProperty('usernameSnapshot');
     expect(repo.submittedAccessToken).toBe('jwt-token-1');
   });
 

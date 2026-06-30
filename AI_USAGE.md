@@ -3326,6 +3326,92 @@ implementation must map:
 
 ---
 
+# AI Usage Log: MAZ-184 Leaderboard replay UX implementation
+
+## Task / Problem
+
+Implement client ticket `MAZ-184`: leaderboard reads must show an empty state for
+missing/empty leaderboards while preserving real error states, and victory must
+surface leaderboard submit outcomes instead of silently swallowing failures.
+
+## Tool and Model
+
+Codex CLI / GPT-5.
+
+## Prompt Used
+
+The user asked to continue closing milestone M9 after MAZ-187/MAZ-180 were
+merged to `develop`, following both repository `AGENTS.md` files, root
+`MEMORY.md`, `Linear_MCP_Guideline.md`, fresh worktrees, AI usage logging,
+checks, commit/push/PR, Linear updates, and review of affected tickets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used the existing MAZ-184 spec to preserve the intended behavior and affected-ticket context. No separate agent session was run. | `specs/leaderboard-replay-ux-MAZ-184.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Used the existing Gherkin scenarios as the executable contract for focused tests. No separate planner session was run. | `specs/leaderboard-replay-ux-MAZ-184.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Added/updated focused failing tests first for the MAZ-184 scenarios, then implemented the minimum client behavior to pass them. | tests listed in the scenario coverage map |
+| Judge (`.agents/judge.md`) | Not used | No separate judge review session was run in this turn. | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Full mutation testing was not run for this client slice. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` empty leaderboard is not an error | `tests/presentation/view-models/LeaderboardViewModel.test.ts` -> `should_expose_empty_when_backend_reports_missing_leaderboard`; `tests/infrastructure/repositories/HttpLeaderboardRepository.test.ts` -> `should_return_empty_leaderboard_when_backend_omits_collection_metadata` |
+| `@s2` real failures still show error | `tests/presentation/view-models/LeaderboardViewModel.test.ts` -> `should_expose_error_when_facade_fails` |
+| `@s3` non-UUID level id does not request leaderboard | `tests/presentation/view-models/LeaderboardViewModel.test.ts` -> `should_expose_empty_without_requesting_when_level_id_is_not_a_uuid` |
+| `@s4` victory submit success uses generic success copy | `tests/integration/gameVictorySubmit.test.tsx` -> `should_persist_completion_and_submit_score_with_uuid_level_id_when_a_level_is_won`; `tests/presentation/screens/VictoryScreen.test.tsx` -> `should_show_success_copy_when_leaderboard_score_is_synced` |
+| `@s5` victory submit failure is visible and actions remain | `tests/integration/gameVictorySubmit.test.tsx` -> `should_show_warning_and_keep_actions_when_leaderboard_submission_fails`; `tests/presentation/screens/VictoryScreen.test.tsx` -> `should_keep_victory_actions_visible_when_leaderboard_score_fails` |
+| `@s6` progress completion is independent from leaderboard submit | `tests/integration/gameVictorySubmit.test.tsx` -> `should_show_warning_and_keep_actions_when_leaderboard_submission_fails` |
+| `@s7` non-UUID leaderboard submit is skipped distinctly | `tests/presentation/screens/VictoryScreen.test.tsx` -> `should_show_skipped_copy_when_level_does_not_have_backend_uuid`; `src/application/facades/LeaderboardFacade.ts` keeps the no-submit guard covered by `tests/application/facades/LeaderboardFacade.test.ts` |
+
+## Result Obtained
+
+- Made client leaderboard response metadata optional so empty backend responses
+  from MAZ-173 are accepted.
+- Slimmed `SubmitScoreInput`/DTO to only score facts: `levelId`, `score`,
+  `timeSeconds`, and `movesCount`.
+- Mapped structural `NOT_FOUND` leaderboard load failures to `Empty` state
+  without importing infrastructure/HTTP types into presentation.
+- Added victory leaderboard submit status copy for syncing, success, failure,
+  and non-UUID skipped submissions.
+- Kept progress completion independent from leaderboard submission failure.
+
+## Verification
+
+- `npm ci`
+- `npm run typecheck` GREEN
+- Focused tests GREEN:
+  `tests/presentation/view-models/LeaderboardViewModel.test.ts`,
+  `tests/infrastructure/repositories/HttpLeaderboardRepository.test.ts`,
+  `tests/application/facades/LeaderboardFacade.test.ts`,
+  `tests/contract/leaderboard.contract.test.ts`,
+  `tests/presentation/screens/VictoryScreen.test.tsx`,
+  `tests/integration/gameVictorySubmit.test.tsx`
+- Full `npm run verify` GREEN: lint, typecheck, coverage; 71 suites / 377
+  tests. Existing React Native `Animated(View)` act warnings still appear in UI
+  coverage output.
+
+## Team Modifications Pending Human Review
+
+- Review the UI copy for synced/failed/skipped leaderboard status.
+- Confirm that retrying failed leaderboard submits is intentionally outside this
+  ticket.
+- Review the future merge order with MAZ-173 and MAZ-181 because both affect the
+  leaderboard contract/auth path.
+
+## Lessons / Limitations
+
+- The backend does not tell the client whether the score is a new personal best,
+  so generic success copy is the correct UX for this slice.
+- The ViewModel uses structural error classification to avoid coupling
+  presentation to concrete infrastructure errors.
+
+
+---
+
 # AI Usage Log: MAZ-185 — Robust victory persistence and progress drain
 
 ## Task / Problem
@@ -3397,25 +3483,6 @@ New behavior:
 
 ---
 
-# AI Usage Log: MAZ-187 — Refresh access token on 401 (refresh-and-retry before logout)
-
-## Task / Problem
-
-MAZ-175 made access tokens short-lived (default 15m) with a rotating `POST /auth/refresh` endpoint, and
-MAZ-180 hard-logs-out on any authed 401 — so without a client refresh-and-retry the user is bounced to
-login every ~15 minutes. This slice makes an authed 401 transparently refresh the access token and retry
-the request **once**, falling back to MAZ-180's logout only when the refresh itself fails; it also makes
-logout revoke the refresh token server-side and persists the refresh token in the session.
-
-## Tool and Model
-
-Claude Opus 4.8 (1M context) via Claude Code CLI.
-
-## Prompt Used
-
-User asked to do MAZ-187 following the team workflow and to "do what you recommend" on the base. I chose
-**Option A: stack on `feat/mobile-401-logout-MAZ-180` and decouple from MAZ-181** (the retry rewrites the
-`Authorization` header itself). The `.feature` (@s1..@s8) + the 5 decisions were human-approved before TDD.
 # AI Usage Log: MAZ-186 (M9/C8) — Client cleanups + victory-submit integration test
 
 ## Task / Problem
@@ -3444,47 +3511,6 @@ checks, commit/push/PR, Linear update, and a context review of affected tickets.
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
-| Spec Partner (`.agents/spec-partner.md`) | Referenced | Followed AGENTS §0.2; a read-only sub-agent mapped the client auth flow (adapter/401 handler, AuthSession/DTOs/mapper, HttpAuthRepository, SessionManager, use cases, composition root, contract test, eslint/stryker scope); distilled into the CA spec. | `specs/refresh-retry-MAZ-187.spec.md` |
-| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored 8 `@s` scenarios across the mapper, the use cases, and the interceptor; single human gate. | `specs/refresh-retry-MAZ-187.feature` |
-| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Red→Green inside-out: plumbing (AuthSession/DTOs/mapper/port/repo) → `RefreshSessionUseCase` → `LogoutUseCase` backend revoke → repo refresh/logout → adapter refresh-and-retry → framework wiring → contract test + fixture migration. | tests, code, this entry |
-| Judge (`.agents/judge.md`) | Referenced | Self-review vs `docs/reglas_clean_arch.md`: `tryRefresh` is injected into the adapter (infra doesn't import session/use-cases); the use cases depend only on ports; refresh/logout carry no Authorization (no interceptor loop); `@s → test` complete. PASS. | this entry, spec CA block |
-| Mutation Tester (`.agents/mutation.md`) | Referenced | Stryker scoped to the in-scope new files (`RefreshSessionUseCase`, `LogoutUseCase`). First 94.74% (one survivor on the `&& session.refreshToken` guard); added the empty-refresh-token logout test → **100%**. | `reports/mutation/index.html` |
-
-## Scenario Coverage (@s ↔ test)
-
-| Scenario | Test |
-|----------|------|
-| @s1 — persisted session carries the refresh token | `tests/contract/auth.contract.test.ts` (toSession maps refreshToken); `HttpAuthRepository.test` (`should_map_access_and_refresh_tokens_to_session`) |
-| @s2 — refresh rotates session + returns new access | `RefreshSessionUseCase.test`: `should_rotate_the_session_and_return_the_new_access_token` |
-| @s3 — refresh no-op without a refresh token | `RefreshSessionUseCase.test`: `…when_there_is_no_session` / `…when_the_session_has_no_refresh_token` |
-| @s4 — refresh returns null on backend failure, session unchanged | `RefreshSessionUseCase.test`: `…when_the_refresh_fails` |
-| @s5 — 401 refreshes + retries once with the new token | `AxiosHttpClientAdapter.test`: `should_refresh_and_retry_once_with_the_new_token_on_an_authed_401` |
-| @s6 — refresh→null falls back to invalidation | `AxiosHttpClientAdapter.test`: `should_invalidate_the_session_when_the_refresh_yields_null` |
-| @s7 — retried request does not refresh again (no loop) | `AxiosHttpClientAdapter.test`: `should_not_refresh_again_for_an_already_retried_request` |
-| @s8 — logout revokes server-side then clears | `LogoutUseCase.test` (revoke + clear; clear even when backend fails; no refresh token → just clear); `HttpAuthRepository.test` (logout posts the token) |
-
-## Result Obtained
-
-- **Application boundary:** `AuthSession.refreshToken`; `IAuthRepository.refresh/logout` + `RefreshTokens` type.
-- **Application:** `RefreshSessionUseCase` (rotate session, return new access token or null); `LogoutUseCase` now best-effort revokes via the backend then clears.
-- **Infrastructure:** `HttpAuthRepository.refresh/logout` (no Authorization header); `AuthDtos` (`refreshToken` on login + `RefreshResponseDto`); `AuthMapper` (refreshToken + `toRefreshTokens`); `AxiosHttpClientAdapter` gains an injected `tryRefresh` + a one-retry refresh-and-retry (guarded by a config flag).
-- **Framework:** `createHttpClient` wires `tryRefresh` from a `RefreshSessionUseCase` over a **bare** adapter (no interceptors → no recursion); `auth.ts` passes the auth repo to `LogoutUseCase`. Global AsyncStorage Jest mock added (the http client now imports the session layer).
-
-## Verification
-
-- `npm run verify` — lint 0, typecheck 0, **68 suites / 364 tests**.
-- Scoped Stryker on the in-scope new files: **100%** (`RefreshSessionUseCase` + `LogoutUseCase`). The adapter retry, repo, mapper, and composition are infra/framework — outside the default Stryker scope (line-covered by the adapter/repo/contract tests).
-
-## Team Modifications Pending Human Review
-
-1. **Base = stacked on MAZ-180; decoupled from MAZ-181.** The retry rewrites the `Authorization` header itself, so 187 doesn't need 181's request interceptor. Adapter ctor is now `(baseURL, onUnauthorized?, tryRefresh?)`; the eventual 180/181/187 merge combines the optional params. **Merge order: MAZ-180 → develop, then MAZ-187.**
-2. **Client built against the MAZ-175 contract** (backend not yet merged). A contract test pins the refresh DTO; real end-to-end needs MAZ-175 deployed. Until then the client degrades gracefully (refresh → null → MAZ-180 logout).
-3. **`AuthSession.refreshToken` is required**; legacy persisted sessions without it are handled at runtime (`!session.refreshToken` → no refresh / just clear).
-
-## Lessons / Limitations
-
-- A **bare** http client for the refresh call (plus the `_retry` config flag) is what prevents refresh recursion and retry loops; the refresh/logout requests also carry no `Authorization`, so the `hadAuthorization` guard already keeps them out of the 401 path.
-- Stacking on an unmerged branch (MAZ-180) lacks the MAZ-181 global AsyncStorage mock; since `createHttpClient` now imports the session layer, the global mock had to be re-added here.
 | Spec Partner (`.agents/spec-partner.md`) | Used | Wrote the spec after reading `ProgressScreen`, `app/victory.tsx`, `LeaderboardDtos`, `app/game.tsx`, `LevelSelectViewModel`, `manualLevels`, and the catalog ports. Found `VictoryScreen` is still used by the in-game overlay (keep it) and that the contract test already mirrors the leaner submit DTO. | `specs/mobile-cleanups-MAZ-186.spec.md` |
 | Planner / Gherkin Author (`.agents/planner.md`) | Used | Distilled 6 Gherkin scenarios (`@s1..@s6`): catalog name, screen name + id fallback, leaner DTO, and the victory completeLevel/submitScore path. | `specs/mobile-cleanups-MAZ-186.feature` |
 | TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red→Green per cleanup: contract test imports the production `SubmitScoreRequestDto` (RED via typecheck: fixture missing `userId`) → drop `userId` (GREEN); name tests on `LevelSelectViewModel` + `ProgressScreen` → surface `name`; victory-submit integration test drives the real engine to victory. | tests, code, `@s → test` map below |
@@ -3552,6 +3578,75 @@ checks, commit/push/PR, Linear update, and a context review of affected tickets.
 - Tying the contract test to the production type via `import type` turns a
   duplicated mirror into a compile-time guard — the missing-`userId` fixture failed
   typecheck until the production field was removed (a clean Red→Green).
+
+
+---
+
+# AI Usage Log: MAZ-187 — Refresh access token on 401 (refresh-and-retry before logout)
+
+## Task / Problem
+
+MAZ-175 made access tokens short-lived (default 15m) with a rotating `POST /auth/refresh` endpoint, and
+MAZ-180 hard-logs-out on any authed 401 — so without a client refresh-and-retry the user is bounced to
+login every ~15 minutes. This slice makes an authed 401 transparently refresh the access token and retry
+the request **once**, falling back to MAZ-180's logout only when the refresh itself fails; it also makes
+logout revoke the refresh token server-side and persists the refresh token in the session.
+
+## Tool and Model
+
+Claude Opus 4.8 (1M context) via Claude Code CLI.
+
+## Prompt Used
+
+User asked to do MAZ-187 following the team workflow and to "do what you recommend" on the base. I chose
+**Option A: stack on `feat/mobile-401-logout-MAZ-180` and decouple from MAZ-181** (the retry rewrites the
+`Authorization` header itself). The `.feature` (@s1..@s8) + the 5 decisions were human-approved before TDD.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Followed AGENTS §0.2; a read-only sub-agent mapped the client auth flow (adapter/401 handler, AuthSession/DTOs/mapper, HttpAuthRepository, SessionManager, use cases, composition root, contract test, eslint/stryker scope); distilled into the CA spec. | `specs/refresh-retry-MAZ-187.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored 8 `@s` scenarios across the mapper, the use cases, and the interceptor; single human gate. | `specs/refresh-retry-MAZ-187.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Red→Green inside-out: plumbing (AuthSession/DTOs/mapper/port/repo) → `RefreshSessionUseCase` → `LogoutUseCase` backend revoke → repo refresh/logout → adapter refresh-and-retry → framework wiring → contract test + fixture migration. | tests, code, this entry |
+| Judge (`.agents/judge.md`) | Referenced | Self-review vs `docs/reglas_clean_arch.md`: `tryRefresh` is injected into the adapter (infra doesn't import session/use-cases); the use cases depend only on ports; refresh/logout carry no Authorization (no interceptor loop); `@s → test` complete. PASS. | this entry, spec CA block |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Stryker scoped to the in-scope new files (`RefreshSessionUseCase`, `LogoutUseCase`). First 94.74% (one survivor on the `&& session.refreshToken` guard); added the empty-refresh-token logout test → **100%**. | `reports/mutation/index.html` |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test |
+|----------|------|
+| @s1 — persisted session carries the refresh token | `tests/contract/auth.contract.test.ts` (toSession maps refreshToken); `HttpAuthRepository.test` (`should_map_access_and_refresh_tokens_to_session`) |
+| @s2 — refresh rotates session + returns new access | `RefreshSessionUseCase.test`: `should_rotate_the_session_and_return_the_new_access_token` |
+| @s3 — refresh no-op without a refresh token | `RefreshSessionUseCase.test`: `…when_there_is_no_session` / `…when_the_session_has_no_refresh_token` |
+| @s4 — refresh returns null on backend failure, session unchanged | `RefreshSessionUseCase.test`: `…when_the_refresh_fails` |
+| @s5 — 401 refreshes + retries once with the new token | `AxiosHttpClientAdapter.test`: `should_refresh_and_retry_once_with_the_new_token_on_an_authed_401` |
+| @s6 — refresh→null falls back to invalidation | `AxiosHttpClientAdapter.test`: `should_invalidate_the_session_when_the_refresh_yields_null` |
+| @s7 — retried request does not refresh again (no loop) | `AxiosHttpClientAdapter.test`: `should_not_refresh_again_for_an_already_retried_request` |
+| @s8 — logout revokes server-side then clears | `LogoutUseCase.test` (revoke + clear; clear even when backend fails; no refresh token → just clear); `HttpAuthRepository.test` (logout posts the token) |
+
+## Result Obtained
+
+- **Application boundary:** `AuthSession.refreshToken`; `IAuthRepository.refresh/logout` + `RefreshTokens` type.
+- **Application:** `RefreshSessionUseCase` (rotate session, return new access token or null); `LogoutUseCase` now best-effort revokes via the backend then clears.
+- **Infrastructure:** `HttpAuthRepository.refresh/logout` (no Authorization header); `AuthDtos` (`refreshToken` on login + `RefreshResponseDto`); `AuthMapper` (refreshToken + `toRefreshTokens`); `AxiosHttpClientAdapter` gains an injected `tryRefresh` + a one-retry refresh-and-retry (guarded by a config flag).
+- **Framework:** `createHttpClient` wires `tryRefresh` from a `RefreshSessionUseCase` over a **bare** adapter (no interceptors → no recursion); `auth.ts` passes the auth repo to `LogoutUseCase`. Global AsyncStorage Jest mock added (the http client now imports the session layer).
+
+## Verification
+
+- `npm run verify` — lint 0, typecheck 0, **68 suites / 364 tests**.
+- Scoped Stryker on the in-scope new files: **100%** (`RefreshSessionUseCase` + `LogoutUseCase`). The adapter retry, repo, mapper, and composition are infra/framework — outside the default Stryker scope (line-covered by the adapter/repo/contract tests).
+
+## Team Modifications Pending Human Review
+
+1. **Base = stacked on MAZ-180; decoupled from MAZ-181.** The retry rewrites the `Authorization` header itself, so 187 doesn't need 181's request interceptor. Adapter ctor is now `(baseURL, onUnauthorized?, tryRefresh?)`; the eventual 180/181/187 merge combines the optional params. **Merge order: MAZ-180 → develop, then MAZ-187.**
+2. **Client built against the MAZ-175 contract** (backend not yet merged). A contract test pins the refresh DTO; real end-to-end needs MAZ-175 deployed. Until then the client degrades gracefully (refresh → null → MAZ-180 logout).
+3. **`AuthSession.refreshToken` is required**; legacy persisted sessions without it are handled at runtime (`!session.refreshToken` → no refresh / just clear).
+
+## Lessons / Limitations
+
+- A **bare** http client for the refresh call (plus the `_retry` config flag) is what prevents refresh recursion and retry loops; the refresh/logout requests also carry no `Authorization`, so the `hadAuthorization` guard already keeps them out of the 401 path.
+- Stacking on an unmerged branch (MAZ-180) lacks the MAZ-181 global AsyncStorage mock; since `createHttpClient` now imports the session layer, the global mock had to be re-added here.
 
 
 <!-- AI_LOG_ENTRIES_END -->

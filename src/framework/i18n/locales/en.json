@@ -46,7 +46,11 @@
     "playAgain": "Play again",
     "next": "Next level",
     "home": "Home",
-    "leaderboard": "View leaderboard"
+    "leaderboard": "View leaderboard",
+    "leaderboardSyncing": "Syncing score...",
+    "leaderboardSynced": "Score submitted.",
+    "leaderboardFailed": "Score could not be submitted. Your completion was saved.",
+    "leaderboardSkipped": "Score was not submitted for this offline level."
   },
   "defeat": {
     "title": "Out of attempts",

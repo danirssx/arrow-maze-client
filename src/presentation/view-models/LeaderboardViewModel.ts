@@ -5,6 +5,15 @@ import type { AsyncUiState } from "@/presentation/state/AsyncUiState";
 import { isUuid } from "@/shared/isUuid";
 import { ObservableViewModel } from "./ObservableViewModel";
 
+function isNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "NOT_FOUND"
+  );
+}
+
 /**
  * MVVM — leaderboard ViewModel.
  *
@@ -32,7 +41,11 @@ export class LeaderboardViewModel extends ObservableViewModel<AsyncUiState<Leade
         return;
       }
       this.setState({ status: AsyncStatus.Loaded, data: leaderboard });
-    } catch {
+    } catch (error: unknown) {
+      if (isNotFoundError(error)) {
+        this.setState({ status: AsyncStatus.Empty, data: { levelId, entries: [] } });
+        return;
+      }
       this.setState({ status: AsyncStatus.Error, data: null });
     }
   }

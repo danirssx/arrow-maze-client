@@ -72,10 +72,11 @@ describe("Game victory submit (integration)", () => {
   beforeEach(() => {
     mockCompleteLevel.mockClear();
     mockSubmitScore.mockClear();
+    mockSubmitScore.mockResolvedValue(undefined);
   });
 
   it("should_persist_completion_and_submit_score_with_uuid_level_id_when_a_level_is_won", async () => {
-    const { getByTestId, findByTestId } = renderWithProviders(<GameRoute />);
+    const { getByTestId, findByTestId, findByText } = renderWithProviders(<GameRoute />);
 
     // Wait for the catalog to load and the board to render.
     await findByTestId(`arrow-${ORDER[0]}`);
@@ -96,7 +97,11 @@ describe("Game victory submit (integration)", () => {
     // submitScore({ leaderboardId, entryId, levelId, usernameSnapshot, ... }, accessToken)
     const [request, token] = mockSubmitScore.mock.calls[0]!;
     expect(token).toBe(mockSession.accessToken);
-    expect(request).toMatchObject({ levelId: FIRST_LEVEL_ID, usernameSnapshot: mockSession.username, movesCount: ORDER.length });
+    expect(request).toMatchObject({ levelId: FIRST_LEVEL_ID, movesCount: ORDER.length });
+    expect(request).not.toHaveProperty("leaderboardId");
+    expect(request).not.toHaveProperty("entryId");
+    expect(request).not.toHaveProperty("usernameSnapshot");
+    await findByText("Score submitted.");
   });
 
   it("should_submit_only_once_per_win", async () => {
@@ -109,5 +114,23 @@ describe("Game victory submit (integration)", () => {
 
     await waitFor(() => expect(mockSubmitScore).toHaveBeenCalledTimes(1));
     expect(mockCompleteLevel).toHaveBeenCalledTimes(1);
+  });
+
+  it("should_show_warning_and_keep_actions_when_leaderboard_submission_fails", async () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    mockSubmitScore.mockRejectedValueOnce(new Error("leaderboard unavailable"));
+    const { getByTestId, findByTestId, findByText } = renderWithProviders(<GameRoute />);
+    await findByTestId(`arrow-${ORDER[0]}`);
+
+    for (const arrowId of ORDER) {
+      fireEvent.press(getByTestId(`arrow-${arrowId}`));
+    }
+
+    await waitFor(() => expect(mockCompleteLevel).toHaveBeenCalledTimes(1));
+    expect(mockSubmitScore).toHaveBeenCalledTimes(1);
+    await findByText("Score could not be submitted. Your completion was saved.");
+    expect(getByTestId("victory-play-again")).toBeTruthy();
+    expect(getByTestId("victory-home")).toBeTruthy();
+    warnSpy.mockRestore();
   });
 });

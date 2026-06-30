@@ -12,8 +12,9 @@ import { ErrorState } from "@/presentation/components/ErrorState";
 import { LoadingState } from "@/presentation/components/LoadingState";
 import { ScreenContainer } from "@/presentation/components/ScreenContainer";
 import { GameOverlay } from "@/presentation/state/GameUiState";
+import type { VictoryLeaderboardStatus } from "@/presentation/screens/VictoryScreen";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
-import { createUuid } from "@/shared/createUuid";
+import { isUuid } from "@/shared/isUuid";
 
 const getGameRoute = (levelId: string): Href => ({
   pathname: "/game",
@@ -44,6 +45,7 @@ export default function GameRoute() {
   const { facade, viewModel, controller } = useGameSession(levelId, definition);
   const gameState = useViewModelState(viewModel);
   const submittedVictoryKey = useRef<string | null>(null);
+  const [leaderboardSubmitStatus, setLeaderboardSubmitStatus] = useState<VictoryLeaderboardStatus>("idle");
 
   useEffect(() => {
     let active = true;
@@ -78,6 +80,7 @@ export default function GameRoute() {
     const victoryKey = `${session.userId}:${levelId}:${gameState.extractedArrowIds.length}`;
     if (submittedVictoryKey.current === victoryKey) return;
     submittedVictoryKey.current = victoryKey;
+    setLeaderboardSubmitStatus("syncing");
 
     // Result already calculated in the application layer (no scoring/clock here).
     const { score, timeSeconds, movesCount } = facade.getLevelOutcome();
@@ -93,22 +96,30 @@ export default function GameRoute() {
       console.warn("Failed to persist completed level", error);
     });
 
+    if (!isUuid(levelId)) {
+      setLeaderboardSubmitStatus("skipped");
+      return;
+    }
+
     void leaderboardFacade.submitScore({
-      leaderboardId: createUuid(),
-      entryId: createUuid(),
       levelId,
-      usernameSnapshot: session.username,
       score,
       timeSeconds,
       movesCount,
-    }, session.accessToken).catch((error: unknown) => {
-      console.warn("Failed to submit leaderboard score", error);
-    });
+    }, session.accessToken)
+      .then(() => {
+        setLeaderboardSubmitStatus("synced");
+      })
+      .catch((error: unknown) => {
+        console.warn("Failed to submit leaderboard score", error);
+        setLeaderboardSubmitStatus("failed");
+      });
   }, [facade, gameState.extractedArrowIds.length, gameState.overlay, leaderboardFacade, levelId, progressFacade, session]);
 
   useEffect(() => {
     if (gameState.overlay === GameOverlay.None) {
       submittedVictoryKey.current = null;
+      setLeaderboardSubmitStatus("idle");
     }
   }, [gameState.overlay]);
 
@@ -143,6 +154,7 @@ export default function GameRoute() {
       onViewLeaderboard={
         levelId.length > 0 ? () => router.push(getLeaderboardRoute(levelId)) : undefined
       }
+      leaderboardSubmitStatus={leaderboardSubmitStatus}
     />
   );
 }
