@@ -44,15 +44,25 @@ class FakeHttpProgressRepo implements IRemoteProgressRepository {
   completed: CompletedLevelData | null = null;
   syncedLevels: CompletedLevelData[] | null = null;
   completeError: Error | null = null;
+  syncError: Error | null = null;
+  syncCount = 0;
   async fetchRemote(): Promise<LocalProgress> { return this.fetchResult; }
   async completeLevel(completedLevel: CompletedLevelData): Promise<void> {
     if (this.completeError) throw this.completeError;
     this.completed = completedLevel;
   }
   async sync(levels: CompletedLevelData[]): Promise<LocalProgress> {
+    this.syncCount += 1;
+    if (this.syncError) throw this.syncError;
     this.syncedLevels = levels;
     return this.syncResult;
   }
+}
+
+// A non-retryable backend rejection (HTTP 422 / 400) carries a `code` field, matching
+// the infrastructure HttpError shape the application duck-types without importing it.
+function rejection(code: 'UNPROCESSABLE' | 'BAD_REQUEST', message: string): Error {
+  return Object.assign(new Error(message), { code });
 }
 
 describe('ProgressFacade', () => {
@@ -257,5 +267,64 @@ describe('ProgressFacade', () => {
 
     expect(drained).toBe(true);
     expect(remote.syncedLevels).toContainEqual(completedLevel);
+  });
+
+  // --- MAZ-190: a permanent rejection must resolve the pending state, not loop forever ---
+  it('should_resolve_pending_and_keep_level_when_completion_is_permanently_rejected', async () => {
+    remote.completeError = rejection('UNPROCESSABLE', 'CompletedAt is too far in the future');
+    const completedLevel: CompletedLevelData = {
+      levelId: LEVEL_UUID_3, score: 700, timeSeconds: 12, movesCount: 4,
+      completedAt: '2026-06-19T00:00:00.000Z',
+    };
+
+    const result = await facade.completeLevel('user-1', completedLevel);
+
+    expect(result.pendingSync).toBe(false);
+    const stored = await local.load('user-1');
+    expect(stored?.pendingSync).toBe(false);
+    expect(stored?.completedLevels).toContainEqual(completedLevel);
+  });
+
+  it('should_resolve_pending_and_stop_retrying_when_drain_is_permanently_rejected', async () => {
+    const completedLevel = REMOTE_PROGRESS.completedLevels[0]!;
+    await local.save({ ...LOCAL_PROGRESS, completedLevels: [completedLevel], pendingSync: true });
+    remote.syncError = rejection('UNPROCESSABLE', 'CompletedAt is too far in the future');
+
+    const firstDrain = await facade.drainPendingProgress('user-1');
+
+    expect(firstDrain).toBe(true);
+    expect(remote.syncCount).toBe(1);
+    const stored = await local.load('user-1');
+    expect(stored?.pendingSync).toBe(false);
+
+    // A second drain finds nothing pending and never re-sends the rejected payload.
+    const secondDrain = await facade.drainPendingProgress('user-1');
+    expect(secondDrain).toBe(false);
+    expect(remote.syncCount).toBe(1);
+  });
+
+  it('should_keep_pending_when_completion_fails_with_a_retryable_error', async () => {
+    remote.completeError = new Error('network down');
+    const completedLevel: CompletedLevelData = {
+      levelId: LEVEL_UUID_3, score: 700, timeSeconds: 12, movesCount: 4,
+      completedAt: '2026-06-19T00:00:00.000Z',
+    };
+
+    await expect(facade.completeLevel('user-1', completedLevel)).rejects.toThrow('network down');
+
+    const stored = await local.load('user-1');
+    expect(stored?.pendingSync).toBe(true);
+    expect(stored?.completedLevels).toContainEqual(completedLevel);
+  });
+
+  it('should_keep_pending_when_drain_fails_with_a_retryable_error', async () => {
+    const completedLevel = REMOTE_PROGRESS.completedLevels[0]!;
+    await local.save({ ...LOCAL_PROGRESS, completedLevels: [completedLevel], pendingSync: true });
+    remote.syncError = new Error('network down');
+
+    await expect(facade.sync('user-1')).rejects.toThrow('network down');
+
+    const stored = await local.load('user-1');
+    expect(stored?.pendingSync).toBe(true);
   });
 });
