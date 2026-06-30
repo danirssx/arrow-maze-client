@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Redirect, useSegments } from "expo-router";
+import { StyleSheet, View } from "react-native";
+import { useRouter, useSegments } from "expo-router";
 
 import type { AuthSession } from "@/application/auth/AuthSession";
 import { LoadingState } from "@/presentation/components/LoadingState";
@@ -33,8 +34,9 @@ interface AuthGateProps {
 }
 
 export function AuthGate({ children }: AuthGateProps) {
+  const router = useRouter();
   const segments = useSegments();
-  const routeKey = segments.join("/");
+  const loginRoute = isLoginRoute([...segments]);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<AuthSession | null>(null);
 
@@ -80,39 +82,36 @@ export function AuthGate({ children }: AuthGateProps) {
     return () => {
       active = false;
     };
-  }, [routeKey]);
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (session === null && !loginRoute) {
+      router.replace("/login");
+      return;
+    }
+
+    if (session !== null && loginRoute) {
+      router.replace("/");
+    }
+  }, [loading, loginRoute, router, session]);
 
   const value = useMemo<AuthGateState>(
     () => ({ loading, session, refreshSession, clearSession }),
     [clearSession, loading, refreshSession, session],
   );
 
-  if (loading) {
-    return (
-      <AuthSessionContext.Provider value={value}>
-        <ScreenContainer>
-          <LoadingState />
-        </ScreenContainer>
-      </AuthSessionContext.Provider>
-    );
-  }
-
-  const loginRoute = isLoginRoute([...segments]);
-  if (session === null && !loginRoute) {
-    return (
-      <AuthSessionContext.Provider value={value}>
-        <Redirect href="/login" />
-      </AuthSessionContext.Provider>
-    );
-  }
-
-  if (session !== null && loginRoute) {
-    return (
-      <AuthSessionContext.Provider value={value}>
-        <Redirect href="/" />
-      </AuthSessionContext.Provider>
-    );
-  }
-
-  return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
+  return (
+    <AuthSessionContext.Provider value={value}>
+      {children}
+      {loading ? (
+        <View pointerEvents="auto" style={StyleSheet.absoluteFill}>
+          <ScreenContainer>
+            <LoadingState />
+          </ScreenContainer>
+        </View>
+      ) : null}
+    </AuthSessionContext.Provider>
+  );
 }

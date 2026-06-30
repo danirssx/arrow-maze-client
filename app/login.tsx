@@ -15,7 +15,7 @@ export default function LoginRoute() {
   }, [viewModel]);
 
   const handleAuthenticated = () => {
-    void refreshSession().then(() => router.replace("/"));
+    void refreshSession();
   };
 
   return <AuthScreen viewModel={viewModel} onBack={() => router.back()} onAuthenticated={handleAuthenticated} />;

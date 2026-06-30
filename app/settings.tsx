@@ -26,7 +26,7 @@ export default function SettingsRoute() {
   }, [viewModel]);
 
   const handleLogout = () => {
-    void clearSession().then(() => router.replace("/login"));
+    void clearSession();
   };
 
   return (
