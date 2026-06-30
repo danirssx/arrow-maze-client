@@ -38,4 +38,23 @@ describe("LevelCard", () => {
 
     expect(filledStars(getAllByText("★"))).toBe(1);
   });
+
+  it("should_show_the_level_name", () => {
+    const { getByText } = renderWithProviders(
+      <LevelCard level={item({ name: "Packed Start" })} onPress={jest.fn()} />
+    );
+
+    expect(getByText("Packed Start")).toBeTruthy();
+  });
+
+  it("should_truncate_a_long_level_name_to_one_line", () => {
+    const longName = "An Extremely Long Level Name That Would Overflow A Narrow Card";
+    const { getByTestId } = renderWithProviders(
+      <LevelCard level={item({ id: "lvl-9", name: longName })} onPress={jest.fn()} />
+    );
+
+    const nameNode = getByTestId("level-card-name-lvl-9");
+    expect(nameNode.props.numberOfLines).toBe(1);
+    expect(nameNode.props.children).toBe(longName);
+  });
 });

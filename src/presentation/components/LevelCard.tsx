@@ -7,10 +7,13 @@ interface LevelCardProps {
 }
 
 /**
- * Level grid tile — shows the level number and a difficulty star rating.
+ * Level grid tile — shows the level name, its number and a difficulty star rating.
  *
  * Difficulty arrives ready-to-consume from the ViewState (`difficultyStars` /
- * `difficultyLabel`); the card maps no domain difficulty itself.
+ * `difficultyLabel`); the card maps no domain difficulty itself. The name comes
+ * from the catalog (backend `LevelCatalogSummary.name` or the offline fixture),
+ * so the player can identify the level (MAZ-192); it truncates to one line so a
+ * long name never overlaps the order/difficulty metadata on a narrow device.
  */
 export function LevelCard({ level, onPress }: LevelCardProps) {
   const stars = level.difficultyStars;
@@ -19,12 +22,19 @@ export function LevelCard({ level, onPress }: LevelCardProps) {
     <Pressable
       testID={`level-card-${level.id}`}
       accessibilityRole="button"
-      accessibilityLabel={`Level ${level.order}, ${level.difficultyLabel}`}
+      accessibilityLabel={`${level.name}, level ${level.order}, ${level.difficultyLabel}`}
       onPress={() => onPress(level.id)}
-      className="h-24 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft active:opacity-80"
+      className="h-24 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft px-1 active:opacity-80"
     >
-      <Text className="text-2xl font-black text-text-primary">{level.order}</Text>
-      <View className="mt-1 flex-row">
+      <Text className="text-xl font-black text-text-primary">{level.order}</Text>
+      <Text
+        testID={`level-card-name-${level.id}`}
+        numberOfLines={1}
+        className="mt-0.5 w-full px-1 text-center text-[11px] font-semibold text-text-secondary"
+      >
+        {level.name}
+      </Text>
+      <View className="mt-1 flex-row items-center">
         {Array.from({ length: 3 }).map((_, index) => (
           <Text
             key={`star-${index}`}
@@ -33,8 +43,8 @@ export function LevelCard({ level, onPress }: LevelCardProps) {
             ★
           </Text>
         ))}
+        {level.timed ? <Text className="ml-1 text-[10px] font-semibold text-primary-500">⏱</Text> : null}
       </View>
-      {level.timed ? <Text className="mt-0.5 text-[10px] font-semibold text-primary-500">⏱</Text> : null}
     </Pressable>
   );
 }

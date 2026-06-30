@@ -17,6 +17,14 @@ describe("LevelSelectScreen", () => {
     expect(getByTestId(`level-card-${firstLevel.id}`)).toBeTruthy();
   });
 
+  it("should_show_the_readable_level_name_from_the_local_fixture_catalog", () => {
+    const { getByText } = renderWithProviders(
+      <LevelSelectScreen levels={levels} onSelect={jest.fn()} onBack={jest.fn()} />
+    );
+
+    expect(getByText(firstLevel.name)).toBeTruthy();
+  });
+
   it("should_call_on_select_with_level_id_when_card_is_pressed", () => {
     const onSelect = jest.fn();
     const { getByTestId } = renderWithProviders(
