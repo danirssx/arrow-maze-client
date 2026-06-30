@@ -32,12 +32,12 @@ const PROGRESS_RESPONSE: ProgressResponseDto = {
 };
 
 describe('HttpProgressRepository', () => {
-  it('should_post_completed_level_with_authorization_header', async () => {
+  it('should_post_completed_level_without_hand_rolled_authorization_header', async () => {
     const http = new FakeHttpClient();
     http.getResponse = PROGRESS_RESPONSE;
     const repo = new HttpProgressRepository(http);
 
-    await repo.completeLevel('jwt-token-1', {
+    await repo.completeLevel({
       levelId: '550e8400-e29b-41d4-a716-446655440010',
       score: 900,
       timeSeconds: 10,
@@ -52,8 +52,6 @@ describe('HttpProgressRepository', () => {
       movesCount: 2,
       completedAt: '2026-06-18T00:00:00.000Z',
     });
-    expect(http.lastPostConfig).toEqual({
-      headers: { Authorization: 'Bearer jwt-token-1' },
-    });
+    expect(http.lastPostConfig).toBeUndefined();
   });
 });

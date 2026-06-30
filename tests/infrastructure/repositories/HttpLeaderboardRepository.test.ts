@@ -73,12 +73,12 @@ describe('HttpLeaderboardRepository', () => {
     });
   });
 
-  it('should_submit_score_with_authorization_header_and_only_score_facts', async () => {
+  it('should_submit_score_without_hand_rolled_authorization_header_and_only_score_facts', async () => {
     http.postResponse = { status: 'success', data: null };
     await expect(repo.submitScore({
       levelId: '550e8400-e29b-41d4-a716-446655440010',
       score: 800, timeSeconds: 60, movesCount: 20,
-    }, 'jwt-token-1')).resolves.not.toThrow();
+    })).resolves.not.toThrow();
 
     expect(http.lastPostUrl).toBe('/leaderboard/scores');
     expect(http.lastPostBody).toEqual({
@@ -91,8 +91,6 @@ describe('HttpLeaderboardRepository', () => {
     expect(http.lastPostBody).not.toHaveProperty('leaderboardId');
     expect(http.lastPostBody).not.toHaveProperty('entryId');
     expect(http.lastPostBody).not.toHaveProperty('usernameSnapshot');
-    expect(http.lastPostConfig).toEqual({
-      headers: { Authorization: 'Bearer jwt-token-1' },
-    });
+    expect(http.lastPostConfig).toBeUndefined();
   });
 });

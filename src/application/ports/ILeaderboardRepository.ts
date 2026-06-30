@@ -25,5 +25,5 @@ export interface SubmitScoreInput {
 
 export interface ILeaderboardRepository {
   getTopScores(levelId: string): Promise<Leaderboard>;
-  submitScore(input: SubmitScoreInput, accessToken: string): Promise<void>;
+  submitScore(input: SubmitScoreInput): Promise<void>;
 }

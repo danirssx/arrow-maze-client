@@ -16,10 +16,10 @@ export class ProgressViewModel extends ObservableViewModel<AsyncUiState<LocalPro
     super(idle<LocalProgress>());
   }
 
-  async load(userId: string, accessToken: string): Promise<void> {
+  async load(userId: string): Promise<void> {
     this.setState({ status: AsyncStatus.Loading, data: null });
     try {
-      const progress = await this.facade.load(userId, accessToken);
+      const progress = await this.facade.load(userId);
       if (progress.completedLevels.length === 0) {
         this.setState({ status: AsyncStatus.Empty, data: progress });
         return;

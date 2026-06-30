@@ -14,7 +14,7 @@ describe('AxiosHttpClientAdapter', () => {
     put: jest.fn(),
     delete: jest.fn(),
     request: jest.fn(),
-    interceptors: { response: { use: jest.fn() } },
+    interceptors: { request: { use: jest.fn() }, response: { use: jest.fn() } },
   };
 
   beforeEach(() => {
@@ -88,7 +88,7 @@ describe('AxiosHttpClientAdapter', () => {
     const authed500 = { response: { status: 500 }, config: { headers: { Authorization: 'Bearer x' } } };
 
     function rejectHandlerFor(onUnauthorized: () => void): RejectHandler {
-      new AxiosHttpClientAdapter('https://api.example.com', onUnauthorized);
+      new AxiosHttpClientAdapter('https://api.example.com', undefined, onUnauthorized);
       return mockAxiosInstance.interceptors.response.use.mock.calls[0][1] as RejectHandler;
     }
 
@@ -144,7 +144,7 @@ describe('AxiosHttpClientAdapter', () => {
     });
 
     it('should_pass_through_successful_responses_unchanged', () => {
-      new AxiosHttpClientAdapter('https://api.example.com', jest.fn());
+      new AxiosHttpClientAdapter('https://api.example.com', undefined, jest.fn());
       const onFulfilled = mockAxiosInstance.interceptors.response.use.mock.calls[0][0] as (r: unknown) => unknown;
       const response = { data: 1, status: 200 };
 
@@ -158,12 +158,62 @@ describe('AxiosHttpClientAdapter', () => {
     });
   });
 
+  describe('request interceptor (Bearer attachment)', () => {
+    type FulfilledHandler = (config: { headers: Record<string, unknown> }) => Promise<{ headers: Record<string, unknown> }>;
+
+    function requestHandlerFor(tokenProvider: () => Promise<string | null>): FulfilledHandler {
+      new AxiosHttpClientAdapter('https://api.example.com', tokenProvider);
+      return mockAxiosInstance.interceptors.request.use.mock.calls[0][0] as FulfilledHandler;
+    }
+
+    it('should_attach_the_bearer_token_when_a_session_token_exists', async () => {
+      const handler = requestHandlerFor(async () => 'jwt-token-1');
+
+      const config = await handler({ headers: {} });
+
+      expect(config.headers.Authorization).toBe('Bearer jwt-token-1');
+    });
+
+    it('should_not_attach_authorization_when_there_is_no_session_token', async () => {
+      const handler = requestHandlerFor(async () => null);
+
+      const config = await handler({ headers: {} });
+
+      expect(config.headers.Authorization).toBeUndefined();
+    });
+
+    it('should_not_attach_authorization_when_the_token_is_empty', async () => {
+      const handler = requestHandlerFor(async () => '');
+
+      const config = await handler({ headers: {} });
+
+      expect(config.headers.Authorization).toBeUndefined();
+    });
+
+    it('should_not_override_an_explicit_authorization_header', async () => {
+      const handler = requestHandlerFor(async () => 'jwt-token-1');
+
+      const config = await handler({ headers: { Authorization: 'Bearer explicit' } });
+
+      expect(config.headers.Authorization).toBe('Bearer explicit');
+    });
+
+    it('should_not_override_an_explicit_lowercase_authorization_header', async () => {
+      const handler = requestHandlerFor(async () => 'jwt-token-1');
+
+      const config = await handler({ headers: { authorization: 'Bearer explicit' } });
+
+      expect(config.headers.authorization).toBe('Bearer explicit');
+      expect(config.headers.Authorization).toBeUndefined();
+    });
+  });
+
   describe('response interceptor (refresh and retry)', () => {
     type RejectHandler = (error: unknown) => Promise<unknown>;
     const authed401 = { response: { status: 401 }, config: { headers: { Authorization: 'Bearer old' } } };
 
     function handlerWith(onUnauthorized: jest.Mock, tryRefresh: jest.Mock): RejectHandler {
-      new AxiosHttpClientAdapter('https://api.example.com', onUnauthorized, tryRefresh);
+      new AxiosHttpClientAdapter('https://api.example.com', undefined, onUnauthorized, tryRefresh);
       return mockAxiosInstance.interceptors.response.use.mock.calls[0][1] as RejectHandler;
     }
 

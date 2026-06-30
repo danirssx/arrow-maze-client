@@ -1,5 +1,5 @@
 // Pattern: Adapter
-import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, isAxiosError } from 'axios';
+import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, type InternalAxiosRequestConfig, isAxiosError } from 'axios';
 import type { IHttpClient, HttpRequestConfig, HttpResponse } from '@/application/ports/IHttpClient';
 import { HttpError } from './HttpError';
 
@@ -7,6 +7,8 @@ import { HttpError } from './HttpError';
 export type UnauthorizedHandler = () => void | Promise<void>;
 /** Attempts to refresh the access token; resolves to the new token, or null if refresh is not possible. */
 export type RefreshHandler = () => Promise<string | null>;
+/** Supplies the current access token (or null) for the auth request interceptor. */
+export type AuthTokenProvider = () => Promise<string | null>;
 
 // Marks a request that was already retried after a refresh, so a second 401 does
 // not trigger another refresh (avoids an infinite refresh/retry loop).
@@ -15,8 +17,28 @@ const RETRY_FLAG = '_arrowMazeRefreshRetried';
 export class AxiosHttpClientAdapter implements IHttpClient {
   private readonly client: AxiosInstance;
 
-  constructor(baseURL: string, onUnauthorized?: UnauthorizedHandler, tryRefresh?: RefreshHandler) {
+  constructor(
+    baseURL: string,
+    tokenProvider?: AuthTokenProvider,
+    onUnauthorized?: UnauthorizedHandler,
+    tryRefresh?: RefreshHandler,
+  ) {
     this.client = axios.create({ baseURL });
+    if (tokenProvider !== undefined) {
+      this.client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+        const token = await tokenProvider();
+        if (
+          token !== null &&
+          token !== '' &&
+          config.headers['Authorization'] === undefined &&
+          config.headers['authorization'] === undefined
+        ) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        return config;
+      });
+    }
+
     if (onUnauthorized !== undefined || tryRefresh !== undefined) {
       // On a 401 for a request that carried an Authorization header: try to
       // refresh the access token and retry the request once with the new token;

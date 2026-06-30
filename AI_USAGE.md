@@ -3244,6 +3244,73 @@ were human-approved before TDD.
 
 ---
 
+# AI Log — MAZ-181 Central Bearer request interceptor
+
+Date: 2026-06-29
+Ticket: MAZ-181
+
+## Task / Problem
+
+Reapply the mobile Bearer request-interceptor refactor on top of current `develop`. The old MAZ-181 PR was merged into a stacked branch, not into `develop`, and its branch was stale relative to MAZ-180, MAZ-185, MAZ-186, and MAZ-187.
+
+## Tool and Model
+
+OpenAI Codex CLI, GPT-5 coding agent.
+
+## Prompt Used
+
+User requested completing the remaining M9 closure work after auditing that MAZ-181 did not reach `develop`, with repository rules from `AGENTS.md`, AI usage logging, checks, PR, and Linear updates.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Reused the existing MAZ-181 spec and updated stale base/decision notes to match current `develop`. | `specs/http-auth-interceptor-MAZ-181.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Used the existing `@s1..@s7` Gherkin scenarios as the executable contract. | `specs/http-auth-interceptor-MAZ-181.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Reapplied behavior against tests for adapter, repositories, facades, screens, sync, and victory submit. | Tests listed in `@s → test` map |
+| Judge (`.agents/judge.md`) | Not used | No separate judge session was run in this pass. | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Mutation testing was not run during this pass. | N/A |
+
+## Result Obtained
+
+- Added an injected `AuthTokenProvider` request interceptor to `AxiosHttpClientAdapter`.
+- Preserved existing MAZ-180/MAZ-187 response interceptor behavior by composing the constructor as `(baseURL, tokenProvider, onUnauthorized, tryRefresh)`.
+- Wired `createHttpClient()` to read the current session access token and attach `Authorization: Bearer <token>` centrally.
+- Kept auth login/register/refresh/logout on `createBareHttpClient()` to preserve the no-recursion guarantee from MAZ-187.
+- Removed manual Bearer headers from progress and leaderboard repositories.
+- Removed `accessToken` threading from progress/leaderboard ports, facades, `ProgressViewModel`, `ProgressScreen`, `app/game.tsx`, `app/progress.tsx`, and progress sync.
+
+## @s → Test Map
+
+| Scenario | Concrete tests |
+| --- | --- |
+| `@s1` Attach Bearer token when session token exists | `tests/infrastructure/http/AxiosHttpClientAdapter.test.ts` |
+| `@s2` No Authorization when no token | `tests/infrastructure/http/AxiosHttpClientAdapter.test.ts` |
+| `@s3` Preserve explicit Authorization | `tests/infrastructure/http/AxiosHttpClientAdapter.test.ts` |
+| `@s4` Leaderboard repository no longer hand-rolls Authorization | `tests/infrastructure/repositories/HttpLeaderboardRepository.test.ts` |
+| `@s5` Progress repository no longer hand-rolls Authorization | `tests/infrastructure/repositories/HttpProgressRepository.test.ts` |
+| `@s6` Leaderboard facade delegates without token | `tests/application/facades/LeaderboardFacade.test.ts`, `tests/integration/gameVictorySubmit.test.tsx` |
+| `@s7` Progress facade completes without token | `tests/application/facades/ProgressFacade.test.ts`, `tests/framework/progress/useProgressSync.test.tsx`, `tests/presentation/view-models/ProgressViewModel.test.ts`, `tests/presentation/screens/ProgressScreen.test.tsx` |
+
+## Verification
+
+- `npm run typecheck` passed.
+- Targeted tests passed: 9 suites, 55 tests.
+- `npm run verify` passed: 70 suites, 375 tests.
+
+## Team Modifications Pending Human Review
+
+- Review the constructor composition decision because MAZ-181 now coexists with MAZ-180/MAZ-187.
+- Confirm the auth repository should remain on a bare HTTP client for refresh/logout, preserving no-recursion behavior.
+
+## Lessons / Limitations
+
+- The old stacked MAZ-181 branch could not be merged directly because it would remove later M9 files and AI logs.
+- Full mutation testing was not run in this pass.
+
+
+---
+
 # AI Usage Log: MAZ-184 Leaderboard empty state and replay submit UX planning
 
 ## Task / Problem
@@ -3378,6 +3445,10 @@ checks, commit/push/PR, Linear updates, and review of affected tickets.
 - Added victory leaderboard submit status copy for syncing, success, failure,
   and non-UUID skipped submissions.
 - Kept progress completion independent from leaderboard submission failure.
+- Resolved PR #68 merge conflicts after `origin/develop` incorporated the
+  central HTTP Bearer interceptor work: MAZ-184 now keeps the no-manual-token
+  facade/repository signatures while preserving slim score payloads and visible
+  victory submit status.
 
 ## Verification
 
@@ -3390,9 +3461,11 @@ checks, commit/push/PR, Linear updates, and review of affected tickets.
   `tests/contract/leaderboard.contract.test.ts`,
   `tests/presentation/screens/VictoryScreen.test.tsx`,
   `tests/integration/gameVictorySubmit.test.tsx`
-- Full `npm run verify` GREEN: lint, typecheck, coverage; 71 suites / 377
-  tests. Existing React Native `Animated(View)` act warnings still appear in UI
-  coverage output.
+- Full `npm run verify` GREEN before merge-conflict resolution: lint,
+  typecheck, coverage; 71 suites / 377 tests.
+- Full `npm run verify` GREEN after merging current `origin/develop` into PR
+  #68: lint, typecheck, coverage; 71 suites / 382 tests. Existing React Native
+  `Animated(View)` act warnings still appear in UI coverage output.
 
 ## Team Modifications Pending Human Review
 

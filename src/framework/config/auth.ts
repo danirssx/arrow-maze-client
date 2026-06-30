@@ -4,7 +4,7 @@ import { LogoutUseCase } from "@/application/auth/LogoutUseCase";
 import { RegisterUseCase } from "@/application/auth/RegisterUseCase";
 import { HttpAuthRepository } from "@/infrastructure/repositories/HttpAuthRepository";
 import { AuthViewModel } from "@/presentation/view-models/AuthViewModel";
-import { createHttpClient } from "./httpClient";
+import { createBareHttpClient } from "./httpClient";
 import { createSessionManager } from "./session";
 
 /**
@@ -13,7 +13,7 @@ import { createSessionManager } from "./session";
  * `AuthViewModel` the login route renders.
  */
 export function createAuthViewModel(): AuthViewModel {
-  const authRepository = new HttpAuthRepository(createHttpClient());
+  const authRepository = new HttpAuthRepository(createBareHttpClient());
   const sessionManager = createSessionManager();
   return new AuthViewModel(
     new LoginUseCase(authRepository, sessionManager),
