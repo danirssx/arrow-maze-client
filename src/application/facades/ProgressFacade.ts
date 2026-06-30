@@ -38,18 +38,32 @@ export class ProgressFacade {
     );
     await this.local.save({ ...updated, pendingSync: true });
 
-    await this.remote.completeLevel(completedLevel);
-    const remote = await this.remote.fetchRemote();
-    await this.local.save({ ...remote, pendingSync: false });
-    return remote;
+    try {
+      await this.remote.completeLevel(completedLevel);
+      const remote = await this.remote.fetchRemote();
+      await this.local.save({ ...remote, pendingSync: false });
+      return remote;
+    } catch (error) {
+      if (!ProgressFacade.isPermanentRejection(error)) throw error;
+      // The backend will never accept this payload (e.g. a clearly invalid
+      // far-future completedAt from a broken device clock). Keep the level
+      // recorded locally but resolve the pending state so the player is never
+      // stuck retrying it forever (MAZ-190).
+      return this.resolvePending(userId, updated);
+    }
   }
 
   async sync(userId: string): Promise<LocalProgress> {
     const local = await this.local.load(userId);
     const levels: CompletedLevelData[] = local?.completedLevels ?? [];
-    const merged = await this.remote.sync(levels);
-    await this.local.save({ ...merged, pendingSync: false });
-    return merged;
+    try {
+      const merged = await this.remote.sync(levels);
+      await this.local.save({ ...merged, pendingSync: false });
+      return merged;
+    } catch (error) {
+      if (local === null || !ProgressFacade.isPermanentRejection(error)) throw error;
+      return this.resolvePending(userId, local);
+    }
   }
 
   async hasPendingSync(userId: string): Promise<boolean> {
@@ -65,6 +79,22 @@ export class ProgressFacade {
     if (!pending) return false;
     await this.sync(userId);
     return true;
+  }
+
+  // A permanent rejection (HTTP 422 / 400) will never succeed on retry, so the
+  // pending state must be resolved instead of looped. A retryable failure (network
+  // / 5xx) keeps pending. The error `code` is duck-typed, mirroring how
+  // LeaderboardViewModel reads NOT_FOUND without importing the HttpError type.
+  private static isPermanentRejection(error: unknown): boolean {
+    if (typeof error !== 'object' || error === null || !('code' in error)) return false;
+    const code = (error as { code?: unknown }).code;
+    return code === 'UNPROCESSABLE' || code === 'BAD_REQUEST';
+  }
+
+  private async resolvePending(userId: string, progress: LocalProgress): Promise<LocalProgress> {
+    const resolved = { ...progress, userId, pendingSync: false };
+    await this.local.save(resolved);
+    return resolved;
   }
 
   private static emptyProgress(userId: string, timestamp: string): LocalProgress {
