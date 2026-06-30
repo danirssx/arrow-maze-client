@@ -13,7 +13,6 @@ import type { ProgressViewModel } from "@/presentation/view-models/ProgressViewM
 interface ProgressScreenProps {
   viewModel: ProgressViewModel | null;
   userId: string | null;
-  accessToken: string | null;
   levelNameById?: Record<string, string>;
   onBack: () => void;
 }
@@ -21,26 +20,24 @@ interface ProgressScreenProps {
 function ProgressContent({
   viewModel,
   userId,
-  accessToken,
   levelNameById
 }: {
   viewModel: ProgressViewModel;
   userId: string;
-  accessToken: string;
   levelNameById: Record<string, string> | undefined;
 }) {
   const { t } = useTranslation();
   const state = useViewModelState(viewModel);
 
   useEffect(() => {
-    void viewModel.load(userId, accessToken);
-  }, [viewModel, userId, accessToken]);
+    void viewModel.load(userId);
+  }, [viewModel, userId]);
 
   if (state.status === AsyncStatus.Idle || state.status === AsyncStatus.Loading) {
     return <LoadingState />;
   }
   if (state.status === AsyncStatus.Error) {
-    return <ErrorState onRetry={() => void viewModel.load(userId, accessToken)} />;
+    return <ErrorState onRetry={() => void viewModel.load(userId)} />;
   }
   if (state.status === AsyncStatus.Empty || state.data === null) {
     return <EmptyState variant="progress" />;
@@ -85,17 +82,16 @@ function ProgressContent({
  * authenticated session it shows the empty state. It never calls storage or HTTP
  * directly.
  */
-export function ProgressScreen({ viewModel, userId, accessToken, levelNameById, onBack }: ProgressScreenProps) {
+export function ProgressScreen({ viewModel, userId, levelNameById, onBack }: ProgressScreenProps) {
   const { t } = useTranslation();
 
   return (
     <ScreenContainer testID="progress-screen">
       <Header title={t("progress.title")} onBack={onBack} />
-      {viewModel !== null && userId !== null && accessToken !== null ? (
+      {viewModel !== null && userId !== null ? (
         <ProgressContent
           viewModel={viewModel}
           userId={userId}
-          accessToken={accessToken}
           levelNameById={levelNameById}
         />
       ) : (

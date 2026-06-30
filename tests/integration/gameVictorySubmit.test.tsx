@@ -19,8 +19,8 @@ const mockSession = {
   accessToken: "token-1",
 };
 
-const mockCompleteLevel = jest.fn<Promise<void>, [string, string, unknown]>().mockResolvedValue(undefined);
-const mockSubmitScore = jest.fn<Promise<void>, [unknown, string]>().mockResolvedValue(undefined);
+const mockCompleteLevel = jest.fn<Promise<void>, [string, unknown]>().mockResolvedValue(undefined);
+const mockSubmitScore = jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined);
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), replace: jest.fn(), push: jest.fn(), dismissAll: jest.fn() }),
@@ -87,15 +87,11 @@ describe("Game victory submit (integration)", () => {
     await waitFor(() => expect(mockCompleteLevel).toHaveBeenCalledTimes(1));
     expect(mockSubmitScore).toHaveBeenCalledTimes(1);
 
-    // completeLevel(userId, accessToken, { levelId, score, timeSeconds, movesCount, completedAt })
-    const [userId, accessToken, completion] = mockCompleteLevel.mock.calls[0]!;
+    const [userId, completion] = mockCompleteLevel.mock.calls[0]!;
     expect(userId).toBe(mockSession.userId);
-    expect(accessToken).toBe(mockSession.accessToken);
     expect(completion).toMatchObject({ levelId: FIRST_LEVEL_ID, movesCount: ORDER.length });
 
-    // submitScore({ leaderboardId, entryId, levelId, usernameSnapshot, ... }, accessToken)
-    const [request, token] = mockSubmitScore.mock.calls[0]!;
-    expect(token).toBe(mockSession.accessToken);
+    const [request] = mockSubmitScore.mock.calls[0]!;
     expect(request).toMatchObject({ levelId: FIRST_LEVEL_ID, usernameSnapshot: mockSession.username, movesCount: ORDER.length });
   });
 

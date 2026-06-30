@@ -3,7 +3,7 @@ import { AxiosHttpClientAdapter } from "@/infrastructure/http/AxiosHttpClientAda
 import { HttpAuthRepository } from "@/infrastructure/repositories/HttpAuthRepository";
 import { RefreshSessionUseCase } from "@/application/auth/RefreshSessionUseCase";
 import { notifySessionInvalidated } from "@/framework/auth/sessionInvalidation";
-import { createSessionManager } from "./session";
+import { createSessionManager, getCurrentSession } from "./session";
 import { API_BASE_URL } from "./env";
 
 /**
@@ -15,7 +15,11 @@ import { API_BASE_URL } from "./env";
  * presentation never see the concrete Axios adapter.
  */
 export function createHttpClient(): IHttpClient {
-  return new AxiosHttpClientAdapter(API_BASE_URL, notifySessionInvalidated, createRefreshRunner());
+  return new AxiosHttpClientAdapter(API_BASE_URL, getCurrentAccessToken, notifySessionInvalidated, createRefreshRunner());
+}
+
+export function createBareHttpClient(): IHttpClient {
+  return new AxiosHttpClientAdapter(API_BASE_URL);
 }
 
 /**
@@ -23,7 +27,12 @@ export function createHttpClient(): IHttpClient {
  * `POST /auth/refresh` call cannot recurse into the 401 refresh-retry logic.
  */
 function createRefreshRunner(): () => Promise<string | null> {
-  const bareClient = new AxiosHttpClientAdapter(API_BASE_URL);
+  const bareClient = createBareHttpClient();
   const refreshSession = new RefreshSessionUseCase(new HttpAuthRepository(bareClient), createSessionManager());
   return () => refreshSession.execute();
+}
+
+async function getCurrentAccessToken(): Promise<string | null> {
+  const session = await getCurrentSession();
+  return session?.accessToken ?? null;
 }

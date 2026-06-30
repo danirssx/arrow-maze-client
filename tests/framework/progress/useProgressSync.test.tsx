@@ -6,7 +6,7 @@ import { useProgressSync } from "@/framework/progress/useProgressSync";
 import { renderWithProviders } from "../../presentation/testUtils";
 
 const mockUseAuthSession = jest.fn();
-const mockDrainPendingProgress = jest.fn<Promise<boolean>, [string, string]>();
+const mockDrainPendingProgress = jest.fn<Promise<boolean>, [string]>();
 
 jest.mock("@/framework/auth/AuthGate", () => ({
   useAuthSession: () => mockUseAuthSession(),
@@ -60,14 +60,14 @@ describe("useProgressSync", () => {
 
     renderWithProviders(<ProgressSyncProbe />);
 
-    await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1", "token-1"));
+    await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1"));
     mockDrainPendingProgress.mockClear();
 
     act(() => {
       netInfo.__emit({ isConnected: true });
     });
 
-    await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1", "token-1"));
+    await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1"));
   });
 
   it("should_drain_for_signed_in_session_when_app_returns_to_foreground", async () => {
@@ -85,14 +85,14 @@ describe("useProgressSync", () => {
 
     renderWithProviders(<ProgressSyncProbe />);
 
-    await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1", "token-1"));
+    await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1"));
     mockDrainPendingProgress.mockClear();
 
     act(() => {
       appStateListener?.("active");
     });
 
-    await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1", "token-1"));
+    await waitFor(() => expect(mockDrainPendingProgress).toHaveBeenCalledWith("user-1"));
   });
 
   it("should_not_drain_when_signed_out", () => {

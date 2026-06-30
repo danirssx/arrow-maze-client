@@ -14,7 +14,7 @@ export function useProgressSync(): void {
     if (session === null) return undefined;
 
     return startProgressSync(
-      () => progressFacade.drainPendingProgress(session.userId, session.accessToken)
+      () => progressFacade.drainPendingProgress(session.userId)
         .catch((error: unknown) => {
           console.warn("Failed to drain pending progress", error);
           return false;
