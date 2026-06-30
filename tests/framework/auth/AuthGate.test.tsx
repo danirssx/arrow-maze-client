@@ -5,17 +5,14 @@ import { AuthGate, useAuthSession } from "@/framework/auth/AuthGate";
 import { notifySessionInvalidated } from "@/framework/auth/sessionInvalidation";
 import { renderWithProviders } from "../../presentation/testUtils";
 
-const mockRedirects: string[] = [];
 let mockSegments: string[] = ["index"];
+const mockRouterReplace = jest.fn();
 const mockGetCurrentSession = jest.fn<Promise<AuthSession | null>, []>();
 const mockClearCurrentSession = jest.fn<Promise<void>, []>();
 
 jest.mock("expo-router", () => {
   return {
-    Redirect: ({ href }: { href: string }) => {
-      mockRedirects.push(String(href));
-      return null;
-    },
+    useRouter: () => ({ replace: mockRouterReplace }),
     useSegments: () => mockSegments,
   };
 });
@@ -48,14 +45,14 @@ function LogoutProbe() {
 
 describe("AuthGate", () => {
   beforeEach(() => {
-    mockRedirects.length = 0;
+    mockRouterReplace.mockReset();
     mockSegments = ["index"];
     mockGetCurrentSession.mockReset();
     mockClearCurrentSession.mockReset();
     mockClearCurrentSession.mockResolvedValue(undefined);
   });
 
-  it("should_redirect_to_login_when_protected_route_has_no_session", async () => {
+  it("should_redirect_to_login_without_unmounting_navigation_when_protected_route_has_no_session", async () => {
     // Arrange
     mockGetCurrentSession.mockResolvedValue(null);
 
@@ -67,8 +64,8 @@ describe("AuthGate", () => {
     );
 
     // Assert
-    await waitFor(() => expect(mockRedirects).toContain("/login"));
-    expect(screen.queryByTestId("protected-content")).toBeNull();
+    await waitFor(() => expect(mockRouterReplace).toHaveBeenCalledWith("/login"));
+    expect(screen.getByTestId("protected-content")).toBeTruthy();
   });
 
   it("should_render_protected_content_when_session_bootstraps", async () => {
@@ -84,7 +81,7 @@ describe("AuthGate", () => {
 
     // Assert
     await waitFor(() => expect(screen.getByTestId("protected-content")).toBeTruthy());
-    expect(mockRedirects).not.toContain("/login");
+    expect(mockRouterReplace).not.toHaveBeenCalledWith("/login");
   });
 
   it("should_clear_session_and_redirect_to_login_when_logout_runs", async () => {
@@ -102,7 +99,7 @@ describe("AuthGate", () => {
 
     // Assert
     await waitFor(() => expect(mockClearCurrentSession).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(mockRedirects).toContain("/login"));
+    await waitFor(() => expect(mockRouterReplace).toHaveBeenCalledWith("/login"));
   });
 
   it("should_clear_session_and_redirect_to_login_when_session_is_invalidated", async () => {
@@ -122,7 +119,7 @@ describe("AuthGate", () => {
 
     // Assert
     await waitFor(() => expect(mockClearCurrentSession).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(mockRedirects).toContain("/login"));
+    await waitFor(() => expect(mockRouterReplace).toHaveBeenCalledWith("/login"));
   });
 
   it("should_redirect_authenticated_users_away_from_login", async () => {
@@ -138,7 +135,7 @@ describe("AuthGate", () => {
     );
 
     // Assert
-    await waitFor(() => expect(mockRedirects).toContain("/"));
+    await waitFor(() => expect(mockRouterReplace).toHaveBeenCalledWith("/"));
   });
 
   it("should_redirect_to_login_when_game_route_has_no_session", async () => {
@@ -154,6 +151,7 @@ describe("AuthGate", () => {
     );
 
     // Assert
-    await waitFor(() => expect(mockRedirects).toContain("/login"));
+    await waitFor(() => expect(mockRouterReplace).toHaveBeenCalledWith("/login"));
   });
+
 });

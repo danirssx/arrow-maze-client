@@ -13,7 +13,7 @@ export default function HomeRoute() {
   const { session, clearSession } = useAuthSession();
 
   const handleLogout = () => {
-    void clearSession().then(() => router.replace("/login"));
+    void clearSession();
   };
 
   return (
