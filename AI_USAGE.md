@@ -3802,6 +3802,80 @@ No approved Gherkin `@s` scenarios exist for this regression. Concrete coverage:
 
 ---
 
+# AI Usage Log: MAZ-189 Readable level names and friendly sync status (client)
+
+## Task / Problem
+
+The Progress screen showed raw UUIDs (e.g. `550e8400-e29b-41d4-a716-446655440040`)
+whenever a level name could not be resolved — MAZ-186 added the `levelId -> name` map
+but fell back to the raw `levelId`. It also showed the technical label "Pending sync".
+MAZ-189 makes Progress readable for a player: level names first, no full UUID as the
+primary label, and friendly sync copy in English and Spanish.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-189` following both repository `AGENTS.md` files,
+root `MEMORY.md`, `Linear_MCP_Guideline.md`, fresh worktree, AI usage logging, checks,
+commit/push/PR, Linear updates, and a review of affected tickets (refines MAZ-186, and
+the sync state relates to MAZ-185 / MAZ-190).
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Wrote `specs/progress-readable-names-MAZ-189.spec.md` capturing the UUID-fallback and unclear-sync-copy problems and the chosen presentation-only fix. No separate agent session was run. | `specs/progress-readable-names-MAZ-189.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Wrote the executable Gherkin contract `@s1..@s4`. No separate planner session was run. | `specs/progress-readable-names-MAZ-189.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Rewrote the fallback test (readable label, no UUID) and added pending/synced copy tests (Red), then the minimal screen + i18n change (Green). | `tests/presentation/screens/ProgressScreen.test.tsx`; `src/presentation/screens/ProgressScreen.tsx`; `src/framework/i18n/locales/{en,es}.json` |
+| Judge (`.agents/judge.md`) | Not used | No separate judge review session was run (PR/Linear review is the human gate). | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Presentation/i18n copy change; `src/presentation` is outside the mutation `mutate` globs (domain/application only). | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` known level name shown, no UUID | `tests/presentation/screens/ProgressScreen.test.tsx` -> `should_show_the_level_name_when_a_mapping_exists` |
+| `@s2` readable fallback, no UUID as primary label | `tests/presentation/screens/ProgressScreen.test.tsx` -> `should_show_a_readable_fallback_and_hide_the_uuid_when_no_mapping_exists` |
+| `@s3` pending sync explained in product language | `tests/presentation/screens/ProgressScreen.test.tsx` -> `should_show_friendly_pending_sync_copy_when_progress_is_pending` |
+| `@s4` pending status hidden after a successful sync | `tests/presentation/screens/ProgressScreen.test.tsx` -> `should_not_show_pending_sync_copy_when_progress_is_synced` |
+
+## Result Obtained
+
+- `ProgressScreen` row label now falls back to `t("progress.unknownLevel")` instead of
+  the raw `levelId`, so a UUID is never the primary label.
+- `progress.pendingSync` copy is now product language; added `progress.unknownLevel`.
+  Both keys in `en.json` + `es.json`.
+- Pending copy still renders only while `pendingSync === true`, so it disappears after
+  a successful sync (no logic change).
+- No new layers/patterns; presentation + i18n only. AGENTS architecture rules
+  unchanged.
+
+## Verification
+
+- `npm ci` GREEN.
+- Focused tests GREEN: `tests/presentation/screens/ProgressScreen.test.tsx` (4 tests).
+- `npm run verify` GREEN: lint + typecheck + coverage (71 suites / 388 tests).
+
+## Team Modifications Pending Human Review
+
+- Confirm the exact fallback wording ("Unknown level" / "Nivel desconocido") and the
+  pending-sync copy. Presentation tests are subject to mandatory human review.
+
+## Lessons / Limitations
+
+- The level-name source is the catalog map the route already builds
+  (`LevelSelectViewModel.getLevels()` → backend names online, `manualLevels.ts` draft
+  names offline); a name only goes missing if the catalog itself lacks the id, which is
+  exactly when the readable fallback applies.
+- Refines MAZ-186 (which introduced the name map with a UUID fallback); the sync state
+  being relabeled is the same `pendingSync` flag driven by MAZ-185 / MAZ-190.
+
+
+---
+
 # AI Usage Log: MAZ-190 Resolve progress sync on a permanent rejection (client)
 
 ## Task / Problem

@@ -63,7 +63,7 @@ function ProgressContent({
             className="flex-row items-center justify-between rounded-2xl bg-background-card border border-border-soft p-4"
           >
             <Text className="flex-1 text-base font-semibold text-text-primary">
-              {levelNameById?.[level.levelId] ?? level.levelId}
+              {levelNameById?.[level.levelId] ?? t("progress.unknownLevel")}
             </Text>
             <Text className="text-base font-bold text-text-secondary">
               {t("progress.bestScore", { score: level.score })}

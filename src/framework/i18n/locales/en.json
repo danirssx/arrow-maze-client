@@ -65,7 +65,8 @@
   "progress": {
     "title": "Progress",
     "completed": "Completed levels",
-    "pendingSync": "Pending sync",
+    "pendingSync": "Saved on this device — it will sync soon",
+    "unknownLevel": "Unknown level",
     "bestScore": "{{score}} pts"
   },
   "settings": {
