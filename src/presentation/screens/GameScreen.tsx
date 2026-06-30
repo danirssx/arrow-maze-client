@@ -8,6 +8,7 @@ import type { GameUIController } from "@/presentation/controllers/GameUIControll
 import type { GameViewModel } from "@/presentation/view-models/GameViewModel";
 import { DefeatScreen } from "./DefeatScreen";
 import { VictoryScreen } from "./VictoryScreen";
+import type { VictoryLeaderboardStatus } from "./VictoryScreen";
 
 interface GameScreenProps {
   viewModel: GameViewModel;
@@ -17,6 +18,7 @@ interface GameScreenProps {
   onHome: () => void;
   onNextLevel?: (() => void) | undefined;
   onViewLeaderboard?: (() => void) | undefined;
+  leaderboardSubmitStatus?: VictoryLeaderboardStatus | undefined;
 }
 
 /** Circular dark icon button used by the HUD top bar. */
@@ -92,7 +94,8 @@ export function GameScreen({
   onExit,
   onHome,
   onNextLevel,
-  onViewLeaderboard
+  onViewLeaderboard,
+  leaderboardSubmitStatus
 }: GameScreenProps) {
   const { t } = useTranslation();
   const state = useViewModelState(viewModel);
@@ -153,6 +156,7 @@ export function GameScreen({
             onHome={onHome}
             onNextLevel={onNextLevel}
             onViewLeaderboard={onViewLeaderboard}
+            leaderboardSubmitStatus={leaderboardSubmitStatus}
           />
         </View>
       ) : null}

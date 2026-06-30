@@ -19,9 +19,9 @@ interface LeaderboardEntryDto {
 interface LeaderboardResponseDto {
   status: 'success';
   data: {
-    leaderboardId: string;
+    leaderboardId?: string;
     levelId: string;
-    updatedAt: string;
+    updatedAt?: string;
     entries: LeaderboardEntryDto[];
   };
 }
@@ -48,10 +48,7 @@ const LEADERBOARD_FIXTURE: LeaderboardResponseDto = {
 };
 
 const SUBMIT_SCORE_REQUEST_FIXTURE: SubmitScoreRequestDto = {
-  leaderboardId: '550e8400-e29b-41d4-a716-446655440001',
-  entryId: '550e8400-e29b-41d4-a716-446655440002',
   levelId: '550e8400-e29b-41d4-a716-446655440010',
-  usernameSnapshot: 'arrow_player',
   score: 1500,
   timeSeconds: 45,
   movesCount: 30,
@@ -62,12 +59,27 @@ describe('Leaderboard contract — LeaderboardResponseDto', () => {
     expect(LEADERBOARD_FIXTURE.status).toBe('success');
   });
 
-  it('should_have_required_data_fields', () => {
+  it('should_have_required_data_fields_with_optional_collection_metadata', () => {
     const { data } = LEADERBOARD_FIXTURE;
     expect(typeof data.leaderboardId).toBe('string');
     expect(typeof data.levelId).toBe('string');
     expect(typeof data.updatedAt).toBe('string');
     expect(Array.isArray(data.entries)).toBe(true);
+  });
+
+  it('should_allow_empty_response_without_collection_metadata', () => {
+    const emptyResponse: LeaderboardResponseDto = {
+      status: 'success',
+      data: {
+        levelId: '550e8400-e29b-41d4-a716-446655440010',
+        entries: [],
+      },
+    };
+
+    expect(emptyResponse.data.levelId).toBe('550e8400-e29b-41d4-a716-446655440010');
+    expect(emptyResponse.data.entries).toEqual([]);
+    expect(emptyResponse.data.leaderboardId).toBeUndefined();
+    expect(emptyResponse.data.updatedAt).toBeUndefined();
   });
 
   it('should_have_correct_entry_shape', () => {
@@ -95,13 +107,13 @@ describe('Leaderboard contract — SubmitScoreRequestDto', () => {
     expect(SUBMIT_SCORE_REQUEST_FIXTURE).not.toHaveProperty('userId');
   });
 
-  it('should_require_authenticated_submission_metadata_without_spoofable_user_id', () => {
-    expect(typeof SUBMIT_SCORE_REQUEST_FIXTURE.leaderboardId).toBe('string');
-    expect(typeof SUBMIT_SCORE_REQUEST_FIXTURE.entryId).toBe('string');
+  it('should_require_only_score_facts_without_spoofable_metadata', () => {
     expect(typeof SUBMIT_SCORE_REQUEST_FIXTURE.levelId).toBe('string');
-    expect(typeof SUBMIT_SCORE_REQUEST_FIXTURE.usernameSnapshot).toBe('string');
     expect(typeof SUBMIT_SCORE_REQUEST_FIXTURE.score).toBe('number');
     expect(typeof SUBMIT_SCORE_REQUEST_FIXTURE.timeSeconds).toBe('number');
     expect(typeof SUBMIT_SCORE_REQUEST_FIXTURE.movesCount).toBe('number');
+    expect(SUBMIT_SCORE_REQUEST_FIXTURE).not.toHaveProperty('leaderboardId');
+    expect(SUBMIT_SCORE_REQUEST_FIXTURE).not.toHaveProperty('entryId');
+    expect(SUBMIT_SCORE_REQUEST_FIXTURE).not.toHaveProperty('usernameSnapshot');
   });
 });

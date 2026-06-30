@@ -10,9 +10,9 @@ export class HttpLeaderboardRepository implements ILeaderboardRepository {
     const res = await this.http.get<LeaderboardResponseDto>(`/leaderboard/${levelId}`);
     const { data } = res.data;
     return {
-      leaderboardId: data.leaderboardId,
+      ...(data.leaderboardId !== undefined ? { leaderboardId: data.leaderboardId } : {}),
       levelId: data.levelId,
-      updatedAt: data.updatedAt,
+      ...(data.updatedAt !== undefined ? { updatedAt: data.updatedAt } : {}),
       entries: data.entries,
     };
   }

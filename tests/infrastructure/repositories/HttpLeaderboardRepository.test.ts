@@ -56,25 +56,41 @@ describe('HttpLeaderboardRepository', () => {
     expect(http.lastGetConfig).toBeUndefined();
   });
 
-  it('should_submit_score_without_hand_rolled_authorization_header_or_user_id_body', async () => {
+  it('should_return_empty_leaderboard_when_backend_omits_collection_metadata', async () => {
+    http.getResponse = {
+      status: 'success',
+      data: {
+        levelId: '550e8400-e29b-41d4-a716-446655440010',
+        entries: [],
+      },
+    } satisfies LeaderboardResponseDto;
+
+    const result = await repo.getTopScores('550e8400-e29b-41d4-a716-446655440010');
+
+    expect(result).toEqual({
+      levelId: '550e8400-e29b-41d4-a716-446655440010',
+      entries: [],
+    });
+  });
+
+  it('should_submit_score_without_hand_rolled_authorization_header_and_only_score_facts', async () => {
     http.postResponse = { status: 'success', data: null };
     await expect(repo.submitScore({
-      leaderboardId: 'lb-1', entryId: 'e-2',
-      levelId: '550e8400-e29b-41d4-a716-446655440010', usernameSnapshot: 'player',
+      levelId: '550e8400-e29b-41d4-a716-446655440010',
       score: 800, timeSeconds: 60, movesCount: 20,
     })).resolves.not.toThrow();
 
     expect(http.lastPostUrl).toBe('/leaderboard/scores');
     expect(http.lastPostBody).toEqual({
-      leaderboardId: 'lb-1',
-      entryId: 'e-2',
       levelId: '550e8400-e29b-41d4-a716-446655440010',
-      usernameSnapshot: 'player',
       score: 800,
       timeSeconds: 60,
       movesCount: 20,
     });
     expect(http.lastPostBody).not.toHaveProperty('userId');
+    expect(http.lastPostBody).not.toHaveProperty('leaderboardId');
+    expect(http.lastPostBody).not.toHaveProperty('entryId');
+    expect(http.lastPostBody).not.toHaveProperty('usernameSnapshot');
     expect(http.lastPostConfig).toBeUndefined();
   });
 });

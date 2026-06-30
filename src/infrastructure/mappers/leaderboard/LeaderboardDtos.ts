@@ -12,20 +12,17 @@ export interface LeaderboardEntryDto {
 export interface LeaderboardResponseDto {
   status: 'success';
   data: {
-    leaderboardId: string;
+    leaderboardId?: string;
     levelId: string;
-    updatedAt: string;
+    updatedAt?: string;
     entries: LeaderboardEntryDto[];
   };
 }
 
-// The backend derives userId from the authenticated JWT, so the request body
-// never carries it; keeping a userId field here was dead and misleading.
+// The backend derives identifiers and username from the authenticated request,
+// so the client sends only the score facts produced by the game/application.
 export interface SubmitScoreRequestDto {
-  leaderboardId: string;
-  entryId: string;
   levelId: string;
-  usernameSnapshot: string;
   score: number;
   timeSeconds: number;
   movesCount: number;

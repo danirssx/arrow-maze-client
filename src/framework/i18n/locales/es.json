@@ -46,7 +46,11 @@
     "playAgain": "Jugar de nuevo",
     "next": "Siguiente nivel",
     "home": "Inicio",
-    "leaderboard": "Ver ranking"
+    "leaderboard": "Ver ranking",
+    "leaderboardSyncing": "Sincronizando puntaje...",
+    "leaderboardSynced": "Puntaje enviado.",
+    "leaderboardFailed": "No se pudo enviar el puntaje. Tu progreso fue guardado.",
+    "leaderboardSkipped": "El puntaje no se envio para este nivel offline."
   },
   "defeat": {
     "title": "Sin intentos",
