@@ -20,7 +20,6 @@ export default function HomeRoute() {
     <HomeScreen
       {...(session !== null ? { username: session.username } : {})}
       onPlay={() => router.push(LEVELS_ROUTE)}
-      onChallenges={() => router.push(LEVELS_ROUTE)}
       onLeaderboard={() => router.push(LEADERBOARD_ROUTE)}
       onProgress={() => router.push(PROGRESS_ROUTE)}
       onSettings={() => router.push(SETTINGS_ROUTE)}

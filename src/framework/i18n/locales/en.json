@@ -14,13 +14,12 @@
     "greeting": "Welcome",
     "title": "Let's Play!",
     "play": "Play",
-    "challenges": "Challenges",
-    "cardDailyTitle": "Daily challenges",
-    "cardDailySubtitle": "New levels every day",
-    "cardRewardsTitle": "Win rewards",
-    "cardRewardsSubtitle": "Play and earn coins",
-    "cardFollowTitle": "Follow the arrow",
-    "cardFollowSubtitle": "Reach the goal"
+    "cardLeaderboardTitle": "Leaderboard",
+    "cardLeaderboardSubtitle": "See the top scores",
+    "cardProgressTitle": "Your progress",
+    "cardProgressSubtitle": "Levels you've completed",
+    "cardSettingsTitle": "Settings",
+    "cardSettingsSubtitle": "Sound, language and account"
   },
   "levels": {
     "title": "Levels",

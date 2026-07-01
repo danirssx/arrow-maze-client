@@ -4043,6 +4043,81 @@ same progress/catalog seams as MAZ-185/189/192).
   unknown-level/error guards still apply in that degraded case.
 
 
+---
+
+# AI Usage Log: MAZ-193 Align Home copy with navigation targets (client)
+
+## Task / Problem
+
+The Home screen's labels did not match their navigation: 🏆 "Daily challenges" opened
+Progress, 🎁 "Win rewards" opened Leaderboard, ➡️ "Follow the arrow" and a second
+"Challenges" button both opened Level Select. The rewards/daily/follow copy implied
+screens that do not exist, making the app feel broken. MAZ-193 makes every Home
+label/card/icon truthful to its real destination.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-193` following both repository `AGENTS.md` files, root
+`MEMORY.md`, `Linear_MCP_Guideline.md`, a fresh worktree, AI usage logging, checks,
+commit/push/PR, Linear updates, and a review of affected tickets (Home reuses the
+levels/leaderboard/progress/settings routes, related to MAZ-189/191/192).
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Wrote `specs/home-truthful-copy-MAZ-193.spec.md` capturing the label↔destination mismatches and the truthful redesign. No separate agent session was run. | `specs/home-truthful-copy-MAZ-193.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Wrote the executable Gherkin contract `@s1..@s5`. No separate planner session was run. | `specs/home-truthful-copy-MAZ-193.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Rewrote the Home tests (per-card destination callbacks + truthful-label / no-misleading-copy expectation) — Red — then rebuilt `HomeScreen` cards + i18n + `app/index.tsx` — Green. | `tests/presentation/screens/HomeScreen.test.tsx`; `src/presentation/screens/HomeScreen.tsx`; `src/framework/i18n/locales/{en,es}.json`; `app/index.tsx` |
+| Judge (`.agents/judge.md`) | Not used | No separate judge session (PR/Linear review is the human gate). | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Presentation/i18n change; `src/presentation` is outside the mutation `mutate` globs. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` Play → level select | `tests/presentation/screens/HomeScreen.test.tsx` -> `should_call_on_play_when_play_is_pressed` |
+| `@s2` Leaderboard card → leaderboard | `should_route_the_leaderboard_card_to_the_leaderboard` |
+| `@s3` Progress card → progress | `should_route_the_progress_card_to_progress` |
+| `@s4` Settings card → settings | `should_route_the_settings_card_to_settings` |
+| `@s5` no misleading copy / truthful labels | `should_show_truthful_card_labels_and_no_misleading_reward_or_daily_copy` |
+
+## Result Obtained
+
+- `HomeScreen`: brand + one primary **Play** button (→ level select) + a three-card row:
+  🏆 Leaderboard → `onLeaderboard`, 📈 Your progress → `onProgress`, ⚙️ Settings →
+  `onSettings`. Removed the duplicate "Challenges" primary button, the redundant
+  "Follow the arrow" card, and the misleading "Daily challenges" / "Win rewards" labels.
+  Dropped the `onChallenges` prop; `app/index.tsx` no longer wires it.
+- i18n `home.*` keys replaced with `cardLeaderboard*` / `cardProgress*` /
+  `cardSettings*` in `en.json` + `es.json` (consistent EN/ES).
+- No new screens (rewards/daily/social out of scope). Presentation + i18n only; no new
+  layers/patterns. AGENTS architecture rules unchanged.
+
+## Verification
+
+- `npm ci` GREEN.
+- Focused tests GREEN: `tests/presentation/screens/HomeScreen.test.tsx` (7 tests).
+- `npm run verify` GREEN: lint + typecheck + coverage (73 suites / 408 tests).
+
+## Team Modifications Pending Human Review
+
+- Confirm the truthful Home layout (one Play CTA + Leaderboard/Progress/Settings cards)
+  and the removal of the Challenges/Follow/rewards items. Presentation tests are subject
+  to mandatory human review.
+
+## Lessons / Limitations
+
+- The only real destinations are levels, leaderboard, progress and settings; the honest
+  layout maps each card to one of those instead of inventing rewards/daily/social copy.
+- `nav.settings` is still used by the Settings screen header, so it was kept; only the
+  `home.*` misleading keys were removed.
+
+
 <!-- AI_LOG_ENTRIES_END -->
 
 ## Critical Evaluation

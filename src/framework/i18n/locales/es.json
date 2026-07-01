@@ -14,13 +14,12 @@
     "greeting": "Bienvenido",
     "title": "¡A Jugar!",
     "play": "Jugar",
-    "challenges": "Desafíos",
-    "cardDailyTitle": "Desafíos diarios",
-    "cardDailySubtitle": "Nuevos niveles cada día",
-    "cardRewardsTitle": "Gana recompensas",
-    "cardRewardsSubtitle": "Juega y gana monedas",
-    "cardFollowTitle": "Sigue la flecha",
-    "cardFollowSubtitle": "Llega a la meta"
+    "cardLeaderboardTitle": "Clasificación",
+    "cardLeaderboardSubtitle": "Mira las mejores puntuaciones",
+    "cardProgressTitle": "Tu progreso",
+    "cardProgressSubtitle": "Niveles que completaste",
+    "cardSettingsTitle": "Ajustes",
+    "cardSettingsSubtitle": "Sonido, idioma y cuenta"
   },
   "levels": {
     "title": "Niveles",
