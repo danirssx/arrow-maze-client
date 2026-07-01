@@ -7,6 +7,7 @@ import { renderWithProviders } from "../testUtils";
 
 const levels = new LevelSelectViewModel().getLevels();
 const firstLevel = levels[0]!;
+const lockedLevel = levels[1]!;
 
 describe("LevelSelectScreen", () => {
   it("should_render_a_card_per_level", () => {
@@ -26,5 +27,18 @@ describe("LevelSelectScreen", () => {
     fireEvent.press(getByTestId(`level-card-${firstLevel.id}`));
 
     expect(onSelect).toHaveBeenCalledWith(firstLevel.id);
+  });
+
+  // MAZ-191 — later levels start locked and cannot be selected
+  it("should_not_select_a_locked_level_when_its_card_is_pressed", () => {
+    const onSelect = jest.fn();
+    const { getByTestId } = renderWithProviders(
+      <LevelSelectScreen levels={levels} onSelect={onSelect} onBack={jest.fn()} />
+    );
+
+    expect(lockedLevel.locked).toBe(true);
+    fireEvent.press(getByTestId(`level-card-${lockedLevel.id}`));
+
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

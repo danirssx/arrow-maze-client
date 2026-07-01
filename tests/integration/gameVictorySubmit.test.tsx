@@ -21,6 +21,11 @@ const mockSession = {
 
 const mockCompleteLevel = jest.fn<Promise<void>, [string, unknown]>().mockResolvedValue(undefined);
 const mockSubmitScore = jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined);
+// Level 1 (index 0) is always unlocked regardless of progress, so an empty progress
+// keeps the sequential-locking guard (MAZ-191) satisfied for this level-1 fixture.
+const mockLoadProgress = jest
+  .fn<Promise<{ completedLevels: { levelId: string }[] }>, [string]>()
+  .mockResolvedValue({ completedLevels: [] });
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), replace: jest.fn(), push: jest.fn(), dismissAll: jest.fn() }),
@@ -32,7 +37,7 @@ jest.mock("@/framework/auth/AuthGate", () => ({
 }));
 
 jest.mock("@/framework/config/progress", () => ({
-  createProgressFacade: () => ({ completeLevel: mockCompleteLevel }),
+  createProgressFacade: () => ({ completeLevel: mockCompleteLevel, load: mockLoadProgress }),
 }));
 
 jest.mock("@/framework/config/leaderboard", () => ({
