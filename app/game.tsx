@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 
 import { createLeaderboardFacade } from "@/framework/config/leaderboard";
@@ -14,7 +16,10 @@ import { ScreenContainer } from "@/presentation/components/ScreenContainer";
 import { GameOverlay } from "@/presentation/state/GameUiState";
 import type { VictoryLeaderboardStatus } from "@/presentation/screens/VictoryScreen";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
+import { isLevelUnlocked } from "@/application/level-build/levelUnlock";
 import { isUuid } from "@/shared/isUuid";
+
+const getLevelsRoute = (): Href => ("/levels" as unknown as Href);
 
 const getGameRoute = (levelId: string): Href => ({
   pathname: "/game",
@@ -28,6 +33,7 @@ const getLeaderboardRoute = (levelId: string): Href => ({
 
 export default function GameRoute() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ levelId?: string }>();
   const levelId = typeof params.levelId === "string" ? params.levelId : "";
 
@@ -39,6 +45,7 @@ export default function GameRoute() {
   const [levels, setLevels] = useState(() => catalog.getLevels());
   const [loadingLevel, setLoadingLevel] = useState(true);
   const [levelError, setLevelError] = useState(false);
+  const [locked, setLocked] = useState(false);
   const order = levels.find((level) => level.id === levelId)?.order ?? 0;
   const nextLevel = levels.find((level) => level.order === order + 1);
 
@@ -52,11 +59,21 @@ export default function GameRoute() {
     setLoadingLevel(true);
     setLevelError(false);
 
-    void Promise.all([catalog.loadLevels(), catalog.loadDefinition(levelId)])
-      .then(([remoteLevels, remoteDefinition]) => {
+    // Sequential progression guard (MAZ-191): block a deep link / manual navigation to
+    // a level whose predecessor is not completed. Progress is read offline-first.
+    const completedIds: Promise<readonly string[]> = session
+      ? progressFacade
+          .load(session.userId)
+          .then((progress) => progress.completedLevels.map((completion) => completion.levelId))
+          .catch(() => [])
+      : Promise.resolve([]);
+
+    void Promise.all([catalog.loadLevels(), catalog.loadDefinition(levelId), completedIds])
+      .then(([remoteLevels, remoteDefinition, ids]) => {
         if (!active) return;
         setLevels(remoteLevels);
         setDefinition(remoteDefinition);
+        setLocked(!isLevelUnlocked(remoteLevels, ids, levelId));
         setLoadingLevel(false);
       })
       .catch(() => {
@@ -65,13 +82,14 @@ export default function GameRoute() {
         setLevels(catalog.getLevels());
         setDefinition(fallbackDefinition);
         setLevelError(fallbackDefinition === undefined);
+        setLocked(false);
         setLoadingLevel(false);
       });
 
     return () => {
       active = false;
     };
-  }, [catalog, levelId]);
+  }, [catalog, levelId, progressFacade, session]);
 
   useEffect(() => {
     if (gameState.overlay !== GameOverlay.Victory || levelId.length === 0) return;
@@ -127,6 +145,26 @@ export default function GameRoute() {
     return (
       <ScreenContainer>
         <LoadingState />
+      </ScreenContainer>
+    );
+  }
+
+  if (locked) {
+    return (
+      <ScreenContainer>
+        <View testID="level-locked" className="flex-1 items-center justify-center gap-4 px-6">
+          <Text className="text-5xl">🔒</Text>
+          <Text className="text-xl font-black text-text-primary">{t("levels.lockedTitle")}</Text>
+          <Text className="text-center text-sm text-text-secondary">{t("levels.lockedMessage")}</Text>
+          <Pressable
+            testID="level-locked-back"
+            accessibilityRole="button"
+            onPress={() => router.replace(getLevelsRoute())}
+            className="mt-2 rounded-2xl bg-primary-500 px-6 py-3 active:opacity-80"
+          >
+            <Text className="text-base font-bold text-white">{t("levels.backToLevels")}</Text>
+          </Pressable>
+        </View>
       </ScreenContainer>
     );
   }

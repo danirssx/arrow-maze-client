@@ -114,4 +114,37 @@ describe("LevelSelectViewModel", () => {
     expect(levels[0]?.name).toBe("First Knot");
     expect(levels[1]?.name).toBe("Timed Knot");
   });
+
+  // --- MAZ-191: sequential level locking ---
+  it("should_lock_every_level_except_the_first_when_there_is_no_progress", () => {
+    const levels = new LevelSelectViewModel().getLevels();
+
+    expect(levels[0]?.locked).toBe(false);
+    expect(levels.slice(1).every((level) => level.locked)).toBe(true);
+  });
+
+  it("should_unlock_the_next_offline_level_when_the_previous_is_completed", () => {
+    const first = new LevelSelectViewModel().getLevels()[0]!;
+
+    const levels = new LevelSelectViewModel().getLevels([first.id]);
+
+    expect(levels[0]?.locked).toBe(false);
+    expect(levels[1]?.locked).toBe(false);
+    expect(levels[2]?.locked).toBe(true);
+  });
+
+  it("should_lock_remote_levels_beyond_progress", async () => {
+    const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels([]);
+
+    expect(levels[0]?.locked).toBe(false);
+    expect(levels[1]?.locked).toBe(true);
+  });
+
+  it("should_unlock_the_next_remote_level_when_the_previous_is_completed", async () => {
+    const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels([
+      "550e8400-e29b-41d4-a716-446655440010",
+    ]);
+
+    expect(levels[1]?.locked).toBe(false);
+  });
 });

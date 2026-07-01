@@ -24,7 +24,10 @@
   },
   "levels": {
     "title": "Niveles",
-    "subtitle": "Elige un nivel para jugar"
+    "subtitle": "Elige un nivel para jugar",
+    "lockedTitle": "Nivel bloqueado",
+    "lockedMessage": "Completa el nivel anterior para desbloquear este.",
+    "backToLevels": "Volver a niveles"
   },
   "game": {
     "level": "Nivel {{order}}",
