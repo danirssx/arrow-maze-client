@@ -16,6 +16,7 @@ import { ScreenContainer } from "@/presentation/components/ScreenContainer";
 import { GameOverlay } from "@/presentation/state/GameUiState";
 import type { VictoryLeaderboardStatus } from "@/presentation/screens/VictoryScreen";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
+import type { LevelAccessContext } from "@/presentation/view-models/LevelSelectViewModel";
 import { isLevelUnlocked } from "@/application/level-build/levelUnlock";
 import { isUuid } from "@/shared/isUuid";
 
@@ -68,18 +69,20 @@ export default function GameRoute() {
           .catch(() => [])
       : Promise.resolve([]);
 
-    void Promise.all([catalog.loadLevels(), catalog.loadDefinition(levelId), completedIds])
+    const access: LevelAccessContext = session === null ? {} : { role: session.role };
+
+    void Promise.all([catalog.loadLevels([], access), catalog.loadDefinition(levelId), completedIds])
       .then(([remoteLevels, remoteDefinition, ids]) => {
         if (!active) return;
         setLevels(remoteLevels);
         setDefinition(remoteDefinition);
-        setLocked(!isLevelUnlocked(remoteLevels, ids, levelId));
+        setLocked(session?.role !== "ADMIN" && !isLevelUnlocked(remoteLevels, ids, levelId));
         setLoadingLevel(false);
       })
       .catch(() => {
         if (!active) return;
         const fallbackDefinition = catalog.getDefinition(levelId);
-        setLevels(catalog.getLevels());
+        setLevels(catalog.getLevels([], access));
         setDefinition(fallbackDefinition);
         setLevelError(fallbackDefinition === undefined);
         setLocked(false);

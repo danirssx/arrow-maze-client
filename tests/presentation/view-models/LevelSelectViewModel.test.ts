@@ -133,6 +133,12 @@ describe("LevelSelectViewModel", () => {
     expect(levels[2]?.locked).toBe(true);
   });
 
+  it("should_unlock_every_offline_level_for_admin_access", () => {
+    const levels = new LevelSelectViewModel().getLevels([], { role: "ADMIN" });
+
+    expect(levels.every((level) => !level.locked)).toBe(true);
+  });
+
   it("should_lock_remote_levels_beyond_progress", async () => {
     const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels([]);
 
@@ -146,5 +152,11 @@ describe("LevelSelectViewModel", () => {
     ]);
 
     expect(levels[1]?.locked).toBe(false);
+  });
+
+  it("should_unlock_every_remote_level_for_admin_access", async () => {
+    const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels([], { role: "ADMIN" });
+
+    expect(levels.every((level) => !level.locked)).toBe(true);
   });
 });

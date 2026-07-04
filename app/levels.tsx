@@ -5,7 +5,7 @@ import { createLevelSelectViewModel } from "@/framework/config/levelCatalog";
 import { createProgressFacade } from "@/framework/config/progress";
 import { useAuthSession } from "@/framework/auth/AuthGate";
 import { LevelSelectScreen } from "@/presentation/screens/LevelSelectScreen";
-import type { LevelListItem } from "@/presentation/view-models/LevelSelectViewModel";
+import type { LevelAccessContext, LevelListItem } from "@/presentation/view-models/LevelSelectViewModel";
 
 const getGameRoute = (levelId: string): Href => ({
   pathname: "/game",
@@ -18,6 +18,10 @@ export default function LevelsRoute() {
   const progressFacade = useMemo(() => createProgressFacade(), []);
   const { session } = useAuthSession();
   const userId = session?.userId ?? null;
+  const access = useMemo<LevelAccessContext>(
+    () => (session === null ? {} : { role: session.role }),
+    [session],
+  );
   const [levels, setLevels] = useState<readonly LevelListItem[]>(viewModel.getLevels());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -35,18 +39,18 @@ export default function LevelsRoute() {
       : Promise.resolve([]);
     void completedIds.then((ids) =>
       viewModel
-        .loadLevels(ids)
+        .loadLevels(ids, access)
         .then((remoteLevels) => {
           setLevels(remoteLevels);
           setLoading(false);
         })
         .catch(() => {
-          setLevels(viewModel.getLevels(ids));
+          setLevels(viewModel.getLevels(ids, access));
           setError(true);
           setLoading(false);
         }),
     );
-  }, [viewModel, progressFacade, userId]);
+  }, [viewModel, progressFacade, userId, access]);
 
   useEffect(() => {
     loadLevels();

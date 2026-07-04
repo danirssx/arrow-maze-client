@@ -34,11 +34,14 @@ export function LevelCard({ level, onPress }: LevelCardProps) {
       }}
       className={
         locked
-          ? "h-24 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft opacity-40"
-          : "h-24 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft active:opacity-80"
+          ? "h-28 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft opacity-40"
+          : "h-28 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft active:opacity-80"
       }
     >
-      <Text className="text-2xl font-black text-text-primary">{level.order}</Text>
+      <Text className="text-2xl font-black text-text-primary">
+        {level.order}
+      </Text>
+      <Text className="text-sm font-light text-text-primary">{level.name}</Text>
       {locked ? (
         <Text testID={`level-card-lock-${level.id}`} className="mt-1 text-base">
           🔒
@@ -49,13 +52,19 @@ export function LevelCard({ level, onPress }: LevelCardProps) {
             {Array.from({ length: 3 }).map((_, index) => (
               <Text
                 key={`star-${index}`}
-                className={index < stars ? "text-reward-gold" : "text-border-soft"}
+                className={
+                  index < stars ? "text-reward-gold" : "text-border-soft"
+                }
               >
                 ★
               </Text>
             ))}
           </View>
-          {level.timed ? <Text className="mt-0.5 text-[10px] font-semibold text-primary-500">⏱</Text> : null}
+          {level.timed ? (
+            <Text className="mt-0.5 text-[10px] font-semibold text-primary-500">
+              ⏱
+            </Text>
+          ) : null}
         </>
       )}
     </Pressable>

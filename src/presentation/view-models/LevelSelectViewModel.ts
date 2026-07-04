@@ -3,6 +3,7 @@ import { LevelKind } from "@/application/level-build/LevelDefinition";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
 import type { DifficultyDto } from "@/application/dto/DifficultyDto";
 import type { ILevelCatalogRepository, LevelCatalogSummary } from "@/application/ports/ILevelCatalogRepository";
+import type { UserRole } from "@/application/auth/AuthSession";
 import { lockedLevelIds } from "@/application/level-build/levelUnlock";
 
 const DIFFICULTY_STARS: Record<DifficultyDto, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
@@ -21,6 +22,10 @@ export type LevelListItem = {
 
 type BaseLevelItem = Omit<LevelListItem, "locked">;
 
+export type LevelAccessContext = {
+  readonly role?: UserRole;
+};
+
 /**
  * MVVM — level select ViewModel.
  *
@@ -33,7 +38,10 @@ type BaseLevelItem = Omit<LevelListItem, "locked">;
 export class LevelSelectViewModel {
   constructor(private readonly remote?: ILevelCatalogRepository) {}
 
-  getLevels(completedLevelIds: readonly string[] = []): readonly LevelListItem[] {
+  getLevels(
+    completedLevelIds: readonly string[] = [],
+    access: LevelAccessContext = {},
+  ): readonly LevelListItem[] {
     const base = manualLevels.map<BaseLevelItem>((level) => ({
       id: level.id,
       name: level.name,
@@ -43,18 +51,21 @@ export class LevelSelectViewModel {
       arrowCount: level.arrowCount,
       timed: level.definition.kind === LevelKind.Timed
     }));
-    return this.applyLocks(base, completedLevelIds);
+    return this.applyLocks(base, completedLevelIds, access);
   }
 
   getDefinition(levelId: string): LevelDefinition | undefined {
     return manualLevels.find((level) => level.id === levelId)?.definition;
   }
 
-  async loadLevels(completedLevelIds: readonly string[] = []): Promise<readonly LevelListItem[]> {
-    if (this.remote === undefined) return this.getLevels(completedLevelIds);
+  async loadLevels(
+    completedLevelIds: readonly string[] = [],
+    access: LevelAccessContext = {},
+  ): Promise<readonly LevelListItem[]> {
+    if (this.remote === undefined) return this.getLevels(completedLevelIds, access);
     const levels = await this.remote.getLevels();
     const base = levels.map((level, index) => LevelSelectViewModel.toBaseItem(level, index));
-    return this.applyLocks(base, completedLevelIds);
+    return this.applyLocks(base, completedLevelIds, access);
   }
 
   async loadDefinition(levelId: string): Promise<LevelDefinition | undefined> {
@@ -67,7 +78,11 @@ export class LevelSelectViewModel {
   private applyLocks(
     base: readonly BaseLevelItem[],
     completedLevelIds: readonly string[],
+    access: LevelAccessContext,
   ): readonly LevelListItem[] {
+    if (access.role === "ADMIN") {
+      return base.map((item) => ({ ...item, locked: false }));
+    }
     const locked = lockedLevelIds(base, completedLevelIds);
     return base.map((item) => ({ ...item, locked: locked.has(item.id) }));
   }
