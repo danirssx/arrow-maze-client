@@ -1,5 +1,5 @@
 import { fireEvent } from "@testing-library/react-native";
-import { GameFacade } from "@/application/facades/GameFacade";
+import { createGameFacade } from "@/framework/config/game";
 import { manualLevels } from "@/application/level-build/fixtures";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
 import { ArrowEntity } from "@/domain/board/ArrowEntity";
@@ -36,7 +36,7 @@ function solutionOrder(definition: LevelDefinition): string[] {
 }
 
 function setup() {
-  const viewModel = new GameViewModel(GameFacade.createDefault());
+  const viewModel = new GameViewModel(createGameFacade());
   viewModel.attach();
   viewModel.startLevel(firstLevel.id, firstLevel.definition);
   const controller = new GameUIController(viewModel);

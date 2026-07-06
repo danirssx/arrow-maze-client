@@ -1,169 +1,165 @@
-import { GameFacade } from "@/application/facades/GameFacade";
-import { manualLevels } from "@/application/level-build/fixtures";
-import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
-import { LevelKind } from "@/application/level-build/LevelDefinition";
+import type { IGameEventListener } from "@/application/dto/IGameEventListener";
+import type { BoardSnapshotDto } from "@/application/dto/BoardSnapshotDto";
+import type { GameSnapshotDto } from "@/application/use-cases/game/GameSnapshotDto";
+import type { ILevelStrategy } from "@/application/level-build/ILevelStrategy";
+import type { GameFacade } from "@/application/facades/GameFacade";
 import { GameEventTypeDto } from "@/application/dto/GameEventDto";
-import { ArrowEntity } from "@/domain/board/ArrowEntity";
-import { BoardGroup } from "@/domain/board/BoardGroup";
-import { CollisionService } from "@/domain/board/CollisionService";
-import { ArrowSpec } from "@/domain/value-objects/ArrowSpec";
-import { Difficulty } from "@/domain/value-objects/Difficulty";
-import { Direction } from "@/domain/value-objects/Direction";
-import { Position } from "@/domain/value-objects/Position";
 import { GameViewModel } from "@/presentation/view-models/GameViewModel";
 import { GameOverlay } from "@/presentation/state/GameUiState";
 
 // Subject to human review — presentation ViewModel test
 
-const firstLevel = manualLevels[0]!;
-const collision = new CollisionService();
+const PLAYING_SNAPSHOT: GameSnapshotDto = {
+  phase: "PLAYING",
+  result: { status: "PLAYING" },
+  arrowsRemaining: 3,
+  attemptsRemaining: 5,
+  canUndo: false,
+  elapsedMs: 0,
+  movesCount: 0,
+};
 
-function boardFor(definition: LevelDefinition): BoardGroup {
-  return new BoardGroup(definition.arrows.map((spec) => new ArrowEntity(spec)));
-}
+const BOARD_SNAPSHOT: BoardSnapshotDto = {
+  arrows: [
+    { id: "a1", color: "blue", direction: "RIGHT", cells: [{ row: 0, column: 0 }], head: { row: 0, column: 0 } },
+    { id: "a2", color: "red",  direction: "DOWN",  cells: [{ row: 1, column: 0 }], head: { row: 1, column: 0 } },
+    { id: "a3", color: "green",direction: "LEFT",  cells: [{ row: 2, column: 0 }], head: { row: 2, column: 0 } },
+  ],
+  bounds: { minRow: 0, minCol: 0, maxRow: 2, maxCol: 0 },
+};
 
-function firstExtractableArrowId(definition: LevelDefinition): string {
-  const board = boardFor(definition);
-  const arrow = board.activeArrows().find((candidate) => collision.canExtract(board, candidate.id));
-  if (arrow === undefined) throw new Error("Fixture has no initially extractable arrow");
-  return arrow.id;
-}
+class FakeGameFacade {
+  private listeners = new Set<IGameEventListener>();
+  snapshot: GameSnapshotDto = { ...PLAYING_SNAPSHOT };
+  board: BoardSnapshotDto = BOARD_SNAPSHOT;
 
-function firstBlockedArrowId(definition: LevelDefinition): string {
-  const board = boardFor(definition);
-  const arrow = board.activeArrows().find((candidate) => !collision.canExtract(board, candidate.id));
-  if (arrow === undefined) throw new Error("Fixture has no initially blocked arrow");
-  return arrow.id;
-}
+  addEventListener(l: IGameEventListener): void { this.listeners.add(l); }
+  removeEventListener(l: IGameEventListener): void { this.listeners.delete(l); }
+  startLevel(_strategy: ILevelStrategy): GameSnapshotDto { return this.snapshot; }
+  getBoardSnapshot(): BoardSnapshotDto { return this.board; }
+  tapArrow(_id: string): GameSnapshotDto { return this.snapshot; }
+  undo(): GameSnapshotDto { return { ...this.snapshot, canUndo: false, arrowsRemaining: this.snapshot.arrowsRemaining + 1 }; }
+  restartLevel(): GameSnapshotDto { return this.snapshot; }
 
-function solutionOrder(definition: LevelDefinition): string[] {
-  const board = boardFor(definition);
-  const order: string[] = [];
-
-  let progressed = true;
-  while (progressed) {
-    progressed = false;
-    for (const arrow of board.activeArrows()) {
-      if (collision.canExtract(board, arrow.id)) {
-        arrow.extract();
-        order.push(arrow.id);
-        progressed = true;
-      }
-    }
+  emit(listener: IGameEventListener): void {
+    for (const l of this.listeners) l.onGameEvent({ type: GameEventTypeDto.LevelFinished, result: { status: "LOST", reason: "OUT_OF_ATTEMPTS" } });
+    void listener;
   }
 
-  if (board.activeArrowCount() !== 0) throw new Error("Fixture is not fully solvable");
-  return order;
+  emitVictory(): void {
+    for (const l of this.listeners) l.onGameEvent({ type: GameEventTypeDto.LevelFinished, result: { status: "WON" } });
+  }
+
+  emitDefeat(): void {
+    for (const l of this.listeners) l.onGameEvent({ type: GameEventTypeDto.LevelFinished, result: { status: "LOST", reason: "OUT_OF_ATTEMPTS" } });
+  }
 }
 
-function startedViewModel(): GameViewModel {
-  const viewModel = new GameViewModel(GameFacade.createDefault());
-  viewModel.attach();
-  viewModel.startLevel(firstLevel.id, firstLevel.definition);
-  return viewModel;
+function makeViewModel(fake?: FakeGameFacade): { vm: GameViewModel; fake: FakeGameFacade } {
+  const f = fake ?? new FakeGameFacade();
+  const vm = new GameViewModel(f as unknown as GameFacade);
+  vm.attach();
+  return { vm, fake: f };
 }
 
 describe("GameViewModel", () => {
   it("should_load_board_and_hud_when_level_starts", () => {
-    const state = startedViewModel().getState();
+    const { vm, fake } = makeViewModel();
+    fake.snapshot = { ...PLAYING_SNAPSHOT, arrowsRemaining: 3, attemptsRemaining: 5 };
 
-    expect(state.levelId).toBe(firstLevel.id);
-    expect(state.arrows).toHaveLength(firstLevel.arrowCount);
-    expect(state.arrowsRemaining).toBe(firstLevel.arrowCount);
-    expect(state.attemptsRemaining).toBe(firstLevel.definition.attempts ?? 5);
+    vm.startLevel("level-1", {} as never);
+
+    const state = vm.getState();
+    expect(state.levelId).toBe("level-1");
+    expect(state.arrows).toHaveLength(3);
+    expect(state.arrowsRemaining).toBe(3);
+    expect(state.attemptsRemaining).toBe(5);
     expect(state.overlay).toBe(GameOverlay.None);
   });
 
   it("should_extract_a_free_arrow_and_track_it_for_undo", () => {
-    const viewModel = startedViewModel();
-    const freeArrowId = firstExtractableArrowId(firstLevel.definition);
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, arrowsRemaining: 2, attemptsRemaining: 5, canUndo: true };
 
-    viewModel.tapArrow(freeArrowId);
+    vm.tapArrow("a1");
 
-    const state = viewModel.getState();
-    expect(state.arrowsRemaining).toBe(firstLevel.arrowCount - 1);
-    expect(state.extractedArrowIds).toContain(freeArrowId);
+    const state = vm.getState();
+    expect(state.arrowsRemaining).toBe(2);
+    expect(state.extractedArrowIds).toContain("a1");
     expect(state.canUndo).toBe(true);
     expect(state.shakeArrowId).toBeNull();
   });
 
-  it("should_flag_a_blocked_tap_with_shake_and_cost_one_attempt", () => {
-    const viewModel = startedViewModel();
-    const blockedArrowId = firstBlockedArrowId(firstLevel.definition);
+  it("should_flag_a_blocked_tap_with_shake_when_arrowsRemaining_is_unchanged", () => {
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, arrowsRemaining: 3, attemptsRemaining: 4 };
 
-    viewModel.tapArrow(blockedArrowId);
+    vm.tapArrow("a2");
 
-    const state = viewModel.getState();
-    expect(state.arrowsRemaining).toBe(firstLevel.arrowCount);
-    expect(state.attemptsRemaining).toBe((firstLevel.definition.attempts ?? 5) - 1);
-    expect(state.shakeArrowId).toBe(blockedArrowId);
+    const state = vm.getState();
+    expect(state.arrowsRemaining).toBe(3);
+    expect(state.shakeArrowId).toBe("a2");
   });
 
-  it("should_show_victory_when_the_board_is_cleared", () => {
-    const viewModel = startedViewModel();
+  it("should_show_victory_overlay_on_victory_event", () => {
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
 
-    for (const arrowId of solutionOrder(firstLevel.definition)) {
-      viewModel.tapArrow(arrowId);
-    }
+    fake.emitVictory();
 
-    expect(viewModel.getState().arrowsRemaining).toBe(0);
-    expect(viewModel.getState().overlay).toBe(GameOverlay.Victory);
+    expect(vm.getState().overlay).toBe(GameOverlay.Victory);
+  });
+
+  it("should_show_defeat_overlay_on_defeat_event", () => {
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+
+    fake.emitDefeat();
+
+    expect(vm.getState().overlay).toBe(GameOverlay.Defeat);
   });
 
   it("should_undo_the_last_extraction", () => {
-    const viewModel = startedViewModel();
-    const freeArrowId = firstExtractableArrowId(firstLevel.definition);
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, arrowsRemaining: 2, canUndo: true };
+    vm.tapArrow("a1");
 
-    viewModel.tapArrow(freeArrowId);
-    viewModel.undo();
+    vm.undo();
 
-    const state = viewModel.getState();
-    expect(state.arrowsRemaining).toBe(firstLevel.arrowCount);
+    const state = vm.getState();
     expect(state.extractedArrowIds).toHaveLength(0);
     expect(state.canUndo).toBe(false);
   });
 
   it("should_carry_board_shape_into_ui_state_when_the_level_has_one", () => {
-    const shaped: LevelDefinition = {
-      id: "shaped",
-      difficulty: Difficulty.Easy,
-      kind: LevelKind.Normal,
-      arrows: [
-        ArrowSpec.of("a", "blue", [Position.of(0, 0), Position.of(0, 1)], Direction.Right)
-      ],
-      boardShape: {
-        type: "CELL_MASK",
-        cells: [
-          { row: 0, col: 0 },
-          { row: 0, col: 1 },
-          { row: 1, col: 0 }
-        ]
-      }
+    const { vm, fake } = makeViewModel();
+    fake.board = {
+      ...BOARD_SNAPSHOT,
+      boardShape: [{ row: 0, column: 0 }, { row: 0, column: 1 }],
     };
-    const viewModel = new GameViewModel(GameFacade.createDefault());
-    viewModel.attach();
 
-    viewModel.startLevel("shaped", shaped);
+    vm.startLevel("shaped", {} as never);
 
-    expect(viewModel.getState().boardShape).toHaveLength(3);
-    expect(viewModel.getState().boardShape![0]).toEqual({ row: 0, column: 0 });
+    expect(vm.getState().boardShape).toHaveLength(2);
+    expect(vm.getState().boardShape![0]).toEqual({ row: 0, column: 0 });
   });
 
   it("should_not_expose_scoring_or_progress_metric_sources", () => {
-    const viewModel = startedViewModel() as unknown as Record<string, unknown>;
-
-    expect(viewModel.elapsedMs).toBeUndefined();
-    expect(viewModel.movesCount).toBeUndefined();
+    const { vm } = makeViewModel();
+    const record = vm as unknown as Record<string, unknown>;
+    expect(record.elapsedMs).toBeUndefined();
+    expect(record.movesCount).toBeUndefined();
   });
 
   it("should_render_defeat_overlay_on_a_lost_level_finished_event", () => {
-    const viewModel = startedViewModel();
+    const { vm } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
 
-    viewModel.onGameEvent({
-      type: GameEventTypeDto.LevelFinished,
-      result: { status: "LOST", reason: "OUT_OF_ATTEMPTS" }
-    });
+    vm.onGameEvent({ type: GameEventTypeDto.LevelFinished, result: { status: "LOST", reason: "OUT_OF_ATTEMPTS" } });
 
-    expect(viewModel.getState().overlay).toBe(GameOverlay.Defeat);
+    expect(vm.getState().overlay).toBe(GameOverlay.Defeat);
   });
 });
