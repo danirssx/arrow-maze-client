@@ -1,16 +1,11 @@
-import type { Clock } from "../../domain/level/Clock";
 import type { IObservable } from "../../domain/observer";
-import type { IScoringStrategy } from "../../domain/scoring/IScoringStrategy";
-import { TimeScoringStrategy } from "../../domain/scoring/TimeScoringStrategy";
 import { GameEventBridge } from "../dto/GameEventBridge";
 import type { GameEventDto } from "../dto/GameEventDto";
 import type { IGameEventListener } from "../dto/IGameEventListener";
 import { mapBoardSnapshot } from "../dto/BoardSnapshotMapper";
 import type { BoardSnapshotDto } from "../dto/BoardSnapshotDto";
-import { ConcreteLevelBuilder } from "../level-build/ConcreteLevelBuilder";
 import type { ILevelStrategy } from "../level-build/ILevelStrategy";
 import type { LevelDefinition } from "../level-build/LevelDefinition";
-import { LevelDirector } from "../level-build/LevelDirector";
 import type { GameSnapshotDto } from "../use-cases/game/GameSnapshotDto";
 import type { LevelOutcomeDto } from "../use-cases/game/LevelOutcomeDto";
 import { GameSession } from "../use-cases/game/GameSession";
@@ -23,16 +18,14 @@ import { StartLevelUseCase } from "../use-cases/game/StartLevelUseCase";
 import { TapArrowUseCase } from "../use-cases/game/TapArrowUseCase";
 import { UndoLastMoveUseCase } from "../use-cases/game/UndoLastMoveUseCase";
 
-type GameFacadeDependencies = {
-  session?: GameSession;
-  startLevel?: StartLevelUseCase;
-  tapArrow?: TapArrowUseCase;
-  undoLastMove?: UndoLastMoveUseCase;
-  pauseGame?: PauseGameUseCase;
-  resumeGame?: ResumeGameUseCase;
-  resolveOutcome?: ResolveLevelOutcomeUseCase;
-  scoring?: IScoringStrategy;
-  clock?: Clock;
+export type GameFacadeDependencies = {
+  session: GameSession;
+  startLevel: StartLevelUseCase;
+  tapArrow: TapArrowUseCase;
+  undoLastMove: UndoLastMoveUseCase;
+  pauseGame: PauseGameUseCase;
+  resumeGame: ResumeGameUseCase;
+  resolveOutcome: ResolveLevelOutcomeUseCase;
 };
 
 /**
@@ -58,20 +51,14 @@ export class GameFacade {
   private subject: IObservable | undefined;
   private currentDefinition: LevelDefinition | undefined;
 
-  constructor(dependencies: GameFacadeDependencies = {}) {
-    this.session = dependencies.session ?? new GameSession(dependencies.clock);
-    this.startLevelUseCase =
-      dependencies.startLevel ?? new StartLevelUseCase(new LevelDirector(new ConcreteLevelBuilder()));
-    this.tapArrowUseCase = dependencies.tapArrow ?? new TapArrowUseCase();
-    this.undoLastMoveUseCase = dependencies.undoLastMove ?? new UndoLastMoveUseCase();
-    this.pauseGameUseCase = dependencies.pauseGame ?? new PauseGameUseCase();
-    this.resumeGameUseCase = dependencies.resumeGame ?? new ResumeGameUseCase();
-    this.resolveOutcomeUseCase =
-      dependencies.resolveOutcome ?? new ResolveLevelOutcomeUseCase(dependencies.scoring ?? new TimeScoringStrategy());
-  }
-
-  static createDefault(): GameFacade {
-    return new GameFacade();
+  constructor(dependencies: GameFacadeDependencies) {
+    this.session = dependencies.session;
+    this.startLevelUseCase = dependencies.startLevel;
+    this.tapArrowUseCase = dependencies.tapArrow;
+    this.undoLastMoveUseCase = dependencies.undoLastMove;
+    this.pauseGameUseCase = dependencies.pauseGame;
+    this.resumeGameUseCase = dependencies.resumeGame;
+    this.resolveOutcomeUseCase = dependencies.resolveOutcome;
   }
 
   /** Observer bridge: subscribe a presentation listener to UI-neutral game events. */
