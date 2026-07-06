@@ -8,15 +8,15 @@ import type { ILevelStrategy } from "../level-build/ILevelStrategy";
 import type { LevelDefinition } from "../level-build/LevelDefinition";
 import type { GameSnapshotDto } from "../use-cases/game/GameSnapshotDto";
 import type { LevelOutcomeDto } from "../use-cases/game/LevelOutcomeDto";
-import { GameSession } from "../use-cases/game/GameSession";
+import type { GameSession } from "../use-cases/game/GameSession";
 import { mapGameSnapshot } from "../use-cases/game/GameSnapshotMapper";
 import { GameplayStateError } from "../use-cases/game/errors";
-import { PauseGameUseCase } from "../use-cases/game/PauseGameUseCase";
-import { ResolveLevelOutcomeUseCase } from "../use-cases/game/ResolveLevelOutcomeUseCase";
-import { ResumeGameUseCase } from "../use-cases/game/ResumeGameUseCase";
-import { StartLevelUseCase } from "../use-cases/game/StartLevelUseCase";
-import { TapArrowUseCase } from "../use-cases/game/TapArrowUseCase";
-import { UndoLastMoveUseCase } from "../use-cases/game/UndoLastMoveUseCase";
+import type { PauseGameUseCase } from "../use-cases/game/PauseGameUseCase";
+import type { ResolveLevelOutcomeUseCase } from "../use-cases/game/ResolveLevelOutcomeUseCase";
+import type { ResumeGameUseCase } from "../use-cases/game/ResumeGameUseCase";
+import type { StartLevelUseCase } from "../use-cases/game/StartLevelUseCase";
+import type { TapArrowUseCase } from "../use-cases/game/TapArrowUseCase";
+import type { UndoLastMoveUseCase } from "../use-cases/game/UndoLastMoveUseCase";
 
 export type GameFacadeDependencies = {
   session: GameSession;

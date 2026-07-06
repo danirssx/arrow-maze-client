@@ -2,6 +2,7 @@ import type { IGameEventListener } from "@/application/dto/IGameEventListener";
 import type { BoardSnapshotDto } from "@/application/dto/BoardSnapshotDto";
 import type { GameSnapshotDto } from "@/application/use-cases/game/GameSnapshotDto";
 import type { ILevelStrategy } from "@/application/level-build/ILevelStrategy";
+import type { GameFacade } from "@/application/facades/GameFacade";
 import { GameEventTypeDto } from "@/application/dto/GameEventDto";
 import { GameViewModel } from "@/presentation/view-models/GameViewModel";
 import { GameOverlay } from "@/presentation/state/GameUiState";
@@ -56,7 +57,7 @@ class FakeGameFacade {
 
 function makeViewModel(fake?: FakeGameFacade): { vm: GameViewModel; fake: FakeGameFacade } {
   const f = fake ?? new FakeGameFacade();
-  const vm = new GameViewModel(f as unknown as import("@/application/facades/GameFacade").GameFacade);
+  const vm = new GameViewModel(f as unknown as GameFacade);
   vm.attach();
   return { vm, fake: f };
 }
