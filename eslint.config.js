@@ -63,6 +63,36 @@ module.exports = [
               "target": "./src/presentation",
               "from": "./src/domain",
               "message": "Presentation must consume application DTOs, not domain types."
+            },
+            {
+              "target": "./src/presentation/screens",
+              "from": "./src/application/use-cases",
+              "message": "Screens must not call use cases directly — delegate to a ViewModel or Facade."
+            },
+            {
+              "target": "./src/presentation/screens",
+              "from": "./src/application/facades",
+              "message": "Screens must not import facades directly — delegate to a ViewModel."
+            },
+            {
+              "target": "./src/presentation/components",
+              "from": "./src/application/use-cases",
+              "message": "Components must not call use cases directly — delegate to a ViewModel or Facade."
+            },
+            {
+              "target": "./src/presentation/components",
+              "from": "./src/application/facades",
+              "message": "Components must not import facades directly — delegate to a ViewModel."
+            },
+            {
+              "target": "./src/presentation/view-models",
+              "from": "./src/presentation/screens",
+              "message": "ViewModels must not depend on screens."
+            },
+            {
+              "target": "./src/presentation/controllers",
+              "from": "./src/presentation/screens",
+              "message": "Controllers must not depend on screens."
             }
           ]
         }
