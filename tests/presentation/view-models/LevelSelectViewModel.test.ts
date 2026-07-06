@@ -1,5 +1,6 @@
 import { manualLevels } from "@/application/level-build/fixtures";
 import type { ILevelCatalogRepository, LevelCatalogSummary } from "@/application/ports/ILevelCatalogRepository";
+import { AsyncStatus } from "@/presentation/state/AsyncUiState";
 import { LevelSelectViewModel } from "@/presentation/view-models/LevelSelectViewModel";
 import { isUuid } from "@/shared/isUuid";
 
@@ -158,5 +159,57 @@ describe("LevelSelectViewModel", () => {
     const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels([], { role: "ADMIN" });
 
     expect(levels.every((level) => !level.locked)).toBe(true);
+  });
+});
+
+// --- Reactive ViewState (CA-010) ---
+describe("LevelSelectViewModel reactive state", () => {
+  it("should_start_in_loading_state", () => {
+    const vm = new LevelSelectViewModel();
+    expect(vm.getState().status).toBe(AsyncStatus.Loading);
+    expect(vm.getState().levels).toHaveLength(0);
+    expect(vm.getState().error).toBe(false);
+  });
+
+  it("should_emit_loaded_state_after_successful_load", async () => {
+    const vm = new LevelSelectViewModel();
+    await vm.load();
+    expect(vm.getState().status).toBe(AsyncStatus.Loaded);
+    expect(vm.getState().levels.length).toBeGreaterThan(0);
+    expect(vm.getState().error).toBe(false);
+  });
+
+  it("should_emit_loaded_state_with_remote_levels", async () => {
+    const vm = new LevelSelectViewModel(new FakeLevelCatalogRepository());
+    await vm.load();
+    expect(vm.getState().status).toBe(AsyncStatus.Loaded);
+    expect(vm.getState().levels).toHaveLength(2);
+  });
+
+  it("should_emit_error_true_when_remote_throws", async () => {
+    class FailingRepo implements ILevelCatalogRepository {
+      async getLevels(): Promise<readonly LevelCatalogSummary[]> { throw new Error("network"); }
+      async getLevelDefinition(): Promise<typeof manualLevels[number]["definition"]> { return manualLevels[0]!.definition; }
+    }
+    const vm = new LevelSelectViewModel(new FailingRepo());
+    await vm.load();
+    expect(vm.getState().error).toBe(true);
+    expect(vm.getState().levels.length).toBeGreaterThan(0);
+  });
+
+  it("should_notify_subscribers_when_state_changes", async () => {
+    const vm = new LevelSelectViewModel();
+    let notified = 0;
+    vm.subscribe(() => { notified++; });
+    await vm.load();
+    expect(notified).toBeGreaterThanOrEqual(2); // Loading → Loaded
+  });
+
+  it("should_apply_locks_to_levels_passed_via_load", async () => {
+    const vm = new LevelSelectViewModel();
+    await vm.load();
+    const first = vm.getState().levels[0]!;
+    expect(first.locked).toBe(false);
+    expect(vm.getState().levels.slice(1).every((l) => l.locked)).toBe(true);
   });
 });
