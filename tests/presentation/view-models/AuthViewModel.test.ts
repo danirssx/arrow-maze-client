@@ -107,4 +107,76 @@ describe("AuthViewModel", () => {
     expect(viewModel.getState().session).toBeNull();
     expect(sessionManager.saved).toBeNull();
   });
+
+  // Form field intents
+  it("should_update_email_in_state_when_setEmail_is_called", () => {
+    const { viewModel } = build(new OkAuthRepository());
+    viewModel.setEmail("user@example.com");
+    expect(viewModel.getState().email).toBe("user@example.com");
+  });
+
+  it("should_update_username_in_state_when_setUsername_is_called", () => {
+    const { viewModel } = build(new OkAuthRepository());
+    viewModel.setUsername("alice");
+    expect(viewModel.getState().username).toBe("alice");
+  });
+
+  it("should_update_password_in_state_when_setPassword_is_called", () => {
+    const { viewModel } = build(new OkAuthRepository());
+    viewModel.setPassword("secret");
+    expect(viewModel.getState().password).toBe("secret");
+  });
+
+  it("should_toggle_mode_to_register_and_back", () => {
+    const { viewModel } = build(new OkAuthRepository());
+    expect(viewModel.getState().mode).toBe("login");
+    expect(viewModel.getState().isRegister).toBe(false);
+
+    viewModel.toggleMode();
+    expect(viewModel.getState().mode).toBe("register");
+    expect(viewModel.getState().isRegister).toBe(true);
+
+    viewModel.toggleMode();
+    expect(viewModel.getState().mode).toBe("login");
+    expect(viewModel.getState().isRegister).toBe(false);
+  });
+
+  it("should_toggle_clears_error_key", () => {
+    const { viewModel } = build(new FailingAuthRepository());
+    viewModel.toggleMode();
+    expect(viewModel.getState().errorKey).toBeNull();
+  });
+
+  it("should_submit_calls_login_when_mode_is_login", async () => {
+    const { viewModel } = build(new OkAuthRepository());
+    viewModel.setEmail("alice@example.com");
+    viewModel.setPassword("secret");
+
+    await viewModel.submit();
+
+    expect(viewModel.getState().status).toBe(AsyncStatus.Loaded);
+    expect(viewModel.getState().session?.username).toBe("alice");
+  });
+
+  it("should_submit_calls_register_when_mode_is_register", async () => {
+    const { viewModel } = build(new OkAuthRepository());
+    viewModel.toggleMode();
+    viewModel.setEmail("alice@example.com");
+    viewModel.setUsername("alice");
+    viewModel.setPassword("secret");
+
+    await viewModel.submit();
+
+    expect(viewModel.getState().status).toBe(AsyncStatus.Loaded);
+  });
+
+  it("should_start_in_login_mode_with_empty_fields", () => {
+    const { viewModel } = build(new OkAuthRepository());
+    const state = viewModel.getState();
+    expect(state.mode).toBe("login");
+    expect(state.email).toBe("");
+    expect(state.username).toBe("");
+    expect(state.password).toBe("");
+    expect(state.isRegister).toBe(false);
+  });
 });

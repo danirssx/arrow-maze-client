@@ -5,6 +5,8 @@ import type { DifficultyDto } from "@/application/dto/DifficultyDto";
 import type { ILevelCatalogRepository, LevelCatalogSummary } from "@/application/ports/ILevelCatalogRepository";
 import type { UserRole } from "@/application/auth/AuthSession";
 import { lockedLevelIds } from "@/application/level-build/levelUnlock";
+import { AsyncStatus } from "@/presentation/state/AsyncUiState";
+import { ObservableViewModel } from "./ObservableViewModel";
 
 const DIFFICULTY_STARS: Record<DifficultyDto, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
 const DIFFICULTY_LABEL: Record<DifficultyDto, string> = { EASY: "Easy", MEDIUM: "Medium", HARD: "Hard" };
@@ -26,17 +28,30 @@ export type LevelAccessContext = {
   readonly role?: UserRole;
 };
 
+export type LevelSelectUiState = {
+  readonly status: AsyncStatus;
+  readonly levels: readonly LevelListItem[];
+  readonly error: boolean;
+};
+
+const initialLevelSelectUiState: LevelSelectUiState = {
+  status: AsyncStatus.Loading,
+  levels: [],
+  error: false,
+};
+
 /**
  * MVVM — level select ViewModel.
  *
- * Exposes the ordered manual level catalog as plain list items for the
- * `LevelSelectScreen` and resolves a tapped level back to its `LevelDefinition`
- * for the gameplay ViewModel. It reads the application fixtures/port only; it
- * never builds boards, evaluates solvability, or holds a domain type — difficulty
- * reaches the view as ready-to-consume `difficultyStars`/`difficultyLabel`.
+ * Extends ObservableViewModel so the LevelSelectScreen can react to state
+ * changes without manual useState in the route. Call `load()` to trigger the
+ * async fetch; the state transitions Loading → Loaded / Empty / Error.
+ * `getLevels` and `getDefinition` remain available for synchronous access.
  */
-export class LevelSelectViewModel {
-  constructor(private readonly remote?: ILevelCatalogRepository) {}
+export class LevelSelectViewModel extends ObservableViewModel<LevelSelectUiState> {
+  constructor(private readonly remote?: ILevelCatalogRepository) {
+    super(initialLevelSelectUiState);
+  }
 
   getLevels(
     completedLevelIds: readonly string[] = [],
@@ -56,6 +71,24 @@ export class LevelSelectViewModel {
 
   getDefinition(levelId: string): LevelDefinition | undefined {
     return manualLevels.find((level) => level.id === levelId)?.definition;
+  }
+
+  async load(
+    completedLevelIds: readonly string[] = [],
+    access: LevelAccessContext = {},
+  ): Promise<void> {
+    this.setState({ status: AsyncStatus.Loading, levels: [], error: false });
+    try {
+      const levels = await this.loadLevels(completedLevelIds, access);
+      this.setState({
+        status: levels.length === 0 ? AsyncStatus.Empty : AsyncStatus.Loaded,
+        levels,
+        error: false,
+      });
+    } catch {
+      const fallback = this.getLevels(completedLevelIds, access);
+      this.setState({ status: AsyncStatus.Loaded, levels: fallback, error: true });
+    }
   }
 
   async loadLevels(

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Text, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Header } from "@/presentation/components/Header";
@@ -19,17 +19,18 @@ const FIELD_CLASS = "rounded-2xl bg-background-card border border-border-soft p-
 /**
  * MVVM view — auth (login / register).
  *
- * When signed in it shows the username + a logout action; otherwise a small
- * login/register form. It only drives `AuthViewModel`; it never calls HTTP,
- * storage, or use cases directly.
+ * Purely renders `AuthUiState` and dispatches intents to `AuthViewModel`.
+ * No local useState — mode, fields, and async status live in the ViewModel.
  */
 export function AuthScreen({ viewModel, onBack, onAuthenticated }: AuthScreenProps) {
   const { t } = useTranslation();
   const state = useViewModelState(viewModel);
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (state.session !== null) {
+      onAuthenticated?.();
+    }
+  }, [state.session, onAuthenticated]);
 
   if (state.session !== null) {
     return (
@@ -52,30 +53,17 @@ export function AuthScreen({ viewModel, onBack, onAuthenticated }: AuthScreenPro
 
   const loading = state.status === AsyncStatus.Loading;
 
-  const submit = (): void => {
-    const done = (): void => {
-      if (viewModel.getState().session !== null) {
-        onAuthenticated?.();
-      }
-    };
-    if (mode === "login") {
-      void viewModel.login(email.trim(), password).then(done);
-    } else {
-      void viewModel.register(email.trim(), username.trim(), password).then(done);
-    }
-  };
-
   return (
     <ScreenContainer testID="auth-screen">
       <Header title={t("auth.title")} onBack={onBack} />
       <View className="mt-4 gap-3">
-        {mode === "register" ? (
+        {state.isRegister ? (
           <TextInput
             testID="auth-username-input"
             placeholder={t("auth.username")}
             autoCapitalize="none"
-            value={username}
-            onChangeText={setUsername}
+            value={state.username}
+            onChangeText={(v) => viewModel.setUsername(v)}
             className={FIELD_CLASS}
           />
         ) : null}
@@ -84,16 +72,16 @@ export function AuthScreen({ viewModel, onBack, onAuthenticated }: AuthScreenPro
           placeholder={t("auth.email")}
           autoCapitalize="none"
           keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
+          value={state.email}
+          onChangeText={(v) => viewModel.setEmail(v)}
           className={FIELD_CLASS}
         />
         <TextInput
           testID="auth-password"
           placeholder={t("auth.password")}
           secureTextEntry
-          value={password}
-          onChangeText={setPassword}
+          value={state.password}
+          onChangeText={(v) => viewModel.setPassword(v)}
           className={FIELD_CLASS}
         />
         {state.errorKey !== null ? (
@@ -103,15 +91,15 @@ export function AuthScreen({ viewModel, onBack, onAuthenticated }: AuthScreenPro
         ) : null}
         <PrimaryButton
           testID="auth-submit"
-          label={mode === "login" ? t("auth.login") : t("auth.register")}
-          onPress={submit}
+          label={state.isRegister ? t("auth.register") : t("auth.login")}
+          onPress={() => void viewModel.submit()}
           disabled={loading}
         />
         <PrimaryButton
           testID="auth-toggle"
-          label={mode === "login" ? t("auth.needAccount") : t("auth.haveAccount")}
+          label={state.isRegister ? t("auth.haveAccount") : t("auth.needAccount")}
           variant="secondary"
-          onPress={() => setMode(mode === "login" ? "register" : "login")}
+          onPress={() => viewModel.toggleMode()}
         />
       </View>
     </ScreenContainer>

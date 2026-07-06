@@ -10,11 +10,10 @@ import { ObservableViewModel } from "./ObservableViewModel";
 /**
  * MVVM — auth ViewModel.
  *
- * The only presentation object that drives login/register/logout. Successful
- * login persists the session through `LoginUseCase` (which saves it in the
- * `SessionManager`), so authed features — including the leaderboard score
- * submission — become live. Failures surface a controlled error key; no session
- * is saved. It never touches HTTP or storage directly.
+ * The only presentation object that drives login/register/logout. Form fields
+ * (mode, email, username, password) live in the state so the screen has no
+ * local useState. Intents (setEmail, setUsername, setPassword, toggleMode,
+ * submit) are dispatched from the view; the ViewModel updates state reactively.
  */
 export class AuthViewModel extends ObservableViewModel<AuthUiState> {
   constructor(
@@ -28,16 +27,42 @@ export class AuthViewModel extends ObservableViewModel<AuthUiState> {
 
   async loadSession(): Promise<void> {
     const session = await this.getSessionUseCase.execute();
-    this.setState({ status: session === null ? AsyncStatus.Idle : AsyncStatus.Loaded, session, errorKey: null });
+    this.setState({ ...this.getState(), status: session === null ? AsyncStatus.Idle : AsyncStatus.Loaded, session, errorKey: null });
+  }
+
+  setEmail(email: string): void {
+    this.setState({ ...this.getState(), email });
+  }
+
+  setUsername(username: string): void {
+    this.setState({ ...this.getState(), username });
+  }
+
+  setPassword(password: string): void {
+    this.setState({ ...this.getState(), password });
+  }
+
+  toggleMode(): void {
+    const next = this.getState().mode === "login" ? "register" : "login";
+    this.setState({ ...this.getState(), mode: next, isRegister: next === "register", errorKey: null });
+  }
+
+  async submit(): Promise<void> {
+    const { mode, email, username, password } = this.getState();
+    if (mode === "login") {
+      await this.login(email.trim(), password);
+    } else {
+      await this.register(email.trim(), username.trim(), password);
+    }
   }
 
   async login(email: string, password: string): Promise<void> {
     this.setState({ ...this.getState(), status: AsyncStatus.Loading, errorKey: null });
     try {
       const session = await this.loginUseCase.execute({ email, rawPassword: password });
-      this.setState({ status: AsyncStatus.Loaded, session, errorKey: null });
+      this.setState({ ...this.getState(), status: AsyncStatus.Loaded, session, errorKey: null });
     } catch {
-      this.setState({ status: AsyncStatus.Error, session: null, errorKey: "auth.errorLogin" });
+      this.setState({ ...this.getState(), status: AsyncStatus.Error, session: null, errorKey: "auth.errorLogin" });
     }
   }
 
@@ -46,14 +71,14 @@ export class AuthViewModel extends ObservableViewModel<AuthUiState> {
     try {
       await this.registerUseCase.execute({ email, username, rawPassword: password });
       const session = await this.loginUseCase.execute({ email, rawPassword: password });
-      this.setState({ status: AsyncStatus.Loaded, session, errorKey: null });
+      this.setState({ ...this.getState(), status: AsyncStatus.Loaded, session, errorKey: null });
     } catch {
-      this.setState({ status: AsyncStatus.Error, session: null, errorKey: "auth.errorRegister" });
+      this.setState({ ...this.getState(), status: AsyncStatus.Error, session: null, errorKey: "auth.errorRegister" });
     }
   }
 
   async logout(): Promise<void> {
     await this.logoutUseCase.execute();
-    this.setState({ status: AsyncStatus.Idle, session: null, errorKey: null });
+    this.setState({ ...this.getState(), status: AsyncStatus.Idle, session: null, errorKey: null });
   }
 }
