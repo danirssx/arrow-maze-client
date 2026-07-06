@@ -22,6 +22,12 @@ export type GameOverlay = (typeof GameOverlay)[keyof typeof GameOverlay];
  * layout, which arrows have been extracted, the camera bounds, the HUD counters
  * (arrows + attempts remaining), undo availability, the win/defeat overlay, and
  * the id of the last blocked tap (for shake feedback). It holds no domain class.
+ *
+ * Derived ready-to-render fields:
+ * - `attemptIndicators` — one boolean per total attempt slot (true = remaining);
+ *   the view maps directly to heart glyphs without computing anything.
+ * - `showVictoryOverlay` / `showDefeatOverlay` — eliminates `overlay ===` checks
+ *   from the view.
  */
 export type GameUiState = {
   readonly levelId: string | null;
@@ -30,8 +36,12 @@ export type GameUiState = {
   readonly bounds: BoardBoundsDto | null;
   readonly arrowsRemaining: number;
   readonly attemptsRemaining: number;
+  readonly attemptsTotal: number;
+  readonly attemptIndicators: readonly boolean[];
   readonly canUndo: boolean;
   readonly overlay: GameOverlay;
+  readonly showVictoryOverlay: boolean;
+  readonly showDefeatOverlay: boolean;
   readonly shakeArrowId: string | null;
   /** Option A mask cells the board renders as its dotted background (undefined = rectangular fallback). */
   readonly boardShape?: readonly CoordinateDto[];
@@ -44,7 +54,15 @@ export const initialGameUiState: GameUiState = {
   bounds: null,
   arrowsRemaining: 0,
   attemptsRemaining: 0,
+  attemptsTotal: 0,
+  attemptIndicators: [],
   canUndo: false,
   overlay: GameOverlay.None,
+  showVictoryOverlay: false,
+  showDefeatOverlay: false,
   shakeArrowId: null
 };
+
+export function buildAttemptIndicators(remaining: number, total: number): readonly boolean[] {
+  return Array.from({ length: total }, (_, i) => i < remaining);
+}
