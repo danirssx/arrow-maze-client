@@ -1,6 +1,5 @@
 import { Switch, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { i18n as i18nInstance } from '@/framework/i18n/i18n';
 import type { AppSettings } from '@/application/ports/ISettingsRepository';
 import { Header } from '@/presentation/components/Header';
 import { ScreenContainer } from '@/presentation/components/ScreenContainer';
@@ -35,7 +34,6 @@ export function SettingsScreen({
 
   const handleLanguageToggle = () => {
     const next = settings.language === 'en' ? 'es' : 'en';
-    void i18nInstance.changeLanguage(next);
     onLanguageChange(next);
   };
 
