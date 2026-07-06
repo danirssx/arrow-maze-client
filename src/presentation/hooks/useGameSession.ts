@@ -5,6 +5,7 @@ import { GameUIController } from "@/presentation/controllers/GameUIController";
 import { GameViewModel } from "@/presentation/view-models/GameViewModel";
 
 export type GameSession = {
+  readonly facade: GameFacade;
   readonly viewModel: GameViewModel;
   readonly controller: GameUIController;
 };
@@ -15,12 +16,14 @@ export type GameSession = {
  * Constructs the `GameFacade`, `GameViewModel`, and `GameUIController` once,
  * attaches the ViewModel to the facade event bridge on mount, starts the level,
  * and disposes the subscription on unmount. The route passes the returned
- * session straight to the `GameScreen`.
+ * session straight to the `GameScreen`, and reads the already-calculated result
+ * from the `facade` (not the ViewModel) when submitting a victory.
  */
 export function useGameSession(levelId: string, definition: LevelDefinition | undefined): GameSession {
   const session = useMemo<GameSession>(() => {
-    const viewModel = new GameViewModel(GameFacade.createDefault());
-    return { viewModel, controller: new GameUIController(viewModel) };
+    const facade = GameFacade.createDefault();
+    const viewModel = new GameViewModel(facade);
+    return { facade, viewModel, controller: new GameUIController(viewModel) };
   }, []);
 
   useEffect(() => {

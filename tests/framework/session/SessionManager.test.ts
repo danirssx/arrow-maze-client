@@ -15,6 +15,7 @@ const FAKE_SESSION: AuthSession = {
   username: 'player',
   role: 'USER',
   accessToken: 'token-placeholder',
+  refreshToken: 'refresh-placeholder',
 };
 
 describe('SessionManager', () => {

@@ -16,7 +16,7 @@ const BASE_PROGRESS: LocalProgress = {
   version: 1,
   updatedAt: '2026-06-18T00:00:00.000Z',
   completedLevels: [
-    { levelId: 'level-1', score: 100, timeSeconds: 30, movesCount: 10, completedAt: '2026-06-18T00:00:00.000Z' },
+    { levelId: '550e8400-e29b-41d4-a716-446655440010', score: 100, timeSeconds: 30, movesCount: 10, completedAt: '2026-06-18T00:00:00.000Z' },
   ],
   pendingSync: false,
 };

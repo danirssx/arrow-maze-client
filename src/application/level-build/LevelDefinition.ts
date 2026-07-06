@@ -5,6 +5,26 @@ import type { Difficulty } from "../../domain/value-objects/Difficulty";
 /** Default attempts budget when a level definition omits one. */
 export const DEFAULT_ATTEMPTS = 5;
 
+/** Upper bound on board-shape mask cells (mirrors the backend contract). */
+export const BOARD_SHAPE_MAX_CELLS = 600;
+
+/** A single lattice cell in a board-shape mask (same row/col lattice as arrows). */
+export type BoardShapeCell = {
+  readonly row: number;
+  readonly col: number;
+};
+
+/**
+ * Optional abstract board mask (Option A) — a visual + placement mask, NOT a
+ * physical wall. Mirrors the backend `definition.boardShape` contract: a finite,
+ * non-empty, duplicate-free set of integer cells (max `BOARD_SHAPE_MAX_CELLS`)
+ * that contains every arrow cell. Extraction physics ignore it.
+ */
+export type BoardShapeDefinition = {
+  readonly type: "CELL_MASK";
+  readonly cells: readonly BoardShapeCell[];
+};
+
 /**
  * LevelKind value object.
  *
@@ -35,4 +55,5 @@ export type LevelDefinition = {
   readonly attempts?: number;
   readonly kind: LevelKind;
   readonly timeLimitSeconds?: number;
+  readonly boardShape?: BoardShapeDefinition;
 };

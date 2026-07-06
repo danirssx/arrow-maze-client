@@ -24,7 +24,10 @@
   },
   "levels": {
     "title": "Niveles",
-    "subtitle": "Elige un nivel para jugar"
+    "subtitle": "Elige un nivel para jugar",
+    "lockedTitle": "Nivel bloqueado",
+    "lockedMessage": "Completa el nivel anterior para desbloquear este.",
+    "backToLevels": "Volver a niveles"
   },
   "game": {
     "level": "Nivel {{order}}",
@@ -46,7 +49,11 @@
     "playAgain": "Jugar de nuevo",
     "next": "Siguiente nivel",
     "home": "Inicio",
-    "leaderboard": "Ver ranking"
+    "leaderboard": "Ver ranking",
+    "leaderboardSyncing": "Sincronizando puntaje...",
+    "leaderboardSynced": "Puntaje enviado.",
+    "leaderboardFailed": "No se pudo enviar el puntaje. Tu progreso fue guardado.",
+    "leaderboardSkipped": "El puntaje no se envio para este nivel offline."
   },
   "defeat": {
     "title": "Sin intentos",
@@ -61,7 +68,8 @@
   "progress": {
     "title": "Progreso",
     "completed": "Niveles completados",
-    "pendingSync": "Sincronización pendiente",
+    "pendingSync": "Guardado en este dispositivo — se sincronizará pronto",
+    "unknownLevel": "Nivel desconocido",
     "bestScore": "{{score}} pts"
   },
   "settings": {

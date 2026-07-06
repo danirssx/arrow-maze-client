@@ -60,6 +60,32 @@ const LEVEL_RESPONSE: LevelResponseDto = {
   },
 };
 
+const SHAPED_LEVEL_RESPONSE: LevelResponseDto = {
+  status: 'success',
+  data: {
+    level: {
+      levelId: '550e8400-e29b-41d4-a716-446655440030',
+      name: 'Cross Beacon',
+      description: 'shaped',
+      difficulty: 'MEDIUM',
+      status: 'PUBLISHED',
+      version: 1,
+      definition: {
+        attempts: 6,
+        arrows: [
+          { id: 'a', color: 'blue', path: [{ row: 0, col: 0 }, { row: 0, col: 1 }], direction: 'RIGHT' },
+        ],
+        boardShape: {
+          type: 'CELL_MASK',
+          cells: [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 1, col: 0 }],
+        },
+      },
+      createdAt: '2026-06-18T00:00:00.000Z',
+      updatedAt: '2026-06-18T00:00:00.000Z',
+    },
+  },
+};
+
 describe('HttpLevelCatalogRepository', () => {
   it('should_load_level_summaries_from_backend', async () => {
     const http = new FakeHttpClient();
@@ -84,5 +110,28 @@ describe('HttpLevelCatalogRepository', () => {
     expect(definition.kind).toBe(LevelKind.Timed);
     expect(definition.timeLimitSeconds).toBe(75);
     expect(definition.arrows).toHaveLength(1);
+  });
+
+  it('should_map_board_shape_from_level_detail', async () => {
+    const http = new FakeHttpClient();
+    http.getResponse = SHAPED_LEVEL_RESPONSE;
+    const repo = new HttpLevelCatalogRepository(http);
+
+    const definition = await repo.getLevelDefinition('550e8400-e29b-41d4-a716-446655440030');
+
+    expect(definition.boardShape).toBeDefined();
+    expect(definition.boardShape!.type).toBe('CELL_MASK');
+    expect(definition.boardShape!.cells).toHaveLength(3);
+    expect(definition.boardShape!.cells[0]).toEqual({ row: 0, col: 0 });
+  });
+
+  it('should_omit_board_shape_when_level_detail_has_none', async () => {
+    const http = new FakeHttpClient();
+    http.getResponse = LEVEL_RESPONSE;
+    const repo = new HttpLevelCatalogRepository(http);
+
+    const definition = await repo.getLevelDefinition('550e8400-e29b-41d4-a716-446655440011');
+
+    expect(definition.boardShape).toBeUndefined();
   });
 });

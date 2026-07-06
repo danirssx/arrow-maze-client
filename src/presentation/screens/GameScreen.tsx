@@ -3,11 +3,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { BoardView } from "@/presentation/components/BoardView";
 import { useViewModelState } from "@/presentation/hooks/useViewModelState";
-import { GameOverlay } from "@/presentation/state/GameUiState";
 import type { GameUIController } from "@/presentation/controllers/GameUIController";
 import type { GameViewModel } from "@/presentation/view-models/GameViewModel";
 import { DefeatScreen } from "./DefeatScreen";
 import { VictoryScreen } from "./VictoryScreen";
+import type { VictoryLeaderboardStatus } from "./VictoryScreen";
 
 interface GameScreenProps {
   viewModel: GameViewModel;
@@ -17,6 +17,7 @@ interface GameScreenProps {
   onHome: () => void;
   onNextLevel?: (() => void) | undefined;
   onViewLeaderboard?: (() => void) | undefined;
+  leaderboardSubmitStatus?: VictoryLeaderboardStatus | undefined;
 }
 
 /** Circular dark icon button used by the HUD top bar. */
@@ -92,7 +93,8 @@ export function GameScreen({
   onExit,
   onHome,
   onNextLevel,
-  onViewLeaderboard
+  onViewLeaderboard,
+  leaderboardSubmitStatus
 }: GameScreenProps) {
   const { t } = useTranslation();
   const state = useViewModelState(viewModel);
@@ -119,7 +121,9 @@ export function GameScreen({
         </View>
 
         <View className="mt-2 flex-row items-center justify-center gap-1">
-          <Text className="text-sm text-[#FF5D7A]">{"♥".repeat(Math.max(0, state.attemptsRemaining))}</Text>
+          <Text className="text-sm text-[#FF5D7A]">
+            {state.attemptIndicators.map((filled) => (filled ? "♥" : "♡")).join("")}
+          </Text>
           <Text testID="game-attempts" className="ml-1 text-xs font-bold text-[#9AA3D8]">
             {state.attemptsRemaining}
           </Text>
@@ -146,18 +150,19 @@ export function GameScreen({
         </View>
       </View>
 
-      {state.overlay === GameOverlay.Victory ? (
+      {state.showVictoryOverlay ? (
         <View className="absolute inset-0">
           <VictoryScreen
             onPlayAgain={() => controller.handleRestart()}
             onHome={onHome}
             onNextLevel={onNextLevel}
             onViewLeaderboard={onViewLeaderboard}
+            leaderboardSubmitStatus={leaderboardSubmitStatus}
           />
         </View>
       ) : null}
 
-      {state.overlay === GameOverlay.Defeat ? (
+      {state.showDefeatOverlay ? (
         <View className="absolute inset-0">
           <DefeatScreen onRetry={() => controller.handleRestart()} onHome={onHome} />
         </View>

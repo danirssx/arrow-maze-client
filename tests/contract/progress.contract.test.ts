@@ -14,7 +14,7 @@ const PROGRESS_FIXTURE: ProgressResponseDto = {
     version: 3,
     updatedAt: '2026-06-18T00:00:00.000Z',
     completedLevels: [
-      { levelId: 'level-001', score: 1500, timeSeconds: 45, movesCount: 30, completedAt: '2026-06-18T00:00:00.000Z' },
+      { levelId: '550e8400-e29b-41d4-a716-446655440010', score: 1500, timeSeconds: 45, movesCount: 30, completedAt: '2026-06-18T00:00:00.000Z' },
     ],
   },
 };

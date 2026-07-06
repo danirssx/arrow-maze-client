@@ -3,6 +3,8 @@ node_modules/
 dist/
 coverage/
 web-build/
+reports/
+.stryker-tmp/
 .env
 .env.*
 !.env.example

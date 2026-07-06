@@ -22,8 +22,17 @@ export interface LoginResponseDto {
   status: 'success';
   data: {
     accessToken: string;
+    refreshToken: string;
     userId: string;
     username: string;
     role: UserRole;
+  };
+}
+
+export interface RefreshResponseDto {
+  status: 'success';
+  data: {
+    accessToken: string;
+    refreshToken: string;
   };
 }

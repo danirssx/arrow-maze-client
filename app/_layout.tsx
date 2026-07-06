@@ -13,6 +13,8 @@ import {
 } from "@expo-google-fonts/outfit";
 
 import { registerDefaultFont } from "@/framework/fonts/registerDefaultFont";
+import { AuthGate } from "@/framework/auth/AuthGate";
+import { useProgressSync } from "@/framework/progress/useProgressSync";
 
 // Patch the host Text renderer once so Outfit becomes the default font everywhere.
 registerDefaultFont();
@@ -33,7 +35,14 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#F4F5FF" } }} />
+      <AuthGate>
+        <AppStack />
+      </AuthGate>
     </SafeAreaProvider>
   );
+}
+
+function AppStack() {
+  useProgressSync();
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#F4F5FF" } }} />;
 }

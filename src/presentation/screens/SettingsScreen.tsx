@@ -9,8 +9,10 @@ interface SettingsScreenProps {
   settings: AppSettings;
   onLanguageChange: (lang: 'en' | 'es') => void;
   onMuteChange: (muted: boolean) => void;
+  username?: string;
   onBack?: () => void;
   onAccount?: () => void;
+  onLogout?: () => void;
 }
 
 /**
@@ -20,7 +22,15 @@ interface SettingsScreenProps {
  * live in `SettingsViewModel`; this screen only renders settings and emits
  * intents through the injected callbacks.
  */
-export function SettingsScreen({ settings, onLanguageChange, onMuteChange, onBack, onAccount }: SettingsScreenProps) {
+export function SettingsScreen({
+  settings,
+  onLanguageChange,
+  onMuteChange,
+  username,
+  onBack,
+  onAccount,
+  onLogout,
+}: SettingsScreenProps) {
   const { t } = useTranslation();
 
   const handleLanguageToggle = () => {
@@ -67,6 +77,27 @@ export function SettingsScreen({ settings, onLanguageChange, onMuteChange, onBac
             >
               {t('settings.manageAccount')}
             </Text>
+          </View>
+        ) : null}
+
+        {username !== undefined ? (
+          <View className="flex-row items-center justify-between rounded-2xl bg-background-card border border-border-soft p-4">
+            <View>
+              <Text className="text-base text-text-primary">{t('auth.signedInAs', { username })}</Text>
+              <Text testID="settings-username" className="text-sm font-semibold text-primary-700">
+                {username}
+              </Text>
+            </View>
+            {onLogout !== undefined ? (
+              <Text
+                testID="settings-logout"
+                accessibilityRole="button"
+                onPress={onLogout}
+                className="font-semibold text-primary-700"
+              >
+                {t('auth.logout')}
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </View>

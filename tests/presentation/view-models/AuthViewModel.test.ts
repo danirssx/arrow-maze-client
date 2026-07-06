@@ -3,14 +3,14 @@ import { GetCurrentSessionUseCase } from "@/application/auth/GetCurrentSessionUs
 import { LoginUseCase } from "@/application/auth/LoginUseCase";
 import { LogoutUseCase } from "@/application/auth/LogoutUseCase";
 import { RegisterUseCase } from "@/application/auth/RegisterUseCase";
-import type { IAuthRepository, LoginInput, RegisterInput, RegisterOutput } from "@/application/ports/IAuthRepository";
+import type { IAuthRepository, LoginInput, RegisterInput, RegisterOutput, RefreshTokens } from "@/application/ports/IAuthRepository";
 import type { ISessionManager } from "@/application/ports/ISessionManager";
 import { AsyncStatus } from "@/presentation/state/AsyncUiState";
 import { AuthViewModel } from "@/presentation/view-models/AuthViewModel";
 
 // Subject to human review — presentation ViewModel test
 
-const session: AuthSession = { userId: "u1", username: "alice", role: "USER", accessToken: "tok-123" };
+const session: AuthSession = { userId: "u1", username: "alice", role: "USER", accessToken: "tok-123", refreshToken: "ref-123" };
 
 class FakeSessionManager implements ISessionManager {
   saved: AuthSession | null = null;
@@ -32,6 +32,10 @@ class OkAuthRepository implements IAuthRepository {
   async login(_input: LoginInput): Promise<AuthSession> {
     return session;
   }
+  async refresh(_token: string): Promise<RefreshTokens> {
+    return { accessToken: "tok-123", refreshToken: "ref-123" };
+  }
+  async logout(_token: string): Promise<void> {}
 }
 
 class FailingAuthRepository implements IAuthRepository {
@@ -41,6 +45,10 @@ class FailingAuthRepository implements IAuthRepository {
   async login(_input: LoginInput): Promise<AuthSession> {
     throw new Error("bad credentials");
   }
+  async refresh(_token: string): Promise<RefreshTokens> {
+    throw new Error("refresh failed");
+  }
+  async logout(_token: string): Promise<void> {}
 }
 
 function build(
@@ -50,7 +58,7 @@ function build(
   const viewModel = new AuthViewModel(
     new LoginUseCase(repository, sessionManager),
     new RegisterUseCase(repository),
-    new LogoutUseCase(sessionManager),
+    new LogoutUseCase(sessionManager, repository),
     new GetCurrentSessionUseCase(sessionManager)
   );
   return { viewModel, sessionManager };

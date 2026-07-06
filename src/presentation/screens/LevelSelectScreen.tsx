@@ -44,24 +44,33 @@ export function LevelSelectScreen({
   return (
     <ScreenContainer testID="level-select-screen">
       <Header title={t("levels.title")} onBack={onBack} />
-      <Text className="mb-4 mt-2 text-sm text-text-secondary">{t("levels.subtitle")}</Text>
+      <Text className="mb-4 mt-2 text-sm text-text-secondary">
+        {t("levels.subtitle")}
+      </Text>
       {loading ? <LoadingState /> : null}
-      {!loading && error && onRetry !== undefined ? <ErrorState onRetry={onRetry} /> : null}
+      {!loading && error && onRetry !== undefined ? (
+        <ErrorState onRetry={onRetry} />
+      ) : null}
       {!loading && !error ? (
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View className="gap-3 pb-8">
-          {rows.map((row, rowIndex) => (
-            <View key={`level-row-${rowIndex}`} className="flex-row gap-3">
-              {row.map((level) => (
-                <LevelCard key={level.id} level={level} onPress={onSelect} />
-              ))}
-              {Array.from({ length: 3 - row.length }).map((_, fillerIndex) => (
-                <View key={`filler-${rowIndex}-${fillerIndex}`} className="flex-1" />
-              ))}
-            </View>
-          ))}
-        </View>
-      </ScrollView>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View className="gap-3 pb-8">
+            {rows.map((row, rowIndex) => (
+              <View key={`level-row-${rowIndex}`} className="flex-row gap-3">
+                {row.map((level) => (
+                  <LevelCard key={level.id} level={level} onPress={onSelect} />
+                ))}
+                {Array.from({ length: 3 - row.length }).map(
+                  (_, fillerIndex) => (
+                    <View
+                      key={`filler-${rowIndex}-${fillerIndex}`}
+                      className="flex-1"
+                    />
+                  ),
+                )}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
       ) : null}
     </ScreenContainer>
   );

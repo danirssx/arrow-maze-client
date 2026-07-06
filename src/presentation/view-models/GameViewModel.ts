@@ -1,10 +1,11 @@
 import type { GameFacade } from "@/application/facades/GameFacade";
 import type { GameEventDto } from "@/application/dto/GameEventDto";
-import { GameEventType } from "@/application/dto/GameEventDto";
+import { GameEventTypeDto } from "@/application/dto/GameEventDto";
 import type { IGameEventListener } from "@/application/dto/IGameEventListener";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
+import { DEFAULT_ATTEMPTS } from "@/application/level-build/LevelDefinition";
 import type { GameSnapshotDto } from "@/application/use-cases/game/GameSnapshotDto";
-import { GameOverlay, initialGameUiState } from "@/presentation/state/GameUiState";
+import { GameOverlay, buildAttemptIndicators, initialGameUiState } from "@/presentation/state/GameUiState";
 import type { GameUiState } from "@/presentation/state/GameUiState";
 import { ObservableViewModel } from "./ObservableViewModel";
 
@@ -14,14 +15,15 @@ import { ObservableViewModel } from "./ObservableViewModel";
  * Owns the `GameUiState` the `GameScreen` renders and is the only presentation
  * object that talks to the application `GameFacade`. It is snapshot-driven: each
  * action calls the facade and reflects the returned `GameSnapshotDto`. A tap that
- * lowers `arrowsRemaining` extracted an arrow (tracked on a LIFO stack for undo);
- * an unchanged count was a blocked tap (flagged for shake feedback). No screen
- * ever touches a use case, repository, or domain class.
+ * lowers `arrowsRemaining` extracted an arrow (tracked on a LIFO stack only to map
+ * the extracted-arrow UI list on undo); an unchanged count was a blocked tap
+ * (flagged for shake feedback). No screen ever touches a use case, repository, or
+ * domain class. Result metrics (elapsed time, moves, score) are measured and
+ * computed in the application layer — the ViewModel only maps snapshots to UI
+ * state and never reads a clock or scores a game.
  */
 export class GameViewModel extends ObservableViewModel<GameUiState> implements IGameEventListener {
   private extractionStack: string[] = [];
-  private startedAtMs = 0;
-  private finishedAtMs: number | null = null;
 
   constructor(private readonly facade: GameFacade) {
     super(initialGameUiState);
@@ -40,9 +42,8 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
   startLevel(levelId: string, definition: LevelDefinition): void {
     const snapshot = this.facade.startLevel({ createDefinition: () => definition });
     const board = this.facade.getBoardSnapshot();
+    const attemptsTotal = definition.attempts ?? DEFAULT_ATTEMPTS;
     this.extractionStack = [];
-    this.startedAtMs = Date.now();
-    this.finishedAtMs = null;
     this.setState({
       ...initialGameUiState,
       levelId,
@@ -50,8 +51,13 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       bounds: board.bounds,
       arrowsRemaining: snapshot.arrowsRemaining,
       attemptsRemaining: snapshot.attemptsRemaining,
+      attemptsTotal,
+      attemptIndicators: buildAttemptIndicators(snapshot.attemptsRemaining, attemptsTotal),
       canUndo: snapshot.canUndo,
-      overlay: GameViewModel.overlayFor(snapshot)
+      overlay: GameViewModel.overlayFor(snapshot),
+      showVictoryOverlay: false,
+      showDefeatOverlay: false,
+      ...(board.boardShape !== undefined ? { boardShape: board.boardShape } : {})
     });
   }
 
@@ -65,15 +71,17 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
     }
 
     const overlay = GameViewModel.overlayFor(snapshot);
-    this.markFinishedIfTerminal(overlay);
     this.setState({
       ...previous,
       extractedArrowIds: extracted ? [...previous.extractedArrowIds, arrowId] : previous.extractedArrowIds,
       arrowsRemaining: snapshot.arrowsRemaining,
       attemptsRemaining: snapshot.attemptsRemaining,
+      attemptIndicators: buildAttemptIndicators(snapshot.attemptsRemaining, previous.attemptsTotal),
       canUndo: snapshot.canUndo,
       shakeArrowId: extracted ? null : arrowId,
-      overlay
+      overlay,
+      showVictoryOverlay: overlay === GameOverlay.Victory,
+      showDefeatOverlay: overlay === GameOverlay.Defeat,
     });
   }
 
@@ -90,6 +98,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
             : previous.extractedArrowIds.filter((id) => id !== restored),
         arrowsRemaining: snapshot.arrowsRemaining,
         attemptsRemaining: snapshot.attemptsRemaining,
+        attemptIndicators: buildAttemptIndicators(snapshot.attemptsRemaining, previous.attemptsTotal),
         canUndo: snapshot.canUndo,
         shakeArrowId: null,
         overlay: GameViewModel.overlayFor(snapshot)
@@ -102,37 +111,35 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
   restart(): void {
     const levelId = this.getState().levelId;
     const snapshot = this.facade.restartLevel();
+    const { attemptsTotal } = this.getState();
     this.extractionStack = [];
-    this.startedAtMs = Date.now();
-    this.finishedAtMs = null;
     this.setState({
       ...this.getState(),
       levelId,
       extractedArrowIds: [],
       arrowsRemaining: snapshot.arrowsRemaining,
       attemptsRemaining: snapshot.attemptsRemaining,
+      attemptIndicators: buildAttemptIndicators(snapshot.attemptsRemaining, attemptsTotal),
       canUndo: snapshot.canUndo,
       shakeArrowId: null,
-      overlay: GameOverlay.None
+      overlay: GameOverlay.None,
+      showVictoryOverlay: false,
+      showDefeatOverlay: false,
     });
   }
 
   /** Observer bridge listener — reacts to UI-neutral domain events. */
   onGameEvent(event: GameEventDto): void {
-    if (event.type === GameEventType.LevelFinished) {
-      const overlay = event.result.status === "WON" ? GameOverlay.Victory : GameOverlay.Defeat;
-      this.markFinishedIfTerminal(overlay);
-      this.setState({ ...this.getState(), overlay });
+    if (event.type === GameEventTypeDto.LevelFinished) {
+      const isVictory = event.result.status === "WON";
+      const overlay = isVictory ? GameOverlay.Victory : GameOverlay.Defeat;
+      this.setState({
+        ...this.getState(),
+        overlay,
+        showVictoryOverlay: isVictory,
+        showDefeatOverlay: !isVictory,
+      });
     }
-  }
-
-  elapsedMs(): number {
-    if (this.startedAtMs === 0) return 0;
-    return Math.max(0, (this.finishedAtMs ?? Date.now()) - this.startedAtMs);
-  }
-
-  movesCount(): number {
-    return this.extractionStack.length;
   }
 
   private static overlayFor(snapshot: GameSnapshotDto): GameOverlay {
@@ -143,11 +150,5 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       return GameOverlay.Defeat;
     }
     return GameOverlay.None;
-  }
-
-  private markFinishedIfTerminal(overlay: GameOverlay): void {
-    if (overlay !== GameOverlay.None && this.finishedAtMs === null) {
-      this.finishedAtMs = Date.now();
-    }
   }
 }

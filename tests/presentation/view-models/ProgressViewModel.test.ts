@@ -13,7 +13,7 @@ function progressWith(levelCount: number): LocalProgress {
     updatedAt: "2026-01-01T00:00:00Z",
     pendingSync: false,
     completedLevels: Array.from({ length: levelCount }).map((_, index) => ({
-      levelId: `manual-00${index + 1}`,
+      levelId: `550e8400-e29b-41d4-a716-44665544001${index}`,
       score: 100,
       timeSeconds: 10,
       movesCount: 3,
@@ -32,7 +32,7 @@ describe("ProgressViewModel", () => {
   it("should_expose_loaded_when_levels_completed", async () => {
     const viewModel = new ProgressViewModel(facadeReturning(progressWith(2)));
 
-    await viewModel.load("user-1", "token");
+    await viewModel.load("user-1");
 
     expect(viewModel.getState().status).toBe(AsyncStatus.Loaded);
     expect(viewModel.getState().data?.completedLevels).toHaveLength(2);
@@ -41,7 +41,7 @@ describe("ProgressViewModel", () => {
   it("should_expose_empty_when_no_levels_completed", async () => {
     const viewModel = new ProgressViewModel(facadeReturning(progressWith(0)));
 
-    await viewModel.load("user-1", "token");
+    await viewModel.load("user-1");
 
     expect(viewModel.getState().status).toBe(AsyncStatus.Empty);
   });
@@ -49,7 +49,7 @@ describe("ProgressViewModel", () => {
   it("should_expose_error_when_facade_fails", async () => {
     const viewModel = new ProgressViewModel(facadeReturning(new Error("storage")));
 
-    await viewModel.load("user-1", "token");
+    await viewModel.load("user-1");
 
     expect(viewModel.getState().status).toBe(AsyncStatus.Error);
   });

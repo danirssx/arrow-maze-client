@@ -29,7 +29,7 @@ const LEADERBOARD_FIXTURE: LeaderboardResponseDto = {
   status: 'success',
   data: {
     leaderboardId: 'lb-1',
-    levelId: 'level-001',
+    levelId: '550e8400-e29b-41d4-a716-446655440010',
     updatedAt: '2026-06-18T00:00:00.000Z',
     entries: [
       { entryId: 'e-1', userId: 'user-1', usernameSnapshot: 'player', score: 1500, timeSeconds: 45, movesCount: 30, rank: 1, submittedAt: '2026-06-18T00:00:00.000Z' },
@@ -48,35 +48,49 @@ describe('HttpLeaderboardRepository', () => {
 
   it('should_return_leaderboard_with_entries', async () => {
     http.getResponse = LEADERBOARD_FIXTURE;
-    const result = await repo.getTopScores('level-001');
-    expect(result.levelId).toBe('level-001');
+    const result = await repo.getTopScores('550e8400-e29b-41d4-a716-446655440010');
+    expect(result.levelId).toBe('550e8400-e29b-41d4-a716-446655440010');
     expect(result.entries).toHaveLength(1);
     expect(result.entries[0]?.rank).toBe(1);
-    expect(http.lastGetUrl).toBe('/leaderboard/level-001');
+    expect(http.lastGetUrl).toBe('/leaderboard/550e8400-e29b-41d4-a716-446655440010');
     expect(http.lastGetConfig).toBeUndefined();
   });
 
-  it('should_submit_score_with_authorization_header_and_without_user_id_body', async () => {
+  it('should_return_empty_leaderboard_when_backend_omits_collection_metadata', async () => {
+    http.getResponse = {
+      status: 'success',
+      data: {
+        levelId: '550e8400-e29b-41d4-a716-446655440010',
+        entries: [],
+      },
+    } satisfies LeaderboardResponseDto;
+
+    const result = await repo.getTopScores('550e8400-e29b-41d4-a716-446655440010');
+
+    expect(result).toEqual({
+      levelId: '550e8400-e29b-41d4-a716-446655440010',
+      entries: [],
+    });
+  });
+
+  it('should_submit_score_without_hand_rolled_authorization_header_and_only_score_facts', async () => {
     http.postResponse = { status: 'success', data: null };
     await expect(repo.submitScore({
-      leaderboardId: 'lb-1', entryId: 'e-2',
-      levelId: 'level-001', usernameSnapshot: 'player',
+      levelId: '550e8400-e29b-41d4-a716-446655440010',
       score: 800, timeSeconds: 60, movesCount: 20,
-    }, 'jwt-token-1')).resolves.not.toThrow();
+    })).resolves.not.toThrow();
 
     expect(http.lastPostUrl).toBe('/leaderboard/scores');
     expect(http.lastPostBody).toEqual({
-      leaderboardId: 'lb-1',
-      entryId: 'e-2',
-      levelId: 'level-001',
-      usernameSnapshot: 'player',
+      levelId: '550e8400-e29b-41d4-a716-446655440010',
       score: 800,
       timeSeconds: 60,
       movesCount: 20,
     });
     expect(http.lastPostBody).not.toHaveProperty('userId');
-    expect(http.lastPostConfig).toEqual({
-      headers: { Authorization: 'Bearer jwt-token-1' },
-    });
+    expect(http.lastPostBody).not.toHaveProperty('leaderboardId');
+    expect(http.lastPostBody).not.toHaveProperty('entryId');
+    expect(http.lastPostBody).not.toHaveProperty('usernameSnapshot');
+    expect(http.lastPostConfig).toBeUndefined();
   });
 });

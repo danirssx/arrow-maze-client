@@ -10,17 +10,14 @@ export interface LeaderboardEntry {
 }
 
 export interface Leaderboard {
-  leaderboardId: string;
+  leaderboardId?: string;
   levelId: string;
-  updatedAt: string;
+  updatedAt?: string;
   entries: LeaderboardEntry[];
 }
 
 export interface SubmitScoreInput {
-  leaderboardId: string;
-  entryId: string;
   levelId: string;
-  usernameSnapshot: string;
   score: number;
   timeSeconds: number;
   movesCount: number;
@@ -28,5 +25,5 @@ export interface SubmitScoreInput {
 
 export interface ILeaderboardRepository {
   getTopScores(levelId: string): Promise<Leaderboard>;
-  submitScore(input: SubmitScoreInput, accessToken: string): Promise<void>;
+  submitScore(input: SubmitScoreInput): Promise<void>;
 }

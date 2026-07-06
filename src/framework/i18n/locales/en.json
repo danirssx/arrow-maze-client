@@ -24,7 +24,10 @@
   },
   "levels": {
     "title": "Levels",
-    "subtitle": "Choose a level to play"
+    "subtitle": "Choose a level to play",
+    "lockedTitle": "Level locked",
+    "lockedMessage": "Complete the previous level to unlock this one.",
+    "backToLevels": "Back to levels"
   },
   "game": {
     "level": "Level {{order}}",
@@ -46,7 +49,11 @@
     "playAgain": "Play again",
     "next": "Next level",
     "home": "Home",
-    "leaderboard": "View leaderboard"
+    "leaderboard": "View leaderboard",
+    "leaderboardSyncing": "Syncing score...",
+    "leaderboardSynced": "Score submitted.",
+    "leaderboardFailed": "Score could not be submitted. Your completion was saved.",
+    "leaderboardSkipped": "Score was not submitted for this offline level."
   },
   "defeat": {
     "title": "Out of attempts",
@@ -61,7 +68,8 @@
   "progress": {
     "title": "Progress",
     "completed": "Completed levels",
-    "pendingSync": "Pending sync",
+    "pendingSync": "Saved on this device — it will sync soon",
+    "unknownLevel": "Unknown level",
     "bestScore": "{{score}} pts"
   },
   "settings": {

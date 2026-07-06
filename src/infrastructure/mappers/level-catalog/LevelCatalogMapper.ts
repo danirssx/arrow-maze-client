@@ -1,6 +1,7 @@
 import { LevelKind } from "@/application/level-build/LevelDefinition";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
 import type { LevelCatalogSummary } from "@/application/ports/ILevelCatalogRepository";
+import type { DifficultyDto } from "@/application/dto/DifficultyDto";
 import { ArrowSpec } from "@/domain/value-objects/ArrowSpec";
 import { Direction } from "@/domain/value-objects/Direction";
 import type { Difficulty } from "@/domain/value-objects/Difficulty";
@@ -12,7 +13,7 @@ export class LevelCatalogMapper {
     const summary: LevelCatalogSummary = {
       levelId: dto.levelId,
       name: dto.name,
-      difficulty: dto.difficulty as Difficulty,
+      difficulty: dto.difficulty as DifficultyDto,
       arrowCount: dto.arrowCount,
       attempts: dto.attempts,
       ...(dto.timeLimitSeconds !== undefined ? { timeLimitSeconds: dto.timeLimitSeconds } : {}),
@@ -35,6 +36,17 @@ export class LevelCatalogMapper {
       attempts: dto.definition.attempts,
       kind: dto.timeLimitSeconds === undefined ? LevelKind.Normal : LevelKind.Timed,
       ...(dto.timeLimitSeconds !== undefined ? { timeLimitSeconds: dto.timeLimitSeconds } : {}),
+      ...(dto.definition.boardShape !== undefined
+        ? {
+            boardShape: {
+              type: "CELL_MASK" as const,
+              cells: dto.definition.boardShape.cells.map((cell) => ({
+                row: cell.row,
+                col: cell.col,
+              })),
+            },
+          }
+        : {}),
     };
   }
 }

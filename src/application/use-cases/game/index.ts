@@ -1,8 +1,10 @@
 export type { GameResultDto, GameSnapshotDto } from "./GameSnapshotDto";
+export type { LevelOutcomeDto } from "./LevelOutcomeDto";
 export { GameSession } from "./GameSession";
 export { StartLevelUseCase } from "./StartLevelUseCase";
 export { TapArrowUseCase } from "./TapArrowUseCase";
 export { UndoLastMoveUseCase } from "./UndoLastMoveUseCase";
 export { PauseGameUseCase } from "./PauseGameUseCase";
 export { ResumeGameUseCase } from "./ResumeGameUseCase";
+export { ResolveLevelOutcomeUseCase } from "./ResolveLevelOutcomeUseCase";
 export { GameplayStateError } from "./errors";

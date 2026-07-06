@@ -2,8 +2,8 @@ import { ArrowSpec } from "../../domain/value-objects/ArrowSpec";
 import { Difficulty } from "../../domain/value-objects/Difficulty";
 import { Direction } from "../../domain/value-objects/Direction";
 import { Position } from "../../domain/value-objects/Position";
-import type { LevelDefinition } from "./LevelDefinition";
-import { LevelKind } from "./LevelDefinition";
+import type { BoardShapeDefinition, LevelDefinition } from "./LevelDefinition";
+import { BOARD_SHAPE_MAX_CELLS, LevelKind } from "./LevelDefinition";
 import type { ILevelStrategy } from "./ILevelStrategy";
 import { InvalidLevelDefinitionError } from "./errors";
 
@@ -45,6 +45,14 @@ export class JsonLevelStrategy implements ILevelStrategy {
       JsonLevelStrategy.mapArrow(JsonLevelStrategy.asRecord(arrow, `arrows[${index}]`))
     );
 
+    const arrowCellKeys = new Set<string>();
+    for (const arrow of arrows) {
+      for (const cell of arrow.cells) {
+        arrowCellKeys.add(cell.toKey());
+      }
+    }
+    const boardShape = JsonLevelStrategy.mapBoardShape(raw.boardShape, arrowCellKeys);
+
     return {
       id: JsonLevelStrategy.asString(raw.id, "id"),
       difficulty: JsonLevelStrategy.asDifficulty(raw.difficulty),
@@ -53,8 +61,62 @@ export class JsonLevelStrategy implements ILevelStrategy {
       ...(raw.attempts !== undefined ? { attempts: JsonLevelStrategy.asInteger(raw.attempts, "attempts") } : {}),
       ...(kind === LevelKind.Timed
         ? { timeLimitSeconds: JsonLevelStrategy.asInteger(raw.timeLimitSeconds, "timeLimitSeconds") }
-        : {})
+        : {}),
+      ...(boardShape !== undefined ? { boardShape } : {})
     };
+  }
+
+  /**
+   * Parses and validates an optional `boardShape` (Option A): only `CELL_MASK`,
+   * a non-empty, duplicate-free set of integer cells (max BOARD_SHAPE_MAX_CELLS)
+   * that contains every arrow cell. Absent shape is valid (backward compatible).
+   */
+  private static mapBoardShape(
+    value: unknown,
+    arrowCellKeys: ReadonlySet<string>
+  ): BoardShapeDefinition | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    const record = JsonLevelStrategy.asRecord(value, "boardShape");
+    const type = JsonLevelStrategy.asString(record.type, "boardShape.type");
+    if (type !== "CELL_MASK") {
+      throw new InvalidLevelDefinitionError(`Field "boardShape.type" must be "CELL_MASK".`);
+    }
+
+    const rawCells = JsonLevelStrategy.asArray(record.cells, "boardShape.cells");
+    if (rawCells.length === 0) {
+      throw new InvalidLevelDefinitionError(`Field "boardShape.cells" must be a non-empty array.`);
+    }
+    if (rawCells.length > BOARD_SHAPE_MAX_CELLS) {
+      throw new InvalidLevelDefinitionError(
+        `Field "boardShape.cells" must not exceed ${BOARD_SHAPE_MAX_CELLS} cells.`
+      );
+    }
+
+    const seen = new Set<string>();
+    const cells = rawCells.map((cell, index) => {
+      const cellRecord = JsonLevelStrategy.asRecord(cell, `boardShape.cells[${index}]`);
+      const row = JsonLevelStrategy.asInteger(cellRecord.row, "boardShape.cells.row");
+      const col = JsonLevelStrategy.asInteger(cellRecord.col, "boardShape.cells.col");
+      const key = `${row},${col}`;
+      if (seen.has(key)) {
+        throw new InvalidLevelDefinitionError(`Field "boardShape.cells" has a duplicate cell ${key}.`);
+      }
+      seen.add(key);
+      return { row, col };
+    });
+
+    for (const arrowKey of arrowCellKeys) {
+      if (!seen.has(arrowKey)) {
+        throw new InvalidLevelDefinitionError(
+          `An arrow cell (${arrowKey}) lies outside the boardShape mask.`
+        );
+      }
+    }
+
+    return { type: "CELL_MASK", cells };
   }
 
   private static mapArrow(raw: JsonRecord): ArrowSpec {

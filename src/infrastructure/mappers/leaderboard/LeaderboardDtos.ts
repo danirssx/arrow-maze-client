@@ -12,19 +12,17 @@ export interface LeaderboardEntryDto {
 export interface LeaderboardResponseDto {
   status: 'success';
   data: {
-    leaderboardId: string;
+    leaderboardId?: string;
     levelId: string;
-    updatedAt: string;
+    updatedAt?: string;
     entries: LeaderboardEntryDto[];
   };
 }
 
+// The backend derives identifiers and username from the authenticated request,
+// so the client sends only the score facts produced by the game/application.
 export interface SubmitScoreRequestDto {
-  leaderboardId: string;
-  entryId: string;
-  userId: string;
   levelId: string;
-  usernameSnapshot: string;
   score: number;
   timeSeconds: number;
   movesCount: number;

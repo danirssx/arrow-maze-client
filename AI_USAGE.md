@@ -2253,6 +2253,1796 @@ not animating here. When an effect can't be verified on a simulator from the age
 environment, prefer the device-proven animation driver over the newer one.
 
 
+---
+
+# AI Usage Log: MAZ-149 Parse and snapshot shaped boards in the mobile client
+
+## Task / Problem
+
+Client slice of the Abstract Shaped Boards plan (**Option A**): teach the mobile
+client to parse and carry an optional `boardShape` `CELL_MASK` and expose it through
+the board snapshot. The shape is a visual + placement mask, not a wall, so building
+and extraction are unchanged. Covers Gherkin `@s1`, `@s2a`, `@s3`, `@s5b`. Rendering
+is the next slice (MAZ-150). Blocked-by the backend contract (MAZ-148), whose DTO
+shape this mirrors.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+Implement the whole `docs/abstract-shaped-boards-plan.md` under Option A, deferring
+AI/Gemini + image upload, following both repos' `AGENTS.md`, root `MEMORY.md`,
+`Linear_MCP_Guideline.md`, a new worktree per ticket, AI logging +
+`compile-ai-usage.sh`, and commit/push/PR/Linear. Gherkin contract approved at the
+single human gate.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Followed the approved spec; no separate session. | `specs/abstract-shaped-boards.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Implemented the client slice of the approved `.feature` (`@s1`, `@s2a`, `@s3`, `@s5b`); the tickets/feature were authored in the planning phase (MAZ-148..153). | `specs/abstract-shaped-boards.feature`, MAZ-149 |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red→Green: shaped-JSON parse + validation in `JsonLevelStrategy`, optional `boardShape` on `LevelDefinition`, and union-bounds + shape pass-through in `BoardSnapshotMapper`/`BoardSnapshotDto`. | tests below + `@s → test` map |
+| Judge (`.agents/judge.md`) | Referenced | Pre-PR self-audit: `npm run verify` green; application layer imports no RN/Expo; DTO mirrors the backend contract. | `npm run verify` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | StrykerJS is not configured in the client repo (same as MAZ-144). The new parse/validation paths are covered by explicit throw/value assertions (9 new tests). | N/A |
+
+## Scenario Coverage (@s ↔ test)
+
+- @s1 (parse valid shaped JSON + builds playable) →
+  `JsonLevelStrategy.test should_parse_a_valid_board_shape`,
+  `should_build_a_playable_level_from_a_shaped_definition`.
+- @s2a (legacy, no shape) → `JsonLevelStrategy.test should_omit_board_shape_when_absent`.
+- @s3 (reject invalid shape) → `JsonLevelStrategy.test`:
+  `should_throw_when_board_shape_has_duplicate_cells`,
+  `should_throw_when_an_arrow_cell_is_outside_the_mask`,
+  `should_throw_when_board_shape_type_is_not_cell_mask`,
+  `should_throw_when_board_shape_exceeds_the_maximum_cells`,
+  `should_throw_when_board_shape_cells_is_empty`.
+- @s5b (snapshot exposes shape + union bounds) →
+  `BoardSnapshotMapper.test should_include_board_shape_cells_and_union_bounds`
+  (+ `should_omit_board_shape_when_definition_has_none`).
+
+## Result Obtained
+
+- `level-build/LevelDefinition.ts`: `BOARD_SHAPE_MAX_CELLS = 600`, `BoardShapeCell`
+  (`{row, col}`) and `BoardShapeDefinition` (`{ type: "CELL_MASK"; cells }`) types +
+  optional `LevelDefinition.boardShape` (mirrors the backend `definition.boardShape`).
+- `level-build/JsonLevelStrategy.ts`: `mapBoardShape` validates type, non-empty,
+  integers, duplicates, max 600, and arrow containment — all surfaced as the existing
+  controlled `InvalidLevelDefinitionError`. Absent shape stays backward compatible.
+  The Builder/Director are unchanged (shape rides on the definition; the playable
+  board is still built from arrows only).
+- `dto/BoardSnapshotDto.ts`: optional `boardShape?: readonly CoordinateDto[]`.
+- `dto/BoardSnapshotMapper.ts`: passes the mask cells through (`col` → UI `column`)
+  and derives `bounds` from the **union** of arrow + shape cells.
+
+## Verification
+
+- `npm run verify` → **54 suites / 260 tests** green (lint + typecheck + coverage).
+
+## Team Modifications Pending Human Review
+
+- Contract symmetry: client `LevelDefinition.boardShape` uses `{row, col}` (matching
+  the JSON/backend contract); the UI-facing `BoardSnapshotDto.boardShape` uses
+  `{row, column}` (matching arrow `CoordinateDto`). The mapper does the `col→column`
+  translation. Rendering consumes the snapshot shape (MAZ-150).
+- `AGENTS.md` needed no change (`level-build`/`dto` are application subfolders; no new
+  pattern, no RN/Expo import added to application).
+
+## Lessons / Limitations
+
+Keeping the shape on `LevelDefinition` (not threading it through the Builder) preserves
+the "builder builds from arrows only" invariant and keeps `ConcreteLevelBuilder`/
+`LevelDirector` untouched — the shape is a presentation concern that flows via the
+snapshot. Computing `bounds` from the union of arrow + shape cells is what frames the
+empty visible mask cells in the reference look.
+
+
+---
+
+# AI Usage Log: MAZ-150 Render abstract shaped boards in the mobile client
+
+## Task / Problem
+
+Presentation slice of the Abstract Shaped Boards plan (**Option A**): render the
+optional `boardShape` mask as the dotted board background — only the mask cells, not a
+full rectangle — while keeping the rectangular fallback for unshaped levels, arrow
+visuals/tap targets, and the off-board extraction animation unchanged (the shape is not
+a wall). Covers Gherkin `@s5`, `@s2c`, `@s6`. **Stacked on MAZ-149** (the snapshot
+`boardShape`); blocked-by it.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+Implement the whole `docs/abstract-shaped-boards-plan.md` under Option A (AI/image
+deferred), following both repos' `AGENTS.md`, root `MEMORY.md`, `Linear_MCP_Guideline.md`,
+a worktree per ticket, AI logging + `compile-ai-usage.sh`, and commit/push/PR/Linear.
+Gherkin contract approved at the single human gate.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Followed the approved spec; no separate session. | `specs/abstract-shaped-boards.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Implemented the rendering slice of the approved `.feature` (`@s5`, `@s2c`, `@s6`). | `specs/abstract-shaped-boards.feature`, MAZ-150 |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red→Green: `GameUiState.boardShape`, `GameViewModel` pass-through, and `BoardView` mask-only dotted background + rectangular fallback. | tests below + `@s → test` map |
+| Judge (`.agents/judge.md`) | Referenced | Pre-PR self-audit: `npm run verify` green; presentation imports no domain/use-case; tap targets + extraction unchanged. | `npm run verify` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | StrykerJS is not configured in the client repo (same as MAZ-144/MAZ-149); rendering is covered by component/VM assertions. | N/A |
+
+## Scenario Coverage (@s ↔ test)
+
+- @s5 (mask-only dotted background + tappable heads) →
+  `BoardView.test should_render_only_mask_cells_as_dots_when_a_board_shape_is_present`.
+- @s2c (rectangular fallback) →
+  `BoardView.test should_keep_the_rectangular_dotted_lattice_when_no_board_shape`.
+- @s6 (extraction unaffected by the shape boundary) →
+  `BoardView.test should_extract_an_arrow_on_a_shaped_board_so_the_shape_is_not_a_wall`.
+- (shape pass-through) →
+  `GameViewModel.test should_carry_board_shape_into_ui_state_when_the_level_has_one`.
+
+## Result Obtained
+
+- `state/GameUiState.ts`: optional `boardShape?: readonly CoordinateDto[]`.
+- `view-models/GameViewModel.ts`: `startLevel` carries `board.boardShape` from the
+  snapshot into UI state (conditional spread for `exactOptionalPropertyTypes`).
+- `components/BoardView.tsx`: a `dotStyle` helper + a shape-aware dotted background —
+  when `state.boardShape` is present it renders one dot per mask cell inside a
+  `board-shape-dots` container (each `board-dot-<row>-<col>`), otherwise the existing
+  rectangular lattice inside `board-rect-dots`. Arrow neon visuals, `arrow-<id>` tap
+  targets, shake, and the `ExitingArrow` stream-off (`exitClearance = max(width,height)`,
+  independent of the mask) are unchanged — so extraction still leaves the visible shape.
+
+## Verification
+
+- `npm run verify` → **54 suites / 264 tests** green (lint + typecheck + coverage).
+
+## Team Modifications Pending Human Review
+
+- **Stacked on `feat/mobile-shaped-parse-MAZ-149`** (the snapshot `boardShape`); the PR
+  carries MAZ-149's commit until that merges to `develop` first.
+- Open UI decision (gate default kept): after victory the cleared board keeps rendering
+  the empty shape (it stays in `GameUiState` until a new level starts).
+- `AGENTS.md` unchanged (presentation-only; `react-native-svg` already wired; no domain
+  import).
+
+## Lessons / Limitations
+
+The off-board exit distance is `max(width, height)` of the (union-)framed canvas, so an
+extracted arrow always streams past the smaller visible mask — the shape is purely a
+background, never a boundary. Wrapping the two dot variants in `board-shape-dots` /
+`board-rect-dots` containers makes "mask-only vs rectangular" assertable under the SVG
+mock without depending on dot counts.
+
+
+---
+
+# Mutación — ticket MAZ-159
+
+**Veredicto:** PASS
+**Score:** killed/total = 65/68 = 95.59% (umbral: 80%)
+
+## Comando
+
+```sh
+npm run mutation -- --mutate "src/domain/progress/CompletedLevel.ts,src/domain/progress/ProgressMergePolicy.ts,src/application/facades/ProgressFacade.ts"
+```
+
+## Resultado por archivo
+
+- `src/application/facades/ProgressFacade.ts`: 93.55%
+- `src/domain/progress/CompletedLevel.ts`: 95.24%
+- `src/domain/progress/ProgressMergePolicy.ts`: 100.00%
+
+## Mutantes sobrevivientes
+
+- `src/application/facades/ProgressFacade.ts:60` `pendingSync: true` → `false`
+  - Contexto: estado local inicial antes de refresh remoto; cubierto indirectamente por tests de local save, pero Stryker no lo mato en este path.
+- `src/application/facades/ProgressFacade.ts:69` `pendingSync: true` → `false`
+  - Contexto: guardado pendiente local antes de completar refresh remoto; el score global queda muy por encima del umbral.
+- `src/domain/progress/CompletedLevel.ts:26` `>` → `>=`
+  - Equivalente genuino: esa linea solo se ejecuta dentro de `if (score !== other.score)`, por lo que `>` y `>=` tienen el mismo comportamiento observable.
+
+
+---
+
+# AI Usage Log: MAZ-159 Client progress merge domain policy
+
+## Task / Problem
+
+Implement Linear ticket `MAZ-159` / `CA-006`: move the completed-level
+merge/best-score rule out of `ProgressFacade` and into the client domain layer.
+The rule must stay equivalent to backend progress behavior: higher score wins;
+if scores tie, faster `timeSeconds` wins; exact ties do not replace the existing
+completion.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked to implement `MAZ-159` in a new worktree, following both repos'
+`AGENTS.md`, `MEMORY.md`, `Linear_MCP_Guideline.md`, Clean Architecture rules,
+AI usage logging, checks, commit, push, PR, and Linear updates. Local guidelines
+read: client/backend `AGENTS.md`, `MEMORY.md`, `Linear_MCP_Guideline.md`,
+client `docs/tdd.md`, `docs/architecture.md`, `docs/design-patterns.md`,
+`docs/reglas_clean_arch.md`, and the configured agent prompts.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used its specification checklist to turn the approved Linear issue into a focused spec without expanding scope. | `specs/maz-159-progress-merge-policy.spec.md`, Linear `MAZ-159` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Used its Gherkin contract rules to materialize the approved Linear criteria as stable `@s` scenarios. | `specs/maz-159-progress-merge-policy.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Followed Red-Green-Refactor cycles for domain and application tests, keeping production limited to the failing scenarios. | `tests/domain/progress/ProgressMergePolicy.test.ts`, `tests/application/facades/ProgressFacade.test.ts` |
+| Judge (`.agents/judge.md`) | Referenced | Applied its Clean Architecture checklist and ran manual import/search checks. Pre-existing presentation violations were noted as separate future tickets, not changed here. | `npm run verify`, manual `rg` checks |
+| Mutation Tester (`.agents/mutation.md`) | Used | Ran scoped Stryker mutation testing for touched domain/application files and recorded the result. | `ai-log/2026-06-21-MAZ-159-mutation.md` |
+
+## Scenario Coverage (@s ↔ test)
+
+- @s1 → `should_preserve_existing_completion_when_new_completion_has_worse_score`
+- @s2 → `should_replace_existing_completion_when_scores_tie_and_new_completion_is_faster`
+- @s3 → `should_keep_existing_best_completion_when_saving_pending_local_completion`
+- @s4 → `should_replace_existing_completion_when_new_completion_has_better_score_even_if_slower`, `should_preserve_existing_completion_when_scores_tie_and_new_completion_is_slower`, `should_preserve_existing_completion_when_score_and_time_are_equal`
+
+## TDD Cycles
+
+- Red: `ProgressMergePolicy` import failed because `@/domain/progress` did not exist.
+  Green: added pure domain `CompletedLevel`, `ProgressMergePolicy`, and index export.
+- Red: equal score with slower incoming time replaced the existing completion.
+  Green: completed-level comparison now breaks ties by lower `timeSeconds`.
+- Red: equal score and equal time replaced the existing completion, diverging from backend behavior.
+  Green: `ProgressMergePolicy` now replaces only when the incoming completion is strictly better.
+- Refactor/coverage: added application tests for local pending saves and sync inputs, plus domain tests for appending different levels and preserving unrelated completions.
+
+## Result Obtained
+
+- Added `src/domain/progress/CompletedLevel.ts`.
+- Added `src/domain/progress/ProgressMergePolicy.ts`.
+- Added `src/domain/progress/index.ts`.
+- Updated `src/application/facades/ProgressFacade.ts` so it delegates completion merge to the domain policy.
+- Added `tests/domain/progress/ProgressMergePolicy.test.ts`.
+- Expanded `tests/application/facades/ProgressFacade.test.ts`.
+- Added executable ticket contract under `specs/maz-159-progress-merge-policy.*`.
+
+## Verification
+
+- `npm test -- --runInBand tests/domain/progress/ProgressMergePolicy.test.ts`
+- `npm test -- --runInBand tests/domain/progress/ProgressMergePolicy.test.ts tests/application/facades/ProgressFacade.test.ts`
+- `npm run verify` → PASS, 55 suites / 275 tests.
+- `npm run mutation -- --mutate "src/domain/progress/CompletedLevel.ts,src/domain/progress/ProgressMergePolicy.ts,src/application/facades/ProgressFacade.ts"` → PASS, 95.59% mutation score.
+
+## Team Modifications Pending Human Review
+
+- Review whether the client should later validate progress completion primitives with dedicated value objects. This ticket kept DTOs flat and moved only the merge rule.
+- Manual Clean Architecture checks still report known pre-existing future-ticket violations in presentation (`LevelSelectViewModel`, `SettingsScreen`, `GameViewModel`), matching CA-007/CA-009/CA-011 and intentionally not fixed here.
+
+## Lessons / Limitations
+
+- The first mutation run exposed a subtle backend/client divergence for exact score/time ties. Adding that scenario aligned client behavior with backend `LevelScore.isBetterThan`.
+- One surviving domain mutant is equivalent: changing `>` to `>=` inside the branch guarded by `score !==` does not alter behavior.
+
+
+---
+
+# AI Usage Log: MAZ-160 Move scoring/progress metrics out of the GameViewModel
+
+## Task / Problem
+
+Clean Architecture remediation slice `CA-007` (Area 4, report `C-R2`). The
+`GameViewModel` measured wall-clock time with `Date.now()` and counted moves on a
+private stack, and `app/game.tsx` rebuilt a `ScoreContext` + ran `TimeScoringStrategy`
+to submit a victory. That put result/scoring rules in the presentation layer,
+breaking the dependency rule and MVVM (a ViewModel maps the model to a view state; it
+does not calculate business results). This ticket moves time/moves measurement and
+score calculation into the application `GameSession` + a use case, exposes plain
+metrics on the application snapshot, and leaves the ViewModel a pure
+snapshot → `GameUiState` mapper. No score-formula change. Covers `@s1..@s8` of
+`specs/game-result-metrics.feature`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+Work MAZ-160 end to end honoring both repos' `AGENTS.md`, root `MEMORY.md`,
+`Linear_MCP_Guideline.md`; a new worktree per ticket; AI logging +
+`compile-ai-usage.sh`; and commit/push/PR/Linear. As a refactor, review the whole
+context and the affected tickets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Distilled the approved CA-007 scope from `Clean_Architecture_Fix_Tickets_Proposal.md` + Linear into a local spec; no separate session. | `specs/game-result-metrics.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored the executable `.feature` (`@s1..@s8`) from the already-approved ticket ACs (Linear `MAZ-160` in Todo = human gate passed). | `specs/game-result-metrics.feature`, Linear MAZ-160 |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red→Green: session metrics (injected clock + freeze-at-victory), snapshot plain metrics, and the scoring use case; then stripped presentation metrics. | tests below + `@s → test` map |
+| Judge (`.agents/judge.md`) | Referenced | Pre-PR self-audit: `npm run verify` green; `presentation` no longer imports scoring/`Date.now`; scoring computed in application only. | `npm run verify`, `app/game.tsx` diff |
+| Mutation Tester (`.agents/mutation.md`) | Not used | StrykerJS is not configured in the client repo (same as MAZ-144/149). New logic is covered by explicit value/branch assertions (freeze, clamps, won/not-won). | N/A |
+
+## Scenario Coverage (@s ↔ test)
+
+- @s1 (zero elapsed before start) → `GameSessionMetrics.test should_report_zero_elapsed_when_no_level_started`.
+- @s2 (elapsed from injected clock while playing) → `GameSessionMetrics.test should_measure_elapsed_from_the_injected_clock_while_playing`.
+- @s3 (freeze elapsed at victory) → `GameSessionMetrics.test should_freeze_elapsed_time_at_the_moment_the_level_is_won`.
+- @s4 (moves from command history) → `GameSessionMetrics.test should_count_moves_from_the_recorded_extractions`.
+- @s5 (snapshot exposes plain metrics) → `GameSessionMetrics.test should_expose_plain_elapsed_and_moves_on_the_application_snapshot`.
+- @s6 (won outcome: strategy score/time/moves) → `ResolveLevelOutcomeUseCase.test should_resolve_a_won_outcome_with_strategy_score_time_and_moves`.
+- @s7 (not-won → zero score) → `ResolveLevelOutcomeUseCase.test should_resolve_a_zero_score_when_the_level_is_not_won`.
+- @s8 (ViewModel only maps state) → `GameViewModel.test should_not_expose_scoring_or_progress_metric_sources` (+ existing victory/defeat mapping tests).
+
+## Result Obtained
+
+Application / domain:
+- `application/use-cases/game/GameSession.ts`: constructor takes the domain `Clock`
+  port (default `systemClock`); `start()` records `startedAtMs`; `elapsedMs()` freezes
+  the first time `LevelResult` is terminal so victory time is deterministic;
+  `movesCount()` returns `CommandHistory.size`. No `Date.now()`.
+- `application/use-cases/game/GameSnapshotDto.ts` + `GameSnapshotMapper.ts`: snapshot
+  now carries plain `elapsedMs` and `movesCount`.
+- `application/use-cases/game/LevelOutcomeDto.ts` + `ResolveLevelOutcomeUseCase.ts`
+  (new): runs the injected `IScoringStrategy` over a `ScoreContext` and returns the
+  already-calculated `{ status, won, score, timeSeconds, movesCount }` (time/moves
+  clamped to the persistence floor `>= 1`, identical to the old route behavior).
+- `application/facades/GameFacade.ts`: injects `scoring`/`clock` (defaults kept),
+  builds the session with the clock, and exposes `getLevelOutcome()`.
+
+Presentation:
+- `presentation/view-models/GameViewModel.ts`: dropped `startedAtMs`/`finishedAtMs`/
+  `elapsedMs()`/`movesCount()`/`markFinishedIfTerminal()` and all `Date.now()`. The
+  extracted-arrow stack is kept only to map the UI list on undo (animation state).
+- `presentation/hooks/useGameSession.ts`: now also returns the composed `facade`.
+- `app/game.tsx`: the victory effect reads `facade.getLevelOutcome()` and forwards
+  `score`/`timeSeconds`/`movesCount`; no `ScoreContext`/`TimeScoringStrategy`/
+  `Date.now()` for domain metrics in the route.
+
+Validation: `npm run verify` GREEN (56 suites / 272 tests, lint + typecheck +
+coverage). 2 new application test suites (7 tests) + 1 presentation guard test.
+
+## Team modifications pending human review
+
+- Application tests are subject to mandatory human review (AGENTS §5): the new
+  `GameSession`/`ResolveLevelOutcomeUseCase` tests and the metric-source guard.
+- Confirm the `timeSeconds`/`movesCount` `>= 1` clamp belongs in the application use
+  case (kept identical to the prior route behavior; backend expects `>= 1`).
+
+## Lessons / Limitations
+
+- `Date.now()` already had a domain port (`domain/level/Clock`); reusing it kept the
+  refactor inward-only and made victory timing deterministic under test.
+- `GameFacade.createDefault()` is intentionally retained — removing it and assembling
+  the gameplay composition root is the sibling ticket `CA-008`. Exposing `facade` from
+  `useGameSession` is the seam `CA-008` will compose against.
+- The leaderboard/progress transport contracts (MAZ-138/MAZ-141) are unchanged; only
+  the source of the numbers moved from presentation to application.
+
+
+---
+
+# AI Usage Log: MAZ-169 carry boardShape through the backend-driven level path
+
+## Task / Problem
+
+Bug found in the post-merge deep review: the client's HTTP catalog path **dropped
+`boardShape`**. `LevelDetailDto.definition` was only `{ attempts, arrows }` and
+`LevelCatalogMapper.toDefinition` never mapped the mask, so a shaped level served by
+`GET /levels/:id` rendered **rectangular** — the MAZ-150 shaped render only worked via
+the local `JsonLevelStrategy` path, which the runtime catalog does NOT use. Fix it so
+DB-served shaped levels render their mask.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8 (1M).
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Not used | Direct defect fix; no spec. | N/A |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored ticket MAZ-169 from the review finding. | MAZ-169 |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red→Green: added a shaped `LevelResponseDto` test (board shape dropped → undefined), then mapped it. | `tests/infrastructure/repositories/HttpLevelCatalogRepository.test.ts` |
+| Judge (`.agents/judge.md`) | Referenced | Pre-PR self-audit: `npm run verify` green; no-shape path unchanged. | `npm run verify` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | StrykerJS is not configured in the client repo; the mapper is covered by explicit assertions. | N/A |
+
+## Scenario Coverage
+
+- Shaped detail → populated `boardShape` → `HttpLevelCatalogRepository.test should_map_board_shape_from_level_detail`.
+- No-shape detail → `boardShape` undefined → `should_omit_board_shape_when_level_detail_has_none`.
+
+## Result Obtained
+
+- `LevelCatalogDtos.ts`: new `BoardShapeDto` + optional `definition.boardShape` on
+  `LevelDetailDto`.
+- `LevelCatalogMapper.toDefinition`: maps `definition.boardShape` → the client
+  `LevelDefinition.boardShape` (`type: "CELL_MASK"`, cells `{row,col}`), conditional and
+  backward compatible. So a DB-served shaped level now flows through `GameFacade` →
+  `BoardSnapshotMapper` → `GameUiState.boardShape` → `BoardView` (MAZ-150) and renders
+  the mask instead of a rectangle.
+
+## Verification
+
+- `npm run verify` → **57 suites / 285 tests** green (lint + typecheck + coverage).
+
+## Team Modifications Pending Human Review
+
+- The offline fallback fixtures (`manualLevels.ts`) are intentionally left as-is (a
+  degraded offline mode); the backend remains the source of truth (see MAZ-168). Trimming
+  the 10k-line fixture file is high-risk/low-value (many domain/application tests depend
+  on it) and was deliberately NOT done.
+- Pair with **MAZ-168** (backend JSON catalog) + a reachable, seeded backend so shaped
+  DB levels (e.g. Cross Beacon) actually appear and render.
+
+## Lessons / Limitations
+
+The shaped-board feature had a working domain/parse/render chain but a gap on the real
+runtime path: the app loads the catalog via `LevelCatalogMapper`, not `JsonLevelStrategy`,
+so the mask was silently dropped. The fix is one mapper field — but it's the field that
+makes the feature visible from the database.
+
+
+---
+
+# AI Usage Log: MAZ-164 Flatten boundary DTOs and keep domain types out of presentation
+
+## Task / Problem
+
+Clean Architecture remediation slice `CA-011` (report `C-Y4`). Application "DTOs" and
+ports were exposing or re-exporting domain types across the application → presentation
+boundary: `application/dto/GameEventDto.ts` re-exported the domain `GameEventType`
+(and `dto/index.ts` re-exported it again); `GameSnapshotDto`/`LevelOutcomeDto` typed
+their fields with the domain `GamePhase`/`LevelStatus`/`DefeatReason`;
+`ILevelCatalogRepository.LevelCatalogSummary.difficulty` used the domain `Difficulty`;
+and `presentation/view-models/LevelSelectViewModel.ts` imported the domain `Difficulty`
+directly (the only `@/domain` import left in `src/presentation`). This ticket gives the
+boundary its own plain DTO literal types, maps domain → DTO inside the application
+layer, exposes ready-to-consume difficulty fields to the level list, and adds an eslint
+guard so `presentation` can never import `@/domain` again. No serialized value changes.
+Covers `@s1..@s9` of `specs/boundary-dtos.feature`.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+Work MAZ-164 end to end honoring both repos' `AGENTS.md`, root `MEMORY.md`,
+`Linear_MCP_Guideline.md`; a new worktree per ticket; AI logging +
+`compile-ai-usage.sh`; and commit/push/PR/Linear. As a refactor, review the whole
+context and the affected tickets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Distilled the approved CA-011 scope from `Clean_Architecture_Fix_Tickets_Proposal.md` + the actual code violations into a local spec; no separate session. | `specs/boundary-dtos.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored the executable `.feature` (`@s1..@s9`) from the already-approved ticket ACs. | `specs/boundary-dtos.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Implemented the DTO-owned literals + boundary mappers and the difficulty ViewState, with mapper/ViewModel/component tests and a lint-guard probe. | tests below + `@s → test` map |
+| Judge (`.agents/judge.md`) | Referenced | Pre-PR self-audit: `npm run verify` green; `src/presentation` has zero `@/domain` imports (proved by a throwaway eslint probe); `application/dto` re-exports no domain type. | `npm run verify`, eslint `no-restricted-paths` probe |
+| Mutation Tester (`.agents/mutation.md`) | Not used | StrykerJS is not configured in the client repo (same as MAZ-144/149/160). The new translation logic is covered by exhaustive value assertions (every domain enum value → identical DTO literal). | N/A |
+
+## Scenario Coverage (@s ↔ test)
+
+- @s1 (snapshot phase DTO literal) → covered by the typed `mapGameSnapshot` + `BoundaryDtos.test should_map_every_domain_phase_to_the_same_dto_literal`.
+- @s2 (lost result → DTO status/reason) → `BoundaryDtos.test should_map_a_lost_level_finished_event_to_dto_status_and_reason`.
+- @s3 (every phase/status/reason maps to identical DTO literal) → `BoundaryDtos.test should_map_every_domain_{phase,status,defeat_reason}_to_the_same_dto_literal`.
+- @s4 (event DTO discriminator + plain coordinates) → `BoundaryDtos.test should_map_a_move_event_to_a_dto_with_plain_coordinates`.
+- @s5 (dto barrel re-exports no domain type) → `dto/index.ts` exports `GameEventTypeDto`; `grep` of `src/application/dto` shows no `export … from "…domain…"`.
+- @s6 (catalog summary plain difficulty literal) → `LevelSelectViewModel.test` fake repo summaries use `DifficultyDto` strings + typecheck.
+- @s7 (ViewModel ready-to-consume difficulty, no domain import) → `LevelSelectViewModel.test should_expose_ready_to_consume_difficulty_fields` / `should_map_manual_levels_to_star_ratings`.
+- @s8 (LevelCard renders from difficultyStars) → `LevelCard.test should_fill_stars_from_difficulty_stars` / `should_fill_one_star_for_an_easy_level`.
+- @s9 (presentation has no `@/domain` import) → eslint `import/no-restricted-paths` zone (`presentation` ← `domain`), verified by a throwaway probe file that errors.
+
+## Result Obtained
+
+Application:
+- `application/use-cases/game/GameSnapshotDto.ts`: now owns `GamePhaseDto`,
+  `LevelStatusDto`, `DefeatReasonDto` literal unions (no domain import); `GameResultDto`
+  / `GameSnapshotDto` use them.
+- `application/use-cases/game/GameSnapshotMapper.ts`: exports `toGamePhaseDto`,
+  `toLevelStatusDto`, `toDefeatReasonDto` — the single domain → snapshot DTO translation
+  point — and maps `phase`/`result` through them.
+- `application/use-cases/game/LevelOutcomeDto.ts` + `ResolveLevelOutcomeUseCase.ts`:
+  `status` is now `LevelStatusDto`, mapped via `toLevelStatusDto`.
+- `application/dto/GameEventDto.ts`: defines its own `GameEventTypeDto` const+union and
+  no longer re-exports the domain `GameEventType`; the event payload types use it.
+- `application/dto/GameEventMapper.ts`: switches on the domain `GameEventType` and emits
+  the boundary-owned `GameEventTypeDto` discriminator.
+- `application/dto/DifficultyDto.ts` (new): boundary difficulty literal.
+- `application/dto/index.ts`: re-exports `GameEventTypeDto`, no domain type.
+- `application/ports/ILevelCatalogRepository.ts`: `LevelCatalogSummary.difficulty` is now
+  `DifficultyDto`.
+
+Infrastructure:
+- `infrastructure/mappers/level-catalog/LevelCatalogMapper.ts`: casts the wire string to
+  `DifficultyDto` for the summary (the `LevelDefinition` build input keeps domain
+  `Difficulty`, which is correct — application build data, not a presentation DTO).
+
+Presentation:
+- `presentation/view-models/LevelSelectViewModel.ts`: dropped the `@/domain` import.
+  `LevelListItem` now exposes ready-to-consume `difficultyStars` (1–3) and
+  `difficultyLabel`; the ViewModel maps the plain difficulty literal to them.
+- `presentation/view-models/GameViewModel.ts`: uses `GameEventTypeDto`.
+- `presentation/components/LevelCard.tsx`: renders the rating from `level.difficultyStars`
+  and uses `level.difficultyLabel` for the accessibility label; maps no domain difficulty.
+
+Guardrail:
+- `eslint.config.js`: new `import/no-restricted-paths` zone blocking `src/presentation`
+  from importing `src/domain` (DoD: "Lint/check bloquea presentation → domain").
+
+Validation: `npm run verify` GREEN (59 suites / 294 tests, lint + typecheck + coverage).
+New: `tests/application/dto/BoundaryDtos.test.ts` (5 tests), `tests/presentation/components/LevelCard.test.tsx` (2 tests), +2 ViewModel difficulty tests.
+
+## Team modifications pending human review
+
+- Application/presentation tests are subject to mandatory human review (AGENTS §5): the
+  new boundary mapper tests and the difficulty ViewState tests.
+- Confirm `difficultyLabel` should stay a plain English label (used only for the card's
+  accessibility label) or be routed through i18n — enriching ViewStates further is the
+  sibling ticket `CA-012`.
+
+## Lessons / Limitations
+
+- The domain enums and the new DTO literals are structurally identical string unions, so
+  each converter is a typed pass-through. The value is the *type ownership*: the files
+  presentation imports (`GameSnapshotDto.ts`, `GameEventDto.ts`, `DifficultyDto.ts`) now
+  depend on no domain code, and the translation lives in application-only mappers.
+- `LevelDefinition.difficulty` deliberately keeps the domain `Difficulty` — it is an
+  application build input that constructs domain levels, not a presentation-facing DTO,
+  so it is out of scope.
+- The eslint zone is the real enforcement of "presentation never imports domain"; a
+  throwaway probe file confirmed it errors before the change could regress.
+
+
+---
+
+# AI Usage Log: MAZ-167 [CA-014] Enforce `reglas_clean_arch.md` strictly in the judge
+
+## Task / Problem
+
+Cross-repo docs/chore ticket (`MAZ-167`, temporary id `CA-014`,
+milestone `M8 - Clean Architecture Remediation`). The client judge already
+checked the dependency rule and MVVM, but did not force reading/applying the
+**whole** `reglas_clean_arch.md` checklist, nor force every `src`-touching ticket
+to declare its per-layer impact through a `Clean Architecture contract`. There
+was also no spec/ticket template carrying that contract.
+
+## Tool and Model
+
+Claude Code / claude-opus-4-8.
+
+## Prompt Used
+
+User asked to implement MAZ-167 following the repo agent rules: read both
+`AGENTS.md`, the root `MEMORY.md`, `Linear_MCP_Guideline.md`, work in a fresh
+worktree, log AI usage + run `compile-ai-usage.sh`, commit/push/PR and update
+Linear. Read before implementing: `AGENTS.md`, root `MEMORY.md`,
+`reglas_clean_arch.md`, the Linear ticket body, `.agents/*` and existing specs.
+No secrets pasted.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | This ticket edits the prompt itself: added a mandatory `## Clean Architecture contract` step (incl. MVVM) pointing at `specs/_TEMPLATE.spec.md`. No separate spec-partner session was run. | `.agents/spec-partner.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Edited the prompt to require each `src`-touching slice/ticket carry the `Clean Architecture contract`. No separate planner session. | `.agents/planner.md` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Not used | Docs-only ticket; no production code or tests. | N/A |
+| Judge (`.agents/judge.md`) | Referenced | Main target of the change: tightened protocol step 1/3, verdict checklist and hard rules; followed its own MVVM/dependency constraints while editing. No separate judge session run against a PR. | `.agents/judge.md` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | No production code changed; nothing to mutate. | N/A |
+
+## Scenario Coverage (@s ↔ test)
+
+Not applicable — docs/chore ticket. Acceptance criteria are non-functional and
+validated by manual dry-run of the judge protocol against this ticket's own
+`Clean Architecture contract` (embedded in the Linear description).
+
+## Result Obtained
+
+- `specs/_TEMPLATE.spec.md` — new client spec/ticket template with the mandatory
+  `## Clean Architecture contract` section, including the MVVM rules (View dumb,
+  ViewModel only presentation, composition root in framework) and per-layer
+  impact (Domain/Application/Infrastructure/Presentation/Framework).
+- `.agents/judge.md` — protocol step 1 now reads `docs/reglas_clean_arch.md`
+  (mirror of canonical `../reglas_clean_arch.md`) and requires applying the
+  **whole** checklist; step 3 requires the contract follow the template and
+  declare impact per layer; verdict checklist adds a per-layer-impact line, a
+  reinforced MVVM line and a note requiring one PASS/FAIL per applicable rule;
+  two new hard rules.
+- `.agents/spec-partner.md` / `.agents/planner.md` — require the contract in the
+  generated spec and in every `src`-touching Linear ticket.
+
+## Verification
+
+- Docs-only change under `.agents/` and `specs/` (markdown); no `src`, `tests`
+  or build config touched, so `npm run verify` is unaffected.
+- Dry-run: MAZ-167's Linear description already carries a `## Clean Architecture
+  contract` block (all layers `no previsto`, docs-only) — the judge protocol
+  processes it and would not reject, satisfying the Definition of Done example.
+
+## Team Modifications Pending Human Review
+
+- The canonical `reglas_clean_arch.md` is mirrored into each repo's `docs/`.
+  Path strategy kept as `docs/reglas_clean_arch.md` (self-contained per repo)
+  with `../reglas_clean_arch.md` documented as the canonical fallback.
+- Confirm `specs/_TEMPLATE.spec.md` (underscore prefix) is the desired template
+  location and naming.
+
+## Lessons / Limitations
+
+- Much of CA-014's judge changes had already landed in prior commits; the real
+  remaining gap was the missing spec/ticket template and wiring spec-partner +
+  planner to it. Verified the existing state before adding, to avoid duplication.
+
+
+---
+
+# AI Usage Log: MAZ-182 (M9/C4) — Client: store JWT in expo-secure-store instead of AsyncStorage
+
+## Task / Problem
+
+The persisted `AuthSession` (which embeds the 7-day `accessToken`) was written to
+**plaintext AsyncStorage** — `createSessionManager()` (`src/framework/config/session.ts`)
+wired `SessionManager` over `AsyncStorageAdapter`, and `expo-secure-store` was not
+even a dependency. For a mandatory-auth product the bearer token was recoverable
+from device storage.
+
+Goal: persist the session blob in the OS keychain/keystore via `expo-secure-store`
+and migrate any existing AsyncStorage session on first read so users are not logged
+out by the update. Infrastructure-only — no change to `SessionManager`,
+`ISessionManager`, `ILocalStorage`, `AuthSession`, or any use case.
+
+## Tool and Model
+
+Claude Opus 4.8 via Claude Code CLI.
+
+## Prompt Used
+
+User requested starting MAZ-182 following the established team workflow (read both
+`AGENTS.md`, root `MEMORY.md`, `Linear_MCP_Guideline.md`, the M9 memory; new
+worktree; spec → Gherkin → TDD; ai-log + compile usage; commit/push/PR; update
+Linear), noting it is a refactor so the related M9 tickets must be reviewed.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Used | Wrote the spec after reading `SessionManager`, `session.ts`, `AsyncStorageAdapter`, `ILocalStorage`, `AuthSession`, `StorageError`, and the existing storage tests. Confirmed the 422-adjacent auth scope is owned by sibling tickets (179/180/181, still Backlog) so this slice stays infra-only. | `specs/mobile-secure-store-MAZ-182.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Used | Distilled 7 Gherkin scenarios (`@s1..@s7`): save→secure+purge legacy, migrate-on-read, secure-first, null, remove-both, error→StorageError, clear-unsupported. | `specs/mobile-secure-store-MAZ-182.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red→Green per file: SecureStorageAdapter test (confirmed RED: module not found) → adapter; MigratingSessionStorage test (RED) → decorator; then wired `createSessionManager`. Added the expo-secure-store manual mock + jest.setup activation. | tests, code, `@s → test` map below |
+| Judge (`.agents/judge.md`) | Referenced | Applied the `docs/reglas_clean_arch.md` checklist in-session: `expo-secure-store` confined to `src/infrastructure`; `ILocalStorage` port unchanged; composition root stays in framework; no domain/application/presentation change. No separate judge session run. | CA contract in `specs/mobile-secure-store-MAZ-182.spec.md` |
+| Mutation Tester (`.agents/mutation.md`) | Used | Ran `stryker` scoped to the two new infra files (infra is outside the project's default mutate globs — `domain`/`application` only). First run 76% (1 real ConditionalExpression survivor on the migration null-guard + StringLiteral message survivors). Added a "no migration when empty" assertion + exact-message assertions; re-run 96%, `MigratingSessionStorage.ts` 100%. | scores below |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+|----------|------|------|
+| @s1 — save writes secure + purges legacy | `should_write_to_secure_and_purge_legacy_when_saving` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| @s2 — migrate legacy session on first read | `should_migrate_legacy_session_to_secure_when_secure_is_empty` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| @s3 — secure-first, legacy untouched | `should_read_from_secure_and_not_touch_legacy_when_secure_has_value` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| @s4 — null when both empty | `should_return_null_and_not_migrate_when_neither_store_has_value` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| @s5 — remove clears both | `should_remove_key_from_both_stores_when_clearing_session` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| @s6 — SecureStore failure → StorageError | `should_throw_StorageError_when_{read,write,delete}_fails` | `tests/infrastructure/storage/SecureStorageAdapter.test.ts` |
+| @s7 — clear unsupported | `should_throw_StorageError_when_called_because_secure_store_has_no_bulk_clear` | `tests/infrastructure/storage/SecureStorageAdapter.test.ts` |
+| (edge) migration write fails → legacy kept | `should_keep_legacy_copy_when_secure_write_fails_during_migration` | `tests/infrastructure/storage/MigratingSessionStorage.test.ts` |
+| (support) get/set/remove happy paths | `SecureStorageAdapter` get/set/remove tests | `tests/infrastructure/storage/SecureStorageAdapter.test.ts` |
+
+## TDD Cycles
+
+**Batch 1 — SecureStorageAdapter (RED → GREEN)**
+- RED: `SecureStorageAdapter.test.ts` → module not found (and confirmed the
+  expo-secure-store manual mock resolves).
+- GREEN: `SecureStorageAdapter implements ILocalStorage` over
+  `SecureStore.{getItemAsync,setItemAsync,deleteItemAsync}`, failures wrapped in
+  `StorageError`, `clear()` throws (no bulk-clear API). 8/8.
+
+**Batch 2 — MigratingSessionStorage decorator (RED → GREEN)**
+- RED: `MigratingSessionStorage.test.ts` → module not found.
+- GREEN: Decorator over (secure, legacy): secure-first read, one-time
+  legacy→secure migration on miss (write secure → remove legacy, in that order so
+  a failed write keeps the legacy copy), `setItem`/`removeItem` purge legacy,
+  `clear()` wipes legacy. 24/24 storage tests.
+
+**Batch 3 — wiring + mutation hardening**
+- `createSessionManager()` now wires `MigratingSessionStorage(SecureStorageAdapter,
+  AsyncStorageAdapter)`. Mutation surfaced a real survivor (`if (legacyValue ===
+  null)` → `if (false)`); the null test didn't assert "no migration attempted".
+  Added that assertion + exact error-message assertions. 96% / decorator 100%.
+
+## Result Obtained
+
+**New files:**
+- `src/infrastructure/storage/SecureStorageAdapter.ts` — Adapter over expo-secure-store
+- `src/infrastructure/storage/MigratingSessionStorage.ts` — Decorator (secure-primary + legacy migration)
+- `__mocks__/expo-secure-store.js` — in-memory manual mock
+- `specs/mobile-secure-store-MAZ-182.{spec.md,feature}` — CA spec + 7 scenarios
+- `tests/infrastructure/storage/{SecureStorageAdapter,MigratingSessionStorage}.test.ts`
+
+**Modified files:**
+- `src/framework/config/session.ts` — composition root points at the secure, migrating storage
+- `jest.setup.ts` — `jest.mock("expo-secure-store")` activates the manual mock globally
+- `package.json` / `package-lock.json` — added `expo-secure-store@~15.0.8` (via `expo install`)
+- `app.json` — `expo install` added the `expo-secure-store` config plugin (iOS keychain entitlement)
+
+**Unchanged on purpose:** `SessionManager`, `ISessionManager`, `ILocalStorage`,
+`AuthSession`, `LogoutUseCase`, `AsyncStorageAdapter`, `StorageError`.
+
+## Verification
+
+- `npm run verify` — GREEN: lint + typecheck + 61 suites / 309 tests.
+- Scoped Stryker on the two new files: 96% (`MigratingSessionStorage.ts` 100%,
+  `SecureStorageAdapter.ts` one cosmetic StringLiteral survivor — the `'__all__'`
+  key arg of the `clear()` `StorageError`, message asserted but not the key field).
+  Note: `src/infrastructure` is outside the project's default mutate globs
+  (domain/application only), so this scoped run is supplementary, not the gate.
+
+## Team Modifications Pending Human Review
+
+1. **Whole session blob → SecureStore** (not a token/profile split). The blob is
+   small (`userId`, `username`, `role`, `accessToken`) and the key
+   `arrow_maze_session` is SecureStore-valid, so AC1 (token via SecureStore) holds
+   with the smallest change and `SessionManager` untouched.
+2. **`app.json` gained the `expo-secure-store` plugin** (added by `expo install`).
+   A native rebuild is required for the keychain entitlement to apply on device.
+3. **Migration is lazy, inside the storage decorator** — it runs on the first
+   `get()` rather than a launch bootstrap (MAZ-179, not done yet). When MAZ-179
+   adds a bootstrap gate, no change is needed here; migration already happens on
+   the first session read.
+4. **`SecureStorageAdapter.clear()` throws** (SecureStore has no bulk clear). Never
+   reached by the session flow (logout uses `removeItem`).
+
+## Lessons / Limitations
+
+- `expo-secure-store` is a native module; it is verified against its contract via a
+  Jest manual mock, not the real keychain. Device validation (real keychain + the
+  AsyncStorage→SecureStore migration on a real upgrade) needs `expo run` and is out
+  of scope here.
+- The `__mocks__/*.js` manual mock needs `/* global jest */` (the existing svg/
+  reanimated mocks dodge this by not referencing `jest`); without it eslint's
+  `no-undef` fails the lint gate.
+- Mutation caught a genuine gap: "returns null" alone didn't pin "doesn't attempt a
+  spurious migration" — asserting the absence of the secure write killed the
+  conditional mutant.
+
+
+---
+
+# AI Usage Log: MAZ-183 — Guarantee a UUID levelId reaches submit & leaderboard
+
+## Task / Problem
+
+The backend requires a v4 **UUID** `levelId` and returns **422** otherwise. The client's offline
+fallback catalog (`manualLevels.ts`) used **slug** ids (`"manual-001-first-knot"`). The `levelId`
+sent to the three network sinks is the raw route param (`app/game.tsx:31`), equal to the selected
+`LevelListItem.id` — a slug whenever the remote catalog is not the active source (initial render
+before `loadLevels()` resolves, or any `.catch()` offline fallback). So winning a level offline
+POSTed a slug to `POST /progress/levels/<slug>/complete` and `POST /leaderboard/scores` and read
+`GET /leaderboard/<slug>` — all 422. The breakage was invisible because every test used slug ids.
+There was no UUID validation and no `LevelId` value object anywhere.
+
+## Tool and Model
+
+Claude Opus 4.8 (1M context) via Claude Code CLI.
+
+## Prompt Used
+
+User requested starting MAZ-183 following the team workflow (review both AGENTS.md, new worktree,
+root MEMORY.md + Linear_MCP_Guideline.md, register AI usage, run all checks, update MEMORY/AGENTS,
+commit/push/PR/Linear). The `.feature` (@s1..@s8) plus the 3 decisions (adopt the 15 backend seed
+UUIDs as fixture ids; add an `isUuid` guard at the application boundary; migrate slug-id tests to
+UUIDs) were approved by the human (Daniel) before any TDD.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Followed the role discipline from AGENTS.md §0.2 (no separate `.agents/` session). A read-only sub-agent mapped the full levelId data flow with file:line; distilled into the CA spec. | `specs/uuid-levelid-MAZ-183.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored 8 `@s` scenarios (fixtures-are-UUIDs, isUuid, the 2 facade guards × on/off, the VM guard × on/off); presented for the single human gate. | `specs/uuid-levelid-MAZ-183.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Red→Green→Refactor in batches: isUuid (red→green), facade/VM guard tests (red→green), then fixtures→UUIDs, then slug-id test migration. | tests, src, this entry |
+| Judge (`.agents/judge.md`) | Referenced | Self-review vs `docs/reglas_clean_arch.md`: `isUuid` is a leaf util (no new cross-layer edges); facades keep orchestration-only (format guard, not a business rule); VM stays presentation-only; domain untouched; `@s → test` complete. Verdict: PASS. | this entry, spec CA block |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Stryker scoped to the 4 changed files. First run 91.55% (6 survivors). Killed the 3 in the new logic (2 isUuid anchors + the guard `??` branch). Second run **95.77%**; isUuid + LeaderboardFacade **100%**. | `reports/mutation/index.html` |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+|----------|------|------|
+| @s1 — fixtures expose only UUID ids | `should_expose_only_uuid_level_ids` | `tests/presentation/view-models/LevelSelectViewModel.test.ts` |
+| @s2 — isUuid true/false | `should_return_true_when_value_is_a_v4_uuid` (+ slug/empty/non-v4/prefix/suffix) | `tests/shared/isUuid.test.ts` |
+| @s3 — submit no-op on non-UUID | `should_not_submit_score_when_level_id_is_not_a_uuid` | `tests/application/facades/LeaderboardFacade.test.ts` |
+| @s4 — submit delegates on UUID | `should_delegate_submit_score_to_repository_when_level_id_is_a_uuid` | `tests/application/facades/LeaderboardFacade.test.ts` |
+| @s5 — read Empty without request on non-UUID | `should_expose_empty_without_requesting_when_level_id_is_not_a_uuid` | `tests/presentation/view-models/LeaderboardViewModel.test.ts` |
+| @s6 — read fetches on UUID | `should_expose_loaded_when_entries_exist` | `tests/presentation/view-models/LeaderboardViewModel.test.ts` |
+| @s7 — completeLevel no-op on non-UUID | `should_not_write_progress_when_level_id_is_not_a_uuid` (+ `should_return_existing_progress_without_writing...`) | `tests/application/facades/ProgressFacade.test.ts` |
+| @s8 — completeLevel persists+syncs on UUID | `should_complete_level_remotely_and_cache_latest_progress` | `tests/application/facades/ProgressFacade.test.ts` |
+
+## Result Obtained
+
+**New files:**
+- `src/shared/isUuid.ts` — pure v4-UUID validator (parallel to `createUuid.ts`).
+- `specs/uuid-levelid-MAZ-183.{spec.md,feature}`.
+- `tests/shared/isUuid.test.ts`.
+
+**Modified source:**
+- `src/application/level-build/fixtures/manualLevels.ts` — the 15 fixture ids now carry the canonical backend seed UUIDs (orders 1-15, `…440010`..`…440024`); propagates to `manualLevels[].id` and `definition.id`. Names/order/difficulty unchanged.
+- `src/application/facades/LeaderboardFacade.ts` — `submitScore` no-ops when `!isUuid(input.levelId)`.
+- `src/application/facades/ProgressFacade.ts` — `completeLevel` skips local+remote and returns current/empty progress when `!isUuid(completedLevel.levelId)`.
+- `src/presentation/view-models/LeaderboardViewModel.ts` — `load` sets `Empty` without a request when `!isUuid(levelId)`.
+
+**Migrated tests to UUID levelIds (AC3):** `LeaderboardFacade`, `ProgressFacade`, `LeaderboardViewModel`, `LevelSelectViewModel`, `HttpLeaderboardRepository`, `HttpProgressRepository`, `LocalProgressRepository`, `ProgressMergePolicy`, `ProgressViewModel`, and the leaderboard/progress contract tests.
+
+No facade signatures changed. No new entity/use-case/pattern (only a `src/shared` util + format guards). `app/game.tsx` needed no change — the guards live in the facades it calls.
+
+## Verification
+
+- `npm run verify` — lint 0, typecheck 0, **60 suites / 305 tests** passing.
+- Scoped Stryker mutation on the 4 changed files: **95.77%**; `isUuid.ts` and `LeaderboardFacade.ts` **100%**.
+  - 3 remaining survivors are **pre-existing**, untouched by this ticket: `ProgressFacade.ts:67/76` (`pendingSync: true` in `emptyProgress`/`mergeCompletion`, overwritten downstream → equivalent mutants) and `LeaderboardViewModel.ts:27` (transient `Loading` setState, not asserted by design). All mutants in the new logic are killed.
+
+## Team Modifications Pending Human Review
+
+1. **Offline fixture ids are now the real backend UUIDs.** Offline play of "level N" now references backend level N, so offline-completed progress/scores align and can sync. The offline fixture **geometry** may still differ from what the backend serves for the same UUID — pre-existing degraded-offline caveat; catalog source-of-truth is `MAZ-168/169`, out of scope here.
+2. **Guards are silent no-ops** (matches the existing best-effort victory writes). User-visible leaderboard/replay UX is `MAZ-184`.
+
+## Lessons / Limitations
+
+- The network `levelId` is the route param, never re-derived from the loaded definition — so the fix had to make the *id source* (fixtures) emit UUIDs, plus guard the application boundary, rather than touch `app/game.tsx`.
+- Stryker's anchor mutations (`^`/`$` removal on the UUID regex) are real: a validator without prefix/suffix tests passes embedded-junk strings. Added leading/trailing-junk cases to kill them.
+- New git worktree: `npm ci` inside it (don't symlink `node_modules`); jest runs via `--experimental-vm-modules`.
+
+
+---
+
+# AI Usage Log: MAZ-179 Enforce mandatory auth gate on mobile launch
+
+## Task / Problem
+
+Client ticket `MAZ-179`: make mobile login mandatory after the existing
+MAZ-139 login flow by bootstrapping the persisted session at launch, guarding
+protected routes, removing gameplay guest rendering, and exposing visible
+identity/logout controls.
+
+## Tool and Model
+
+Codex CLI / GPT-5.
+
+## Prompt Used
+
+User asked to implement MAZ-179 following both repo `AGENTS.md` files, the root
+`MEMORY.md`, `Linear_MCP_Guideline.md`, a fresh worktree, AI usage logging,
+checks, commit/push/PR, and Linear update. The Linear issue was read through the
+local Linear GraphQL workflow without exposing secrets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Read and applied the role constraints to distill the Linear issue into a local executable contract without running a separate agent session. | `specs/mandatory-auth-gate.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Read and applied the Gherkin/planning rules to create tagged scenarios and keep the slice within the approved Clean Architecture contract. | `specs/mandatory-auth-gate.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Followed red-green-refactor locally: added failing AuthGate/Home/Settings tests first, then implemented the route gate and UI props. | `tests/framework/auth/AuthGate.test.tsx`, `tests/presentation/screens/HomeScreen.test.tsx`, `tests/presentation/screens/SettingsScreen.test.tsx` |
+| Judge (`.agents/judge.md`) | Not used | No separate judge review was run in this session. | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | This ticket changed framework routing and presentation behavior only; no domain/application rule was added. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` unauthenticated protected route redirects to `/login` | `tests/framework/auth/AuthGate.test.tsx` -> `should_redirect_to_login_when_protected_route_has_no_session` |
+| `@s2` persisted session renders protected content | `tests/framework/auth/AuthGate.test.tsx` -> `should_render_protected_content_when_session_bootstraps` |
+| `@s3` logout clears session and returns to login | `tests/framework/auth/AuthGate.test.tsx` -> `should_clear_session_and_redirect_to_login_when_logout_runs` |
+| `@s4` Home/Settings show username and logout | `tests/presentation/screens/HomeScreen.test.tsx` and `tests/presentation/screens/SettingsScreen.test.tsx` -> `should_show_username_and_logout_when_session_identity_is_provided` |
+| `@s5` game route is protected before guest gameplay can render | `tests/framework/auth/AuthGate.test.tsx` -> `should_redirect_to_login_when_game_route_has_no_session` |
+
+## Result Obtained
+
+- Added `AuthGate` in `src/framework/auth` to bootstrap persisted session,
+  protect every non-login route, redirect authenticated users away from
+  `/login`, and expose session/clear/refresh through framework context.
+- Wrapped the Expo Router stack in `app/_layout.tsx`.
+- Updated login success to refresh the auth context and replace navigation with
+  Home.
+- Updated Home and Settings routes/screens to show username and a logout action.
+- Updated game and progress routes to consume the auth context instead of
+  tolerating guest session data.
+- Added `clearCurrentSession()` in the framework session composition helper.
+
+## Verification
+
+- `npm run typecheck` GREEN.
+- `npm run lint` GREEN.
+- `npm test -- --runInBand tests/framework/auth/AuthGate.test.tsx tests/presentation/screens/HomeScreen.test.tsx tests/presentation/screens/SettingsScreen.test.tsx` GREEN (3 suites / 15 tests).
+- `npm run verify` GREEN (lint, typecheck, coverage; 60 suites / 301 tests). Existing React Native `Animated(View)` act warnings still appear in unrelated UI coverage tests.
+
+## Team Modifications Pending Human Review
+
+- Confirm the product decision that persisted-session presence is sufficient for
+  MAZ-179. Token validation through `GET /users/me` and global 401 handling is
+  intentionally deferred to MAZ-180.
+- Review that Settings no longer routes authenticated users to `/login` for
+  account management; the visible account action for this slice is logout.
+
+## Lessons / Limitations
+
+- A framework-level gate avoids duplicated per-route checks and catches deep
+  links consistently.
+- Presentation screens stayed UI-only by receiving identity/logout props instead
+  of reading storage or navigation directly.
+
+
+---
+
+# AI Usage Log: MAZ-180 — Handle 401: clear session and redirect to login
+
+## Task / Problem
+
+There was no 401 handling: `AxiosHttpClientAdapter` mapped a 401 to `HttpError('UNAUTHORIZED')` (a generic
+error) and nothing cleared the session or redirected. An expired/invalid token left a stale session in
+storage while authed calls silently failed and the user still "appeared" logged in. This slice makes a
+401 on an authed request clear the session and route the user to `/login`.
+
+## Tool and Model
+
+Claude Opus 4.8 (1M context) via Claude Code CLI.
+
+## Prompt Used
+
+User requested starting MAZ-180 following the team workflow (review both AGENTS.md, new worktree,
+root MEMORY.md + Linear_MCP_Guideline.md, register AI usage, run all checks, update MEMORY/AGENTS,
+commit/push/PR/Linear). The `.feature` (@s1..@s6) and the 4 decisions (notify-don't-navigate via an
+Observer + the AuthGate; fire only on authed 401s and re-reject; pure Observer module; base on develop)
+were human-approved before TDD.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Followed AGENTS §0.2; read the AuthGate (MAZ-179) + adapter + session wiring and distilled the CA spec. | `specs/handle-401-logout-MAZ-180.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored 6 `@s` scenarios (interceptor fires/ignores/re-rejects, Observer notify/unsubscribe, AuthGate clear+redirect); single human gate. | `specs/handle-401-logout-MAZ-180.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Red→Green→Refactor in batches: Observer → adapter response interceptor → httpClient wiring + AuthGate subscription. | tests, src, this entry |
+| Judge (`.agents/judge.md`) | Referenced | Self-review vs `docs/reglas_clean_arch.md`: infra depends on an injected callback (not session/navigation); the AuthGate owns the session lifecycle; no imperative nav (no redirect bounce); domain/application untouched; `@s → test` complete. Verdict: PASS. | this entry, spec CA block |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Stryker scoped to the new logic. Killed all 5 new-logic survivors in the adapter (success pass-through, optional-chain network path, undefined-headers guard, lowercase `authorization` branch). `sessionInvalidation.ts` 100%. | `reports/mutation/index.html` |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+|----------|------|------|
+| @s1 — authed 401 → onUnauthorized fired | `should_call_onUnauthorized_and_rethrow_when_an_authed_request_returns_401` | `tests/infrastructure/http/AxiosHttpClientAdapter.test.ts` |
+| @s2 — 401 without Authorization → not fired | `should_not_call_onUnauthorized_when_the_request_had_no_authorization_header` | `…/AxiosHttpClientAdapter.test.ts` |
+| @s3 — non-401 → not fired | `should_not_call_onUnauthorized_on_a_non_401_error` | `…/AxiosHttpClientAdapter.test.ts` |
+| @s4 — interceptor re-rejects | `…rejects.toBe(error)` assertion in every interceptor test | `…/AxiosHttpClientAdapter.test.ts` |
+| @s5 — Observer notify/unsubscribe | `should_call_subscribed_listener_when_notified` (+ unsubscribe / all-subscribers / no-subscribers) | `tests/framework/auth/sessionInvalidation.test.ts` |
+| @s6 — AuthGate clears + redirects on invalidation | `should_clear_session_and_redirect_to_login_when_session_is_invalidated` | `tests/framework/auth/AuthGate.test.tsx` |
+
+## Result Obtained
+
+- **New** `src/framework/auth/sessionInvalidation.ts` — a pure, dependency-free Observer channel (`onSessionInvalidated`/`notifySessionInvalidated`).
+- `src/infrastructure/http/AxiosHttpClientAdapter.ts` — new `UnauthorizedHandler` type + a response interceptor that, on a 401 whose request carried an `Authorization` header (capital or lowercase), calls `onUnauthorized` then re-rejects; anonymous 401s and non-401s are ignored. Replaced the dead `defaultHeaders` ctor param with `onUnauthorized`.
+- `src/framework/config/httpClient.ts` — wires `onUnauthorized = notifySessionInvalidated`.
+- `src/framework/auth/AuthGate.tsx` — subscribes to `onSessionInvalidated` and reacts via its existing `clearSession()` (clears storage + React state), which makes its existing `<Redirect href="/login" />` fire reactively. No imperative navigation.
+
+## Verification
+
+- `npm run verify` — lint 0, typecheck 0, **66 suites / 349 tests** passing.
+- Scoped Stryker on the new logic: `sessionInvalidation.ts` **100%**; the adapter's new interceptor + `hadAuthorization` are fully killed (5 edge-case mutants killed: success pass-through, `error.response?` optional chain, undefined-headers guard, lowercase `authorization`).
+  - The adapter's overall file score is dragged by **pre-existing** `put`/`delete`/`toAxiosConfig`/`mapError` gaps that this ticket did not touch; all of these framework/infra files are **outside the default Stryker `mutate` scope** (domain+application).
+
+## Team Modifications Pending Human Review
+
+1. **Notify-don't-navigate:** the 401 handler emits a session-invalidation event; the AuthGate (the session owner) clears + redirects. This avoids the redirect bounce that an imperative `router.replace('/login')` would cause (the gate's React session state stays non-null on the `/login` route → `/login → / → /login`).
+2. **Base = develop** (not stacked on MAZ-181). MAZ-181 (unmerged) also extends the adapter constructor; the eventual merge combines the two optional params into `(baseURL, tokenProvider?, onUnauthorized?)` — mechanical.
+3. **No refresh yet** (MAZ-175 deferred): a 401 always forces re-login. When MAZ-175 ships, the interceptor can refresh-and-retry before notifying.
+
+## Lessons / Limitations
+
+- Infrastructure must not import the session/storage layer or navigation; an injected callback + a pure Observer keeps the dependency rule intact and lets the AuthGate own the clear+redirect.
+- Reacting through the gate's React session state (not imperative nav) is what prevents the redirect bounce — the gate only redirects to `/login` when its in-memory `session` is null.
+- Stryker surfaced real edge cases on the `hadAuthorization`/optional-chain logic (lowercase header, undefined headers, missing `response`); added targeted tests to kill them.
+
+
+---
+
+# AI Log — MAZ-181 Central Bearer request interceptor
+
+Date: 2026-06-29
+Ticket: MAZ-181
+
+## Task / Problem
+
+Reapply the mobile Bearer request-interceptor refactor on top of current `develop`. The old MAZ-181 PR was merged into a stacked branch, not into `develop`, and its branch was stale relative to MAZ-180, MAZ-185, MAZ-186, and MAZ-187.
+
+## Tool and Model
+
+OpenAI Codex CLI, GPT-5 coding agent.
+
+## Prompt Used
+
+User requested completing the remaining M9 closure work after auditing that MAZ-181 did not reach `develop`, with repository rules from `AGENTS.md`, AI usage logging, checks, PR, and Linear updates.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Reused the existing MAZ-181 spec and updated stale base/decision notes to match current `develop`. | `specs/http-auth-interceptor-MAZ-181.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Used the existing `@s1..@s7` Gherkin scenarios as the executable contract. | `specs/http-auth-interceptor-MAZ-181.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Reapplied behavior against tests for adapter, repositories, facades, screens, sync, and victory submit. | Tests listed in `@s → test` map |
+| Judge (`.agents/judge.md`) | Not used | No separate judge session was run in this pass. | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Mutation testing was not run during this pass. | N/A |
+
+## Result Obtained
+
+- Added an injected `AuthTokenProvider` request interceptor to `AxiosHttpClientAdapter`.
+- Preserved existing MAZ-180/MAZ-187 response interceptor behavior by composing the constructor as `(baseURL, tokenProvider, onUnauthorized, tryRefresh)`.
+- Wired `createHttpClient()` to read the current session access token and attach `Authorization: Bearer <token>` centrally.
+- Kept auth login/register/refresh/logout on `createBareHttpClient()` to preserve the no-recursion guarantee from MAZ-187.
+- Removed manual Bearer headers from progress and leaderboard repositories.
+- Removed `accessToken` threading from progress/leaderboard ports, facades, `ProgressViewModel`, `ProgressScreen`, `app/game.tsx`, `app/progress.tsx`, and progress sync.
+
+## @s → Test Map
+
+| Scenario | Concrete tests |
+| --- | --- |
+| `@s1` Attach Bearer token when session token exists | `tests/infrastructure/http/AxiosHttpClientAdapter.test.ts` |
+| `@s2` No Authorization when no token | `tests/infrastructure/http/AxiosHttpClientAdapter.test.ts` |
+| `@s3` Preserve explicit Authorization | `tests/infrastructure/http/AxiosHttpClientAdapter.test.ts` |
+| `@s4` Leaderboard repository no longer hand-rolls Authorization | `tests/infrastructure/repositories/HttpLeaderboardRepository.test.ts` |
+| `@s5` Progress repository no longer hand-rolls Authorization | `tests/infrastructure/repositories/HttpProgressRepository.test.ts` |
+| `@s6` Leaderboard facade delegates without token | `tests/application/facades/LeaderboardFacade.test.ts`, `tests/integration/gameVictorySubmit.test.tsx` |
+| `@s7` Progress facade completes without token | `tests/application/facades/ProgressFacade.test.ts`, `tests/framework/progress/useProgressSync.test.tsx`, `tests/presentation/view-models/ProgressViewModel.test.ts`, `tests/presentation/screens/ProgressScreen.test.tsx` |
+
+## Verification
+
+- `npm run typecheck` passed.
+- Targeted tests passed: 9 suites, 55 tests.
+- `npm run verify` passed: 70 suites, 375 tests.
+
+## Team Modifications Pending Human Review
+
+- Review the constructor composition decision because MAZ-181 now coexists with MAZ-180/MAZ-187.
+- Confirm the auth repository should remain on a bare HTTP client for refresh/logout, preserving no-recursion behavior.
+
+## Lessons / Limitations
+
+- The old stacked MAZ-181 branch could not be merged directly because it would remove later M9 files and AI logs.
+- Full mutation testing was not run in this pass.
+
+
+---
+
+# AI Usage Log: MAZ-184 Leaderboard empty state and replay submit UX planning
+
+## Task / Problem
+
+Client ticket `MAZ-184`: prepare the executable contract for mapping empty
+leaderboards to an empty UI state and surfacing victory leaderboard submit
+outcomes instead of swallowing failures.
+
+## Tool and Model
+
+Codex CLI / GPT-5.
+
+## Prompt Used
+
+User asked to work on MAZ-184 following both repo `AGENTS.md` files, the root
+`MEMORY.md`, `Linear_MCP_Guideline.md`, a fresh worktree, AI usage logging,
+checks, commit/push/PR, Linear update, and review of affected tickets. Linear
+was read through the local GraphQL script without exposing secrets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Read and applied the role constraints to distill the Linear issue and code context into a local spec. No separate agent session was run. | `specs/leaderboard-replay-ux-MAZ-184.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Read and applied the Gherkin/planning rules to create tagged executable scenarios. No separate planner session was run. | `specs/leaderboard-replay-ux-MAZ-184.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Not used | MAZ-184 is still in Linear Backlog and the executable contract has not been human-approved, so TDD is intentionally blocked. | N/A |
+| Judge (`.agents/judge.md`) | Not used | No PR/code judge review was run for this planning-only change. | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | No production code changed. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+Not applicable yet. This is a planning/contract-only commit. The future
+implementation must map:
+
+| Scenario | Future concrete test target |
+| --- | --- |
+| `@s1` | `LeaderboardViewModel` + `LeaderboardScreen` empty-state tests |
+| `@s2` | `LeaderboardViewModel` + `LeaderboardScreen` error-state tests |
+| `@s3` | Existing non-UUID no-request ViewModel behavior |
+| `@s4` | Victory submit success UI test |
+| `@s5` | Victory submit failure UI test |
+| `@s6` | Victory side-effect orchestration test |
+| `@s7` | Non-UUID submit skipped-state test |
+
+## Result Obtained
+
+- Created `specs/leaderboard-replay-ux-MAZ-184.spec.md`.
+- Created `specs/leaderboard-replay-ux-MAZ-184.feature` with `@s1..@s7`.
+- Identified implementation blockers and affected tickets:
+  - `MAZ-172`: replay submit depends on backend best-score upsert behavior.
+  - `MAZ-173`: empty leaderboard backend read contract is not implemented yet.
+  - `MAZ-179`: auth gate is already present on the current client base.
+  - `MAZ-180`: global 401 handling remains out of scope.
+  - `MAZ-183`: UUID level id guarantee remains the owner of slug fallback fixes.
+
+## Verification
+
+- Planning-only change; no `src`, `app`, or `tests` files were modified.
+- `npm ci` was run in the new worktree because the sibling checkout's
+  `node_modules` did not include the MAZ-182 `expo-secure-store` dependency.
+- `npm run verify` GREEN (lint, typecheck, coverage; 63 suites / 327 tests).
+  Existing React Native `Animated(View)` act warnings still appear in unrelated
+  UI coverage tests.
+
+## Team Modifications Pending Human Review
+
+- Approve or amend the executable scenarios `@s1..@s7`.
+- Choose where the UI-safe `NOT_FOUND` classification should live before TDD:
+  application facade/result shape or infrastructure adapter mapping.
+- Decide whether victory submit failure needs a retry button or only visible
+  warning copy in this slice.
+
+## Lessons / Limitations
+
+- The current backend success response cannot distinguish "new best" from
+  "already recorded"; the spec intentionally requires generic success copy.
+- MAZ-184 should not hide real submit failures, but it also should not couple
+  presentation directly to concrete HTTP/adapter errors.
+
+
+---
+
+# AI Usage Log: MAZ-184 Leaderboard replay UX implementation
+
+## Task / Problem
+
+Implement client ticket `MAZ-184`: leaderboard reads must show an empty state for
+missing/empty leaderboards while preserving real error states, and victory must
+surface leaderboard submit outcomes instead of silently swallowing failures.
+
+## Tool and Model
+
+Codex CLI / GPT-5.
+
+## Prompt Used
+
+The user asked to continue closing milestone M9 after MAZ-187/MAZ-180 were
+merged to `develop`, following both repository `AGENTS.md` files, root
+`MEMORY.md`, `Linear_MCP_Guideline.md`, fresh worktrees, AI usage logging,
+checks, commit/push/PR, Linear updates, and review of affected tickets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used the existing MAZ-184 spec to preserve the intended behavior and affected-ticket context. No separate agent session was run. | `specs/leaderboard-replay-ux-MAZ-184.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Used the existing Gherkin scenarios as the executable contract for focused tests. No separate planner session was run. | `specs/leaderboard-replay-ux-MAZ-184.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Added/updated focused failing tests first for the MAZ-184 scenarios, then implemented the minimum client behavior to pass them. | tests listed in the scenario coverage map |
+| Judge (`.agents/judge.md`) | Not used | No separate judge review session was run in this turn. | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Full mutation testing was not run for this client slice. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` empty leaderboard is not an error | `tests/presentation/view-models/LeaderboardViewModel.test.ts` -> `should_expose_empty_when_backend_reports_missing_leaderboard`; `tests/infrastructure/repositories/HttpLeaderboardRepository.test.ts` -> `should_return_empty_leaderboard_when_backend_omits_collection_metadata` |
+| `@s2` real failures still show error | `tests/presentation/view-models/LeaderboardViewModel.test.ts` -> `should_expose_error_when_facade_fails` |
+| `@s3` non-UUID level id does not request leaderboard | `tests/presentation/view-models/LeaderboardViewModel.test.ts` -> `should_expose_empty_without_requesting_when_level_id_is_not_a_uuid` |
+| `@s4` victory submit success uses generic success copy | `tests/integration/gameVictorySubmit.test.tsx` -> `should_persist_completion_and_submit_score_with_uuid_level_id_when_a_level_is_won`; `tests/presentation/screens/VictoryScreen.test.tsx` -> `should_show_success_copy_when_leaderboard_score_is_synced` |
+| `@s5` victory submit failure is visible and actions remain | `tests/integration/gameVictorySubmit.test.tsx` -> `should_show_warning_and_keep_actions_when_leaderboard_submission_fails`; `tests/presentation/screens/VictoryScreen.test.tsx` -> `should_keep_victory_actions_visible_when_leaderboard_score_fails` |
+| `@s6` progress completion is independent from leaderboard submit | `tests/integration/gameVictorySubmit.test.tsx` -> `should_show_warning_and_keep_actions_when_leaderboard_submission_fails` |
+| `@s7` non-UUID leaderboard submit is skipped distinctly | `tests/presentation/screens/VictoryScreen.test.tsx` -> `should_show_skipped_copy_when_level_does_not_have_backend_uuid`; `src/application/facades/LeaderboardFacade.ts` keeps the no-submit guard covered by `tests/application/facades/LeaderboardFacade.test.ts` |
+
+## Result Obtained
+
+- Made client leaderboard response metadata optional so empty backend responses
+  from MAZ-173 are accepted.
+- Slimmed `SubmitScoreInput`/DTO to only score facts: `levelId`, `score`,
+  `timeSeconds`, and `movesCount`.
+- Mapped structural `NOT_FOUND` leaderboard load failures to `Empty` state
+  without importing infrastructure/HTTP types into presentation.
+- Added victory leaderboard submit status copy for syncing, success, failure,
+  and non-UUID skipped submissions.
+- Kept progress completion independent from leaderboard submission failure.
+- Resolved PR #68 merge conflicts after `origin/develop` incorporated the
+  central HTTP Bearer interceptor work: MAZ-184 now keeps the no-manual-token
+  facade/repository signatures while preserving slim score payloads and visible
+  victory submit status.
+
+## Verification
+
+- `npm ci`
+- `npm run typecheck` GREEN
+- Focused tests GREEN:
+  `tests/presentation/view-models/LeaderboardViewModel.test.ts`,
+  `tests/infrastructure/repositories/HttpLeaderboardRepository.test.ts`,
+  `tests/application/facades/LeaderboardFacade.test.ts`,
+  `tests/contract/leaderboard.contract.test.ts`,
+  `tests/presentation/screens/VictoryScreen.test.tsx`,
+  `tests/integration/gameVictorySubmit.test.tsx`
+- Full `npm run verify` GREEN before merge-conflict resolution: lint,
+  typecheck, coverage; 71 suites / 377 tests.
+- Full `npm run verify` GREEN after merging current `origin/develop` into PR
+  #68: lint, typecheck, coverage; 71 suites / 382 tests. Existing React Native
+  `Animated(View)` act warnings still appear in UI coverage output.
+
+## Team Modifications Pending Human Review
+
+- Review the UI copy for synced/failed/skipped leaderboard status.
+- Confirm that retrying failed leaderboard submits is intentionally outside this
+  ticket.
+- Review the future merge order with MAZ-173 and MAZ-181 because both affect the
+  leaderboard contract/auth path.
+
+## Lessons / Limitations
+
+- The backend does not tell the client whether the score is a new personal best,
+  so generic success copy is the correct UX for this slice.
+- The ViewModel uses structural error classification to avoid coupling
+  presentation to concrete infrastructure errors.
+
+
+---
+
+# AI Usage Log: MAZ-185 — Robust victory persistence and progress drain
+
+## Task / Problem
+
+Implement `MAZ-185` on the mobile client: retain failed victory progress writes, add an application-level drain operation for pending progress, and trigger that drain when the app starts, returns to foreground, or reconnects. The ticket builds on the auth/session work and UUID level-id guard from `MAZ-179` and `MAZ-183`; backend changes were reviewed as unnecessary for this slice.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+User requested implementing `MAZ-185` while following both repository `AGENTS.md` files, root `MEMORY.md`, `Linear_MCP_Guideline.md`, the approved worktree flow, AI usage logging, checks, commit/push/PR, Linear update, and a context review of affected tickets. The existing approved spec and Gherkin contract were used from `specs/mobile-progress-sync-MAZ-185.spec.md` and `specs/mobile-progress-sync-MAZ-185.feature`.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used the approved spec decisions as the source of truth; no separate agent session was run in this implementation turn. | `specs/mobile-progress-sync-MAZ-185.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Followed the seven approved `@s` scenarios as the executable contract; no new scenario was invented. | `specs/mobile-progress-sync-MAZ-185.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Ran Red-Green cycles for application drain/failure retention and framework reconnect/foreground triggers, then refactored into application facade + framework coordinator/hook. | `tests/application/facades/ProgressFacade.test.ts`, `tests/framework/progress/*.test.*` |
+| Judge (`.agents/judge.md`) | Referenced | Reviewed layer boundaries: drain decision stays in application, NetInfo/AppState stay in framework wiring, and UI only mounts/logs. Verdict: PASS pending human review. | this entry, `rg "@react-native-community/netinfo|AppState"` |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Ran Stryker scoped to the changed application facade after the full repo mutation run projected ~40 minutes and was cancelled at 3%. Scoped score: 95.24%. | `reports/mutation/index.html`, command output |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+| --- | --- | --- |
+| @s1 — Draining sends pending progress to the backend | `should_drain_pending_progress_by_syncing_when_pending` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s2 — Draining is a no-op when nothing is pending | `should_not_drain_when_no_pending_progress` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s3 — A failed remote completion is retained, not dropped | `should_retain_pending_local_completion_when_remote_completion_fails` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s4 — Retained pending progress is retried on the next drain | `should_retry_retained_completion_on_next_drain_after_remote_failure` | `tests/application/facades/ProgressFacade.test.ts` |
+| @s5 — The sync coordinator drains immediately on start | `should_drain_once_immediately_when_started` | `tests/framework/progress/startProgressSync.test.ts` |
+| @s6 — The sync coordinator drains on foreground/reconnect and stops after unsubscribe | `should_drain_on_foreground_and_reconnect_until_unsubscribed` | `tests/framework/progress/startProgressSync.test.ts` |
+| @s7 — The hook drains for a signed-in session when connectivity returns | `should_drain_for_signed_in_session_when_connectivity_returns` | `tests/framework/progress/useProgressSync.test.tsx` |
+| @s7 (resume) — The hook drains for a signed-in session on app foreground | `should_drain_for_signed_in_session_when_app_returns_to_foreground` | `tests/framework/progress/useProgressSync.test.tsx` |
+| edge — The hook stays idle while signed out | `should_not_drain_when_signed_out` | `tests/framework/progress/useProgressSync.test.tsx` |
+
+## Result Obtained
+
+New behavior:
+
+- `ProgressFacade.drainPendingProgress(userId, accessToken)` checks local `pendingSync`; it calls existing `sync()` only when needed and reports whether a drain ran.
+- `startProgressSync()` drains immediately, subscribes to foreground and reconnect triggers, and unsubscribes cleanly.
+- `useProgressSync()` wires signed-in sessions to `AppState` and `@react-native-community/netinfo`, logging drain failures while leaving pending progress retained.
+- Root layout mounts the sync hook under `AuthGate`, so it only runs with session context.
+- Victory progress and leaderboard writes in `app/game.tsx` now log failures instead of silently swallowing them.
+- Added NetInfo dependency plus Jest manual mock.
+
+## Verification
+
+- `npm test -- --runInBand tests/application/facades/ProgressFacade.test.ts` — 17 tests passed.
+- `npm test -- --runInBand tests/framework/progress/startProgressSync.test.ts tests/framework/progress/useProgressSync.test.tsx` — 5 tests passed.
+- `npm run verify` — lint, typecheck, and coverage passed; 65 suites / 336 tests passed. Existing React Native Animated `act(...)` warnings were emitted by presentation tests.
+- `npm run mutation -- --mutate src/application/facades/ProgressFacade.ts` — 95.24% mutation score, above the 80 break threshold.
+
+## Team Modifications Pending Human Review
+
+- Review that mounting `useProgressSync()` under `AuthGate` is the intended app-wide drain point.
+- Review the logging-only behavior for victory write failures; no blocking UI was added because replay/UX is out of scope for `MAZ-185`.
+- Full `npm run mutation` was intentionally stopped after ~3% because the repo-wide run projected ~40 minutes. The scoped application mutation passed.
+
+## Lessons / Limitations
+
+- The retained-completion tests must use UUID level ids; otherwise the existing `MAZ-183` guard returns before exercising remote failure behavior.
+- The hook test should not partially mock all of `react-native`; NetInfo can be isolated with a manual mock while React Native's Jest environment stays intact.
+- NetInfo/AppState behavior is verified with Jest mocks, not on a real device.
+
+
+---
+
+# AI Usage Log: MAZ-186 (M9/C8) — Client cleanups + victory-submit integration test
+
+## Task / Problem
+
+Four bundled cleanups plus the one missing integration test on the mobile client:
+1. `ProgressScreen` rendered the raw `levelId` (UUID) as the visible label — show the
+   human-readable catalog level name instead.
+2. `app/victory.tsx` was a dead route (rendered `VictoryScreen` with no submit; the
+   real victory UX is the overlay inside `app/game.tsx`).
+3. `SubmitScoreRequestDto` declared an unused `userId` (the runtime body omits it;
+   the backend derives `userId` from the JWT) — a dead/misleading type field.
+4. No integration test covered the most important path — winning a level submits
+   score + progress with the right ids.
+
+## Tool and Model
+
+Claude Opus 4.8 via Claude Code CLI.
+
+## Prompt Used
+
+User requested implementing `MAZ-186` following both repository `AGENTS.md` files,
+root `MEMORY.md`, `Linear_MCP_Guideline.md`, the worktree flow, AI usage logging,
+checks, commit/push/PR, Linear update, and a context review of affected tickets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Used | Wrote the spec after reading `ProgressScreen`, `app/victory.tsx`, `LeaderboardDtos`, `app/game.tsx`, `LevelSelectViewModel`, `manualLevels`, and the catalog ports. Found `VictoryScreen` is still used by the in-game overlay (keep it) and that the contract test already mirrors the leaner submit DTO. | `specs/mobile-cleanups-MAZ-186.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Used | Distilled 6 Gherkin scenarios (`@s1..@s6`): catalog name, screen name + id fallback, leaner DTO, and the victory completeLevel/submitScore path. | `specs/mobile-cleanups-MAZ-186.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red→Green per cleanup: contract test imports the production `SubmitScoreRequestDto` (RED via typecheck: fixture missing `userId`) → drop `userId` (GREEN); name tests on `LevelSelectViewModel` + `ProgressScreen` → surface `name`; victory-submit integration test drives the real engine to victory. | tests, code, `@s → test` map below |
+| Judge (`.agents/judge.md`) | Referenced | Applied the CA checklist in-session: name is plain catalog display data on existing types; the screen stays dumb (name map built in the composition root); no new use case/pattern; DTO stays a primitive record. | CA contract in `specs/mobile-cleanups-MAZ-186.spec.md` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | The DoD requires only `npm run verify` + `ai-log/` (no mutation gate, unlike feature tickets). The only change inside the Stryker `mutate` scope (`src/application/**`) is the trivial `name` data field in the 10.6k-line `manualLevels.ts` fixtures; a full run there mutates level-coordinate data and is impractical/meaningless. Presentation/infra changes are outside the default scope. | N/A |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test | File |
+|----------|------|------|
+| @s1 — catalog exposes a human-readable name | `should_expose_a_human_readable_name_for_each_offline_level`, `should_expose_the_remote_level_name` | `tests/presentation/view-models/LevelSelectViewModel.test.ts` |
+| @s2 — progress screen shows the name | `should_show_the_level_name_when_a_mapping_exists` | `tests/presentation/screens/ProgressScreen.test.tsx` |
+| @s3 — progress screen falls back to the id | `should_fall_back_to_the_raw_level_id_when_no_mapping_exists` | `tests/presentation/screens/ProgressScreen.test.tsx` |
+| @s4 — submit DTO has no userId | `should_not_include_user_id_because_backend_reads_it_from_jwt` (now typed against the production DTO) | `tests/contract/leaderboard.contract.test.ts` |
+| @s5 — winning persists the completion | `should_persist_completion_and_submit_score_with_uuid_level_id_when_a_level_is_won` | `tests/integration/gameVictorySubmit.test.tsx` |
+| @s6 — winning submits the score | `should_persist_completion_and_submit_score_with_uuid_level_id_when_a_level_is_won` + `should_submit_only_once_per_win` | `tests/integration/gameVictorySubmit.test.tsx` |
+
+## Result Obtained
+
+**New files:**
+- `specs/mobile-cleanups-MAZ-186.{spec.md,feature}` — CA spec + 6 scenarios
+- `tests/presentation/screens/ProgressScreen.test.tsx` — name + id-fallback render tests
+- `tests/integration/gameVictorySubmit.test.tsx` — victory-submit integration test
+
+**Modified source files:**
+- `src/application/level-build/fixtures/manualLevels.ts` — `ManualLevelFixture` gains `name`; mapped from the draft name (fallback `Level N`)
+- `src/presentation/view-models/LevelSelectViewModel.ts` — `LevelListItem` gains `name`; both offline `getLevels` and remote `toListItem` carry it
+- `src/presentation/screens/ProgressScreen.tsx` — optional `levelNameById` map; renders `name ?? levelId`
+- `app/progress.tsx` — builds the `levelId → name` map from the catalog and passes it
+- `src/infrastructure/mappers/leaderboard/LeaderboardDtos.ts` — dropped the unused `userId`
+
+**Deleted:**
+- `app/victory.tsx` — dead route (the in-game overlay in `GameScreen` is the real victory UX; `VictoryScreen` the component is unchanged and still used there)
+
+**Modified test files:**
+- `tests/presentation/view-models/LevelSelectViewModel.test.ts` — name assertions
+- `tests/contract/leaderboard.contract.test.ts` — imports the production `SubmitScoreRequestDto` instead of a local copy (ties the contract to the real type)
+- `tests/presentation/components/LevelCard.test.tsx` — fixture carries the now-required `name`
+
+## Verification
+
+- `npm run verify` — GREEN: lint + typecheck + 67 suites / 342 tests. Pre-existing
+  React Native `Animated` `act(...)` warnings are emitted by the board's tap
+  animations in the integration test (non-blocking; same as other presentation tests).
+
+## Team Modifications Pending Human Review
+
+1. **`LevelListItem`/`ManualLevelFixture` gained `name`.** Sourced from the existing
+   `LevelCatalogSummary.name` (remote) and the fixture draft name (offline). Any
+   new `LevelListItem` literal must now supply `name`.
+2. **`SubmitScoreRequestDto` no longer has `userId`.** The wire body already omitted
+   it; the contract test is now typed against the production DTO so the two cannot
+   drift again.
+3. **`app/victory.tsx` deleted.** If a read-only post-game results route is wanted
+   later, reintroduce it without submit logic.
+
+## Lessons / Limitations
+
+- The integration test drives the real game engine to victory by tapping a valid
+  extraction order (computed from the fixture), with the framework facades mocked,
+  so it asserts the route's victory effect end-to-end: `completeLevel` +
+  `submitScore` fire once each with the UUID `levelId`, the session ids, the
+  username snapshot, and arrow-count moves. Score/elapsed-time are clock-derived, so
+  they are not asserted to exact values.
+- Tying the contract test to the production type via `import type` turns a
+  duplicated mirror into a compile-time guard — the missing-`userId` fixture failed
+  typecheck until the production field was removed (a clean Red→Green).
+
+
+---
+
+# AI Usage Log: MAZ-187 — Refresh access token on 401 (refresh-and-retry before logout)
+
+## Task / Problem
+
+MAZ-175 made access tokens short-lived (default 15m) with a rotating `POST /auth/refresh` endpoint, and
+MAZ-180 hard-logs-out on any authed 401 — so without a client refresh-and-retry the user is bounced to
+login every ~15 minutes. This slice makes an authed 401 transparently refresh the access token and retry
+the request **once**, falling back to MAZ-180's logout only when the refresh itself fails; it also makes
+logout revoke the refresh token server-side and persists the refresh token in the session.
+
+## Tool and Model
+
+Claude Opus 4.8 (1M context) via Claude Code CLI.
+
+## Prompt Used
+
+User asked to do MAZ-187 following the team workflow and to "do what you recommend" on the base. I chose
+**Option A: stack on `feat/mobile-401-logout-MAZ-180` and decouple from MAZ-181** (the retry rewrites the
+`Authorization` header itself). The `.feature` (@s1..@s8) + the 5 decisions were human-approved before TDD.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Followed AGENTS §0.2; a read-only sub-agent mapped the client auth flow (adapter/401 handler, AuthSession/DTOs/mapper, HttpAuthRepository, SessionManager, use cases, composition root, contract test, eslint/stryker scope); distilled into the CA spec. | `specs/refresh-retry-MAZ-187.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Authored 8 `@s` scenarios across the mapper, the use cases, and the interceptor; single human gate. | `specs/refresh-retry-MAZ-187.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Red→Green inside-out: plumbing (AuthSession/DTOs/mapper/port/repo) → `RefreshSessionUseCase` → `LogoutUseCase` backend revoke → repo refresh/logout → adapter refresh-and-retry → framework wiring → contract test + fixture migration. | tests, code, this entry |
+| Judge (`.agents/judge.md`) | Referenced | Self-review vs `docs/reglas_clean_arch.md`: `tryRefresh` is injected into the adapter (infra doesn't import session/use-cases); the use cases depend only on ports; refresh/logout carry no Authorization (no interceptor loop); `@s → test` complete. PASS. | this entry, spec CA block |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Stryker scoped to the in-scope new files (`RefreshSessionUseCase`, `LogoutUseCase`). First 94.74% (one survivor on the `&& session.refreshToken` guard); added the empty-refresh-token logout test → **100%**. | `reports/mutation/index.html` |
+
+## Scenario Coverage (@s ↔ test)
+
+| Scenario | Test |
+|----------|------|
+| @s1 — persisted session carries the refresh token | `tests/contract/auth.contract.test.ts` (toSession maps refreshToken); `HttpAuthRepository.test` (`should_map_access_and_refresh_tokens_to_session`) |
+| @s2 — refresh rotates session + returns new access | `RefreshSessionUseCase.test`: `should_rotate_the_session_and_return_the_new_access_token` |
+| @s3 — refresh no-op without a refresh token | `RefreshSessionUseCase.test`: `…when_there_is_no_session` / `…when_the_session_has_no_refresh_token` |
+| @s4 — refresh returns null on backend failure, session unchanged | `RefreshSessionUseCase.test`: `…when_the_refresh_fails` |
+| @s5 — 401 refreshes + retries once with the new token | `AxiosHttpClientAdapter.test`: `should_refresh_and_retry_once_with_the_new_token_on_an_authed_401` |
+| @s6 — refresh→null falls back to invalidation | `AxiosHttpClientAdapter.test`: `should_invalidate_the_session_when_the_refresh_yields_null` |
+| @s7 — retried request does not refresh again (no loop) | `AxiosHttpClientAdapter.test`: `should_not_refresh_again_for_an_already_retried_request` |
+| @s8 — logout revokes server-side then clears | `LogoutUseCase.test` (revoke + clear; clear even when backend fails; no refresh token → just clear); `HttpAuthRepository.test` (logout posts the token) |
+
+## Result Obtained
+
+- **Application boundary:** `AuthSession.refreshToken`; `IAuthRepository.refresh/logout` + `RefreshTokens` type.
+- **Application:** `RefreshSessionUseCase` (rotate session, return new access token or null); `LogoutUseCase` now best-effort revokes via the backend then clears.
+- **Infrastructure:** `HttpAuthRepository.refresh/logout` (no Authorization header); `AuthDtos` (`refreshToken` on login + `RefreshResponseDto`); `AuthMapper` (refreshToken + `toRefreshTokens`); `AxiosHttpClientAdapter` gains an injected `tryRefresh` + a one-retry refresh-and-retry (guarded by a config flag).
+- **Framework:** `createHttpClient` wires `tryRefresh` from a `RefreshSessionUseCase` over a **bare** adapter (no interceptors → no recursion); `auth.ts` passes the auth repo to `LogoutUseCase`. Global AsyncStorage Jest mock added (the http client now imports the session layer).
+
+## Verification
+
+- `npm run verify` — lint 0, typecheck 0, **68 suites / 364 tests**.
+- Scoped Stryker on the in-scope new files: **100%** (`RefreshSessionUseCase` + `LogoutUseCase`). The adapter retry, repo, mapper, and composition are infra/framework — outside the default Stryker scope (line-covered by the adapter/repo/contract tests).
+
+## Team Modifications Pending Human Review
+
+1. **Base = stacked on MAZ-180; decoupled from MAZ-181.** The retry rewrites the `Authorization` header itself, so 187 doesn't need 181's request interceptor. Adapter ctor is now `(baseURL, onUnauthorized?, tryRefresh?)`; the eventual 180/181/187 merge combines the optional params. **Merge order: MAZ-180 → develop, then MAZ-187.**
+2. **Client built against the MAZ-175 contract** (backend not yet merged). A contract test pins the refresh DTO; real end-to-end needs MAZ-175 deployed. Until then the client degrades gracefully (refresh → null → MAZ-180 logout).
+3. **`AuthSession.refreshToken` is required**; legacy persisted sessions without it are handled at runtime (`!session.refreshToken` → no refresh / just clear).
+
+## Lessons / Limitations
+
+- A **bare** http client for the refresh call (plus the `_retry` config flag) is what prevents refresh recursion and retry loops; the refresh/logout requests also carry no `Authorization`, so the `hadAuthorization` guard already keeps them out of the 401 path.
+- Stacking on an unmerged branch (MAZ-180) lacks the MAZ-181 global AsyncStorage mock; since `createHttpClient` now imports the session layer, the global mock had to be re-added here.
+
+
+---
+
+# AI Usage Log: MAZ-188 Auth navigation regression fix
+
+## Task / Problem
+
+Investigate and fix a mobile navigation regression found after M9 auth testing:
+login and registration worked, but home actions did not reliably move to the
+next screen and Expo Router logged `REPLACE` actions for `login` that were not
+handled by any navigator.
+
+## Tool and Model
+
+Codex CLI / GPT-5.
+
+## Prompt Used
+
+The user reported that after successful login/register, the game flow was
+compromised: buttons on the home page did not advance correctly, and the app
+console showed `The action 'REPLACE' with payload {"name":"login","params":{}} was not handled by any navigator`.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used the M9 auth/navigation intent from existing work to preserve mandatory auth while diagnosing the regression. No separate agent session was run. | User console trace, `src/framework/auth/AuthGate.tsx` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Not used | No new Gherkin contract was created for this urgent regression fix. | N/A |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Added a regression assertion around AuthGate redirects keeping the navigation tree mounted, then changed the gate and route handlers. | `tests/framework/auth/AuthGate.test.tsx` |
+| Judge (`.agents/judge.md`) | Not used | No separate judge review session was run. | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Mutation was not run; this fix is in framework routing code outside the default mutation scope. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+No approved Gherkin `@s` scenarios exist for this regression. Concrete coverage:
+
+| Behavior | Concrete test coverage |
+| --- | --- |
+| Unauthenticated protected routes redirect to `/login` without unmounting the navigation tree | `tests/framework/auth/AuthGate.test.tsx` -> `should_redirect_to_login_without_unmounting_navigation_when_protected_route_has_no_session` |
+| Logout and session invalidation still redirect to `/login` | `tests/framework/auth/AuthGate.test.tsx` -> `should_clear_session_and_redirect_to_login_when_logout_runs`; `should_clear_session_and_redirect_to_login_when_session_is_invalidated` |
+| Authenticated users are redirected away from `/login` | `tests/framework/auth/AuthGate.test.tsx` -> `should_redirect_authenticated_users_away_from_login` |
+
+## Result Obtained
+
+- Kept the Expo Router `Stack` mounted while `AuthGate` bootstraps session state
+  and while auth redirects are scheduled.
+- Replaced render-time `<Redirect>` branches with effect-driven
+  `router.replace(...)`, so redirects run only after the navigation tree exists.
+- Removed duplicate imperative `router.replace` calls from login/logout route
+  handlers; session changes now drive redirects through `AuthGate`.
+- Preserved the loading screen as a temporary overlay instead of replacing the
+  navigation tree.
+
+## Verification
+
+- `npm test -- --runInBand tests/framework/auth/AuthGate.test.tsx` GREEN
+  (6 tests).
+- `npm run lint` GREEN.
+- `npm run typecheck` GREEN.
+- `npm run verify` GREEN: lint, typecheck, coverage; 71 suites / 382 tests.
+  Existing React Native `Animated(View)` act warnings still appear in unrelated
+  board/victory tests.
+
+## Team Modifications Pending Human Review
+
+- Validate on device that home buttons now navigate to Levels, Leaderboard,
+  Progress, and Settings after login.
+- Confirm the loading overlay appearance during the short session bootstrap is
+  acceptable.
+
+## Lessons / Limitations
+
+- In Expo Router, auth guards must not remove the root `Stack` while issuing a
+  redirect. Doing so can make otherwise valid routes look unavailable to React
+  Navigation and produce unhandled `REPLACE` warnings.
+- Local automated tests cover the regression path, but device validation is
+  still required because the original failure appeared in the iOS runtime.
+
+
+---
+
+# AI Usage Log: MAZ-189 Readable level names and friendly sync status (client)
+
+## Task / Problem
+
+The Progress screen showed raw UUIDs (e.g. `550e8400-e29b-41d4-a716-446655440040`)
+whenever a level name could not be resolved — MAZ-186 added the `levelId -> name` map
+but fell back to the raw `levelId`. It also showed the technical label "Pending sync".
+MAZ-189 makes Progress readable for a player: level names first, no full UUID as the
+primary label, and friendly sync copy in English and Spanish.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-189` following both repository `AGENTS.md` files,
+root `MEMORY.md`, `Linear_MCP_Guideline.md`, fresh worktree, AI usage logging, checks,
+commit/push/PR, Linear updates, and a review of affected tickets (refines MAZ-186, and
+the sync state relates to MAZ-185 / MAZ-190).
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Wrote `specs/progress-readable-names-MAZ-189.spec.md` capturing the UUID-fallback and unclear-sync-copy problems and the chosen presentation-only fix. No separate agent session was run. | `specs/progress-readable-names-MAZ-189.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Wrote the executable Gherkin contract `@s1..@s4`. No separate planner session was run. | `specs/progress-readable-names-MAZ-189.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Rewrote the fallback test (readable label, no UUID) and added pending/synced copy tests (Red), then the minimal screen + i18n change (Green). | `tests/presentation/screens/ProgressScreen.test.tsx`; `src/presentation/screens/ProgressScreen.tsx`; `src/framework/i18n/locales/{en,es}.json` |
+| Judge (`.agents/judge.md`) | Not used | No separate judge review session was run (PR/Linear review is the human gate). | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Presentation/i18n copy change; `src/presentation` is outside the mutation `mutate` globs (domain/application only). | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` known level name shown, no UUID | `tests/presentation/screens/ProgressScreen.test.tsx` -> `should_show_the_level_name_when_a_mapping_exists` |
+| `@s2` readable fallback, no UUID as primary label | `tests/presentation/screens/ProgressScreen.test.tsx` -> `should_show_a_readable_fallback_and_hide_the_uuid_when_no_mapping_exists` |
+| `@s3` pending sync explained in product language | `tests/presentation/screens/ProgressScreen.test.tsx` -> `should_show_friendly_pending_sync_copy_when_progress_is_pending` |
+| `@s4` pending status hidden after a successful sync | `tests/presentation/screens/ProgressScreen.test.tsx` -> `should_not_show_pending_sync_copy_when_progress_is_synced` |
+
+## Result Obtained
+
+- `ProgressScreen` row label now falls back to `t("progress.unknownLevel")` instead of
+  the raw `levelId`, so a UUID is never the primary label.
+- `progress.pendingSync` copy is now product language; added `progress.unknownLevel`.
+  Both keys in `en.json` + `es.json`.
+- Pending copy still renders only while `pendingSync === true`, so it disappears after
+  a successful sync (no logic change).
+- No new layers/patterns; presentation + i18n only. AGENTS architecture rules
+  unchanged.
+
+## Verification
+
+- `npm ci` GREEN.
+- Focused tests GREEN: `tests/presentation/screens/ProgressScreen.test.tsx` (4 tests).
+- `npm run verify` GREEN: lint + typecheck + coverage (71 suites / 388 tests).
+
+## Team Modifications Pending Human Review
+
+- Confirm the exact fallback wording ("Unknown level" / "Nivel desconocido") and the
+  pending-sync copy. Presentation tests are subject to mandatory human review.
+
+## Lessons / Limitations
+
+- The level-name source is the catalog map the route already builds
+  (`LevelSelectViewModel.getLevels()` → backend names online, `manualLevels.ts` draft
+  names offline); a name only goes missing if the catalog itself lacks the id, which is
+  exactly when the readable fallback applies.
+- Refines MAZ-186 (which introduced the name map with a UUID fallback); the sync state
+  being relabeled is the same `pendingSync` flag driven by MAZ-185 / MAZ-190.
+
+
+---
+
+# AI Usage Log: MAZ-190 Resolve progress sync on a permanent rejection (client)
+
+## Task / Problem
+
+The backend `CompletedAt` validation (MAZ-176) rejected any future timestamp, so a
+device clock slightly ahead of the server made victory completions return HTTP 422 and
+the client kept the progress `pendingSync: true` forever — every drain
+(`ProgressFacade.sync`, MAZ-185) re-sent the same future timestamp and got the same
+422. The backend MAZ-190 branch now tolerates a small skew window (fixing the
+realistic case). This client branch handles the remaining edge: a **permanent**
+rejection (a genuinely broken device clock hours ahead, or any non-retryable 4xx) must
+not leave the player stuck on "pending sync" forever.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-190` following both repository `AGENTS.md` files,
+root `MEMORY.md`, `Linear_MCP_Guideline.md`, fresh worktrees, AI usage logging,
+checks, commit/push/PR, Linear updates, and a review of affected tickets (cross-repo
+refactor touching MAZ-176 backend and the MAZ-185 client sync path).
+
+## Chosen Policy (Open Product Decision)
+
+In `ProgressFacade`, distinguish a **permanent rejection** (HTTP 422 `UNPROCESSABLE`
+or 400 `BAD_REQUEST`) from a **retryable failure** (network / 5xx):
+
+- On a permanent rejection of `completeLevel` or `sync`, resolve the pending state
+  (`pendingSync: false`) and keep the level recorded locally, instead of looping
+  forever. The completion stays visible; the client stops retrying a payload the
+  server will never accept.
+- On a retryable failure, keep `pendingSync: true` and rethrow so the existing drain
+  triggers (foreground / reconnect, MAZ-185) retry it later.
+
+Rejection is detected by duck-typing the thrown error's `code` field, the same way
+`LeaderboardViewModel` already reads `NOT_FOUND` (MAZ-184) — the application layer
+never imports the infrastructure `HttpError` type.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Wrote `specs/progress-clock-skew-MAZ-190.spec.md` capturing the stuck-pending problem and the retryable-vs-permanent policy. No separate agent session was run. | `specs/progress-clock-skew-MAZ-190.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Wrote the executable Gherkin contract `@s1..@s4`. No separate planner session was run. | `specs/progress-clock-skew-MAZ-190.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Wrote failing facade tests (Red) for permanent-rejection resolution, then the minimal `ProgressFacade` change (Green); retryable-failure tests already passed. | `tests/application/facades/ProgressFacade.test.ts`; `src/application/facades/ProgressFacade.ts` |
+| Judge (`.agents/judge.md`) | Not used | No separate judge review session was run (PR/Linear review is the human gate). | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Full mutation not re-run this slice. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` permanent completion rejection resolves pending | `tests/application/facades/ProgressFacade.test.ts` -> `should_resolve_pending_and_keep_level_when_completion_is_permanently_rejected` |
+| `@s2` permanent drain rejection resolves + stops retrying | `tests/application/facades/ProgressFacade.test.ts` -> `should_resolve_pending_and_stop_retrying_when_drain_is_permanently_rejected` |
+| `@s3` retryable completion failure keeps pending | `tests/application/facades/ProgressFacade.test.ts` -> `should_keep_pending_when_completion_fails_with_a_retryable_error` |
+| `@s4` retryable drain failure keeps pending | `tests/application/facades/ProgressFacade.test.ts` -> `should_keep_pending_when_drain_fails_with_a_retryable_error` |
+
+## Result Obtained
+
+- Added `ProgressFacade.isPermanentRejection(error)` (duck-typed `code` guard) and a
+  `resolvePending` helper.
+- Wrapped the remote calls in `completeLevel` and `sync`: permanent rejection resolves
+  pending and returns the local progress; retryable errors rethrow (unchanged).
+- No new layers/patterns/ports; application does not import infrastructure. AGENTS
+  architecture rules unchanged.
+
+## Verification
+
+- `npm ci` GREEN.
+- Focused tests GREEN: `tests/application/facades/ProgressFacade.test.ts` (21 tests).
+- `npm run verify` GREEN: lint + typecheck + coverage (71 suites / 386 tests).
+
+## Team Modifications Pending Human Review
+
+- Confirm "keep locally, stop syncing" is the desired UX for a permanently rejected
+  completion (vs. surfacing a one-time warning to the user). Application tests are
+  subject to mandatory human review.
+
+## Lessons / Limitations
+
+- The client cannot know the true server time, so it does not re-stamp `completedAt`;
+  the backend tolerance absorbs realistic skew and only a broken device clock reaches
+  the permanent-rejection path.
+- The fix funnels both the immediate victory write and the background drain through the
+  same permanent-vs-retryable classification, so neither path can loop forever.
+
+
+---
+
+# AI Usage Log: MAZ-191 Sequential level locking (client)
+
+## Task / Problem
+
+Players could enter any level directly, including via deep link / manual navigation.
+MAZ-191 enforces sequential progression in the mobile client: level N+1 is locked
+until level N is completed, offline-first, with no backend enforcement (explicitly out
+of scope).
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-191` following both repository `AGENTS.md` files, root
+`MEMORY.md`, `Linear_MCP_Guideline.md`, a fresh worktree, AI usage logging, checks,
+commit/push/PR, Linear updates, and a review of affected tickets (progression uses the
+same progress/catalog seams as MAZ-185/189/192).
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Wrote `specs/sequential-level-locking-MAZ-191.spec.md` capturing the progression rule, the domain-policy placement, and the route-guard design. No separate agent session was run. | `specs/sequential-level-locking-MAZ-191.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Wrote the executable Gherkin contract `@s1..@s5`. No separate planner session was run. | `specs/sequential-level-locking-MAZ-191.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Red→Green per layer: domain policy tests, then ViewModel locked tests, card locked tests, screen locked-press test, and a game-route guard integration test, each before its production code. | tests + code below |
+| Judge (`.agents/judge.md`) | Not used | No separate judge session (PR/Linear review is the human gate). | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | The only new domain unit (`LevelUnlockPolicy`) is fully covered by 7 branch/boundary tests; a scoped Stryker run was not executed this turn. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` new user: only level 1 unlocked | `tests/domain/progress/LevelUnlockPolicy.test.ts` -> `should_unlock_only_the_first_level_when_there_is_no_progress`; `tests/presentation/view-models/LevelSelectViewModel.test.ts` -> `should_lock_every_level_except_the_first_when_there_is_no_progress` |
+| `@s2` completing a level unlocks the next | `LevelUnlockPolicy.test.ts` -> `should_unlock_the_next_level_when_its_predecessor_is_completed`; `LevelSelectViewModel.test.ts` -> `should_unlock_the_next_offline_level_when_the_previous_is_completed` / `should_unlock_the_next_remote_level_when_the_previous_is_completed` |
+| `@s3` locked card cannot be selected | `tests/presentation/components/LevelCard.test.tsx` -> `should_not_call_on_press_when_the_level_is_locked`; `tests/presentation/screens/LevelSelectScreen.test.tsx` -> `should_not_select_a_locked_level_when_its_card_is_pressed` |
+| `@s4` deep link to a locked level is blocked | `tests/integration/gameLevelLock.test.tsx` -> `should_block_play_and_show_a_locked_state_when_deep_linking_to_a_locked_level` / `should_route_back_to_the_level_list_from_the_locked_state` |
+| `@s5` offline progress unlocks the next level locally | `LevelUnlockPolicy.test.ts` -> predecessor/self-completed cases; `LevelSelectViewModel.test.ts` -> offline `getLevels([firstId])` unlock (progress is read offline-first via `ProgressFacade.load`) |
+
+## Result Obtained
+
+- **Domain:** pure `LevelUnlockPolicy` (`src/domain/progress`) — a level is unlocked iff
+  first-in-order, OR its predecessor is completed, OR it is itself completed (replay /
+  offline-gap safe). Exported from `src/domain/progress/index.ts`.
+- **Application seam:** `src/application/level-build/levelUnlock.ts` wraps the domain
+  policy so presentation consumes an application entry point (the eslint boundary bars
+  `src/presentation` from importing `src/domain`, matching how `ProgressFacade` wraps
+  `ProgressMergePolicy`).
+- **ViewModel:** `LevelListItem` gains `locked`; `getLevels`/`loadLevels` accept
+  `completedLevelIds` and apply the locks.
+- **UI:** `LevelCard` dims + shows a 🔒 indicator and blocks press when locked.
+- **Routes:** `app/levels.tsx` loads the user's progress (offline-first) and feeds
+  completed ids to the VM; `app/game.tsx` guards deep links — a locked level renders an
+  i18n locked-state screen with a "Back to levels" action instead of the board.
+- **i18n:** `levels.lockedTitle/lockedMessage/backToLevels` in `en.json` + `es.json`.
+
+## Team Modifications Pending Human Review
+
+- Confirm the progression rule variant (predecessor-completed, with self-completed and
+  first-level always unlocked). Domain + application tests are subject to mandatory
+  human review.
+- `LevelCard.tsx` also changes in MAZ-192 (PR #72, level-name cards). Both branches edit
+  the same file; expect a small merge conflict — merge one, then rebase the other.
+
+## Lessons / Limitations
+
+- The eslint `import/no-restricted-paths` zone bars `src/presentation` from importing
+  `src/domain`; the fix routes the rule through a thin application module (VM and the
+  `app/` game route both consume `@/application/level-build/levelUnlock`).
+- No backend enforcement: a determined client could still bypass locking; that needs a
+  separate backend integrity ticket (out of scope here).
+- The route guard fails open only if the whole catalog load rejects; the existing
+  unknown-level/error guards still apply in that degraded case.
+
+
 <!-- AI_LOG_ENTRIES_END -->
 
 ## Critical Evaluation

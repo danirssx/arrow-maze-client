@@ -1,6 +1,7 @@
 import { manualLevels } from "@/application/level-build/fixtures";
 import type { ILevelCatalogRepository, LevelCatalogSummary } from "@/application/ports/ILevelCatalogRepository";
 import { LevelSelectViewModel } from "@/presentation/view-models/LevelSelectViewModel";
+import { isUuid } from "@/shared/isUuid";
 
 // Subject to human review — presentation ViewModel test
 
@@ -46,11 +47,22 @@ describe("LevelSelectViewModel", () => {
       .filter((level) => level.timed)
       .map((level) => level.id);
 
-    expect(timed).toContain("manual-007-rush");
+    expect(timed).toContain("550e8400-e29b-41d4-a716-446655440016");
+  });
+
+  it("should_expose_only_uuid_level_ids", () => {
+    const levels = new LevelSelectViewModel().getLevels();
+
+    for (const level of levels) {
+      expect(isUuid(level.id)).toBe(true);
+    }
+    for (const fixture of manualLevels) {
+      expect(isUuid(fixture.definition.id)).toBe(true);
+    }
   });
 
   it("should_resolve_definition_for_a_known_level", () => {
-    expect(new LevelSelectViewModel().getDefinition("manual-001-first-knot")).toBeDefined();
+    expect(new LevelSelectViewModel().getDefinition("550e8400-e29b-41d4-a716-446655440010")).toBeDefined();
   });
 
   it("should_return_undefined_for_an_unknown_level", () => {
@@ -64,5 +76,87 @@ describe("LevelSelectViewModel", () => {
       "550e8400-e29b-41d4-a716-446655440011",
     ]);
     expect(levels[1]?.timed).toBe(true);
+  });
+
+  it("should_expose_ready_to_consume_difficulty_fields", async () => {
+    const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels();
+
+    expect(levels[0]).toMatchObject({ difficultyStars: 1, difficultyLabel: "Easy" });
+    expect(levels[1]).toMatchObject({ difficultyStars: 2, difficultyLabel: "Medium" });
+    for (const level of levels) {
+      expect(level.difficultyStars).toBeGreaterThanOrEqual(1);
+      expect(level.difficultyStars).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it("should_map_manual_levels_to_star_ratings", () => {
+    const levels = new LevelSelectViewModel().getLevels();
+
+    for (const level of levels) {
+      expect(level.difficultyStars).toBeGreaterThanOrEqual(1);
+      expect(level.difficultyStars).toBeLessThanOrEqual(3);
+      expect(typeof level.difficultyLabel).toBe("string");
+    }
+  });
+
+  it("should_expose_a_human_readable_name_for_each_offline_level", () => {
+    const levels = new LevelSelectViewModel().getLevels();
+
+    for (const level of levels) {
+      expect(typeof level.name).toBe("string");
+      expect(level.name.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("should_expose_the_remote_level_name", async () => {
+    const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels();
+
+    expect(levels[0]?.name).toBe("First Knot");
+    expect(levels[1]?.name).toBe("Timed Knot");
+  });
+
+  // --- MAZ-191: sequential level locking ---
+  it("should_lock_every_level_except_the_first_when_there_is_no_progress", () => {
+    const levels = new LevelSelectViewModel().getLevels();
+
+    expect(levels[0]?.locked).toBe(false);
+    expect(levels.slice(1).every((level) => level.locked)).toBe(true);
+  });
+
+  it("should_unlock_the_next_offline_level_when_the_previous_is_completed", () => {
+    const first = new LevelSelectViewModel().getLevels()[0]!;
+
+    const levels = new LevelSelectViewModel().getLevels([first.id]);
+
+    expect(levels[0]?.locked).toBe(false);
+    expect(levels[1]?.locked).toBe(false);
+    expect(levels[2]?.locked).toBe(true);
+  });
+
+  it("should_unlock_every_offline_level_for_admin_access", () => {
+    const levels = new LevelSelectViewModel().getLevels([], { role: "ADMIN" });
+
+    expect(levels.every((level) => !level.locked)).toBe(true);
+  });
+
+  it("should_lock_remote_levels_beyond_progress", async () => {
+    const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels([]);
+
+    expect(levels[0]?.locked).toBe(false);
+    expect(levels[1]?.locked).toBe(true);
+  });
+
+  it("should_unlock_the_next_remote_level_when_the_previous_is_completed", async () => {
+    const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels([
+      "550e8400-e29b-41d4-a716-446655440010",
+    ]);
+
+    expect(levels[1]?.locked).toBe(false);
+  });
+
+  it("should_unlock_every_remote_level_for_admin_access", async () => {
+    const levels = await new LevelSelectViewModel(new FakeLevelCatalogRepository()).loadLevels([], { role: "ADMIN" });
+
+    expect(levels.every((level) => !level.locked)).toBe(true);
   });
 });
