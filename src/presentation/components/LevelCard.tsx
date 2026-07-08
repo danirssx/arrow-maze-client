@@ -7,12 +7,14 @@ interface LevelCardProps {
 }
 
 /**
- * Level grid tile — shows the level number and a difficulty star rating.
+ * Level grid tile — shows the level name, its number and a difficulty star rating.
  *
  * Difficulty arrives ready-to-consume from the ViewState (`difficultyStars` /
  * `difficultyLabel`); the card maps no domain difficulty itself. A locked level
  * (sequential progression, MAZ-191) is dimmed, shows a lock indicator, and cannot
  * be pressed — the locked decision comes from the domain policy via the ViewModel.
+ * The name comes from the catalog and truncates to one line so long names do not
+ * overlap the order/difficulty metadata on narrow cards.
  */
 export function LevelCard({ level, onPress }: LevelCardProps) {
   const stars = level.difficultyStars;
@@ -25,8 +27,8 @@ export function LevelCard({ level, onPress }: LevelCardProps) {
       accessibilityState={{ disabled: locked }}
       accessibilityLabel={
         locked
-          ? `Level ${level.order}, locked`
-          : `Level ${level.order}, ${level.difficultyLabel}`
+          ? `${level.name}, level ${level.order}, locked`
+          : `${level.name}, level ${level.order}, ${level.difficultyLabel}`
       }
       disabled={locked}
       onPress={() => {
@@ -34,21 +36,27 @@ export function LevelCard({ level, onPress }: LevelCardProps) {
       }}
       className={
         locked
-          ? "h-28 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft opacity-40"
-          : "h-28 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft active:opacity-80"
+          ? "h-28 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft px-1 opacity-40"
+          : "h-28 flex-1 items-center justify-center rounded-2xl bg-background-card border border-border-soft px-1 active:opacity-80"
       }
     >
-      <Text className="text-2xl font-black text-text-primary">
+      <Text className="text-xl font-black text-text-primary">
         {level.order}
       </Text>
-      <Text className="text-sm font-light text-text-primary">{level.name}</Text>
+      <Text
+        testID={`level-card-name-${level.id}`}
+        numberOfLines={1}
+        className="mt-0.5 w-full px-1 text-center text-[11px] font-semibold text-text-secondary"
+      >
+        {level.name}
+      </Text>
       {locked ? (
         <Text testID={`level-card-lock-${level.id}`} className="mt-1 text-base">
           🔒
         </Text>
       ) : (
         <>
-          <View className="mt-1 flex-row">
+          <View className="mt-1 flex-row items-center">
             {Array.from({ length: 3 }).map((_, index) => (
               <Text
                 key={`star-${index}`}
@@ -59,12 +67,12 @@ export function LevelCard({ level, onPress }: LevelCardProps) {
                 ★
               </Text>
             ))}
+            {level.timed ? (
+              <Text className="ml-1 text-[10px] font-semibold text-primary-500">
+                ⏱
+              </Text>
+            ) : null}
           </View>
-          {level.timed ? (
-            <Text className="mt-0.5 text-[10px] font-semibold text-primary-500">
-              ⏱
-            </Text>
-          ) : null}
         </>
       )}
     </Pressable>
