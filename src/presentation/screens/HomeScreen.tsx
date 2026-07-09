@@ -1,13 +1,11 @@
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Brand } from "@/presentation/components/Brand";
-import { CoinBadge } from "@/presentation/components/CoinBadge";
 import { Header } from "@/presentation/components/Header";
 import { PrimaryButton } from "@/presentation/components/PrimaryButton";
 import { ScreenContainer } from "@/presentation/components/ScreenContainer";
 
 interface HomeScreenProps {
-  coins?: number;
   username?: string;
   onPlay: () => void;
   onLeaderboard: () => void;
@@ -54,7 +52,6 @@ function InfoCard({ icon, title, subtitle, onPress, testID }: InfoCardProps) {
  * is an injected callback.
  */
 export function HomeScreen({
-  coins = 0,
   username,
   onPlay,
   onLeaderboard,
@@ -66,21 +63,29 @@ export function HomeScreen({
 
   return (
     <ScreenContainer testID="home-screen">
-      <Header right={<CoinBadge amount={coins} testID="home-coins" />} />
+      <Header />
       <ScrollView showsVerticalScrollIndicator={false}>
         <View className="gap-8 pb-8">
           <View className="items-center gap-2 pt-4">
             <Brand />
-            {username !== undefined ? (
-              <View className="items-center gap-1">
+            {username !== undefined && onLogout !== undefined ? (
+              <View
+                testID="home-account"
+                className="mt-2 w-full flex-row items-center justify-between rounded-2xl border border-border-soft bg-background-card px-4 py-3"
+              >
                 <Text testID="home-username" className="text-sm font-bold text-primary-700">
                   {username}
                 </Text>
-                {onLogout !== undefined ? (
-                  <Pressable testID="home-logout" accessibilityRole="button" onPress={onLogout}>
-                    <Text className="text-xs font-semibold text-text-secondary">{t("auth.logout")}</Text>
-                  </Pressable>
-                ) : null}
+                <Pressable
+                  testID="home-logout"
+                  accessibilityRole="button"
+                  onPress={onLogout}
+                  className="rounded-full border border-primary-300 px-3 py-1.5 active:opacity-80"
+                >
+                  <Text testID="home-logout-label" className="text-sm font-semibold text-primary-700">
+                    {t("auth.logout")}
+                  </Text>
+                </Pressable>
               </View>
             ) : null}
             <Text className="text-xs font-semibold uppercase tracking-[3px] text-text-secondary">
