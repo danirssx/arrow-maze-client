@@ -113,9 +113,11 @@ Pick the environment by setting the URL:
 | Local (physical device) | `http://<your-machine-LAN-IP>:3000` (e.g. `http://192.168.1.50:3000`) |
 | Dev / production-demo | the deployed backend URL (e.g. `https://arrow-maze-api.<host>`) |
 
-For production/demo builds, set `EXPO_PUBLIC_API_BASE_URL` in the EAS build
-profile (or CI env) rather than committing it. The backend's `CORS_ORIGIN` must
-allow the Expo origin (default `http://localhost:8081`).
+For EAS builds, create `EXPO_PUBLIC_API_BASE_URL` in the matching EAS
+environment (`development`, `preview`, or `production`) rather than committing
+environment-specific URLs. The backend's `CORS_ORIGIN` must allow the Expo
+origin (default `http://localhost:8081`) and any deployed preview/production
+origins.
 
 ### Running the full stack locally (login + leaderboard)
 
@@ -166,7 +168,15 @@ npm run build          # expo export --platform web (web production bundle)
 
 ## Build & Release
 
-See [docs/RELEASE.md](docs/RELEASE.md) for full Android / iOS / web build instructions.
+EAS build profiles live in `eas.json`:
+
+- `development`: internal Android APK and iOS simulator build.
+- `preview`: internal Android APK and iOS installable build.
+- `production`: store-ready Android AAB and iOS archive.
+
+Production mobile builds are promoted only from `main`. `develop` and feature
+branches are for preview/development artifacts. See [docs/RELEASE.md](docs/RELEASE.md)
+for full Android / iOS / web build instructions.
 
 ## Architecture Guardrails
 

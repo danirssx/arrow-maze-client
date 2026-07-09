@@ -15,9 +15,13 @@
       "typedRoutes": true
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.arrowmaze.client",
+      "buildNumber": "1"
     },
     "android": {
+      "package": "com.arrowmaze.client",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#F7F2E8"
       }
