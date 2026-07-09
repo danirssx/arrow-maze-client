@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 
 import { useAuthSession } from "@/framework/auth/AuthGate";
 import { createSettingsViewModel } from "@/framework/config/settings";
+import { safeBack } from "@/framework/navigation/safeBack";
 import { SettingsScreen } from "@/presentation/screens/SettingsScreen";
 import { useViewModelState } from "@/presentation/hooks/useViewModelState";
 
@@ -27,7 +28,7 @@ export default function SettingsRoute() {
       {...(session !== null ? { username: session.username } : {})}
       onLanguageChange={(language) => void viewModel.setLanguage(language)}
       onMuteChange={(muted) => void viewModel.setMuted(muted)}
-      onBack={() => router.back()}
+      onBack={() => safeBack(router, "/")}
       onLogout={handleLogout}
     />
   );

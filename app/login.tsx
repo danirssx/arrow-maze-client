@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { createAuthViewModel } from "@/framework/config/auth";
 import { useAuthSession } from "@/framework/auth/AuthGate";
 import { AuthScreen } from "@/presentation/screens/AuthScreen";
+import { safeBack } from "@/framework/navigation/safeBack";
 
 export default function LoginRoute() {
   const router = useRouter();
@@ -18,5 +19,11 @@ export default function LoginRoute() {
     void refreshSession();
   };
 
-  return <AuthScreen viewModel={viewModel} onBack={() => router.back()} onAuthenticated={handleAuthenticated} />;
+  return (
+    <AuthScreen
+      viewModel={viewModel}
+      onBack={() => safeBack(router, "/")}
+      onAuthenticated={handleAuthenticated}
+    />
+  );
 }

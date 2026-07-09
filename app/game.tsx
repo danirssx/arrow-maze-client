@@ -7,6 +7,7 @@ import { createLeaderboardFacade } from "@/framework/config/leaderboard";
 import { createLevelSelectViewModel } from "@/framework/config/levelCatalog";
 import { createProgressFacade } from "@/framework/config/progress";
 import { useAuthSession } from "@/framework/auth/AuthGate";
+import { safeBack } from "@/framework/navigation/safeBack";
 import { GameScreen } from "@/presentation/screens/GameScreen";
 import { useGameSession } from "@/presentation/hooks/useGameSession";
 import { useViewModelState } from "@/presentation/hooks/useViewModelState";
@@ -185,7 +186,7 @@ export default function GameRoute() {
       viewModel={viewModel}
       controller={controller}
       levelOrder={order}
-      onExit={() => router.back()}
+      onExit={() => safeBack(router, getLevelsRoute())}
       onHome={() => router.dismissAll()}
       onNextLevel={
         nextLevel !== undefined

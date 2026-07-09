@@ -4,6 +4,7 @@ import { type Href, useRouter } from "expo-router";
 import { createLevelSelectViewModel } from "@/framework/config/levelCatalog";
 import { createProgressFacade } from "@/framework/config/progress";
 import { useAuthSession } from "@/framework/auth/AuthGate";
+import { safeBack } from "@/framework/navigation/safeBack";
 import { LevelSelectScreen } from "@/presentation/screens/LevelSelectScreen";
 import { useViewModelState } from "@/presentation/hooks/useViewModelState";
 import { AsyncStatus } from "@/presentation/state/AsyncUiState";
@@ -45,7 +46,7 @@ export default function LevelsRoute() {
     <LevelSelectScreen
       levels={vmState.levels}
       onSelect={(levelId) => router.push(getGameRoute(levelId))}
-      onBack={() => router.back()}
+      onBack={() => safeBack(router, "/")}
       loading={vmState.status === AsyncStatus.Loading}
       error={vmState.error}
       onRetry={loadLevels}

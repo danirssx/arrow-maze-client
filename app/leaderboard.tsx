@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { createLevelSelectViewModel } from "@/framework/config/levelCatalog";
 import { createLeaderboardViewModel } from "@/framework/config/leaderboard";
+import { safeBack } from "@/framework/navigation/safeBack";
 import { LeaderboardScreen } from "@/presentation/screens/LeaderboardScreen";
 
 export default function LeaderboardRoute() {
@@ -28,5 +29,5 @@ export default function LeaderboardRoute() {
     };
   }, [catalog]);
 
-  return <LeaderboardScreen viewModel={viewModel} levelId={levelId} onBack={() => router.back()} />;
+  return <LeaderboardScreen viewModel={viewModel} levelId={levelId} onBack={() => safeBack(router, "/")} />;
 }
