@@ -24,8 +24,23 @@ type EasConfig = {
   readonly build: Record<string, EasBuildProfile>;
 };
 
+type ExpoAppConfig = {
+  readonly expo: {
+    readonly owner?: string;
+    readonly extra?: {
+      readonly eas?: {
+        readonly projectId?: string;
+      };
+    };
+  };
+};
+
 function loadEasConfig(): EasConfig {
   return JSON.parse(readFileSync(join(process.cwd(), "eas.json"), "utf8")) as EasConfig;
+}
+
+function loadAppConfig(): ExpoAppConfig {
+  return JSON.parse(readFileSync(join(process.cwd(), "app.json"), "utf8")) as ExpoAppConfig;
 }
 
 function getProfile(config: EasConfig, name: string): EasBuildProfile {
@@ -78,5 +93,12 @@ describe("EAS build configuration", () => {
       expect(profile.channel).toBeUndefined();
       expect(profile.releaseChannel).toBeUndefined();
     }
+  });
+
+  it("should_link_to_the_registered_eas_project_when_app_config_is_loaded", () => {
+    const config = loadAppConfig();
+
+    expect(config.expo.owner).toBe("danielross5018");
+    expect(config.expo.extra?.eas?.projectId).toBe("ede51ce4-43d7-47ff-9444-da77c2bc7f6d");
   });
 });

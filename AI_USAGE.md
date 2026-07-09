@@ -4202,6 +4202,7 @@ damage, then resolve it by repicking whatever was necessary.
 ## Task / Problem
 
 Configure the mobile client for EAS cloud builds so Android and iOS can be built through development, preview, and production profiles without committing secrets or enabling unused EAS Update channels.
+Configure the mobile client for EAS cloud builds so Android and iOS can be built through development, preview, and production profiles without committing secrets or enabling unused EAS Update channels. After the initial PR, install EAS CLI locally for the agent session and register/link the Expo EAS project.
 
 ## Tool and Model
 
@@ -4210,13 +4211,14 @@ Codex / GPT-5.
 ## Prompt Used
 
 The user asked to implement Linear ticket `MAZ-213` in a new worktree, reading the client and backend `AGENTS.md`, `MEMORY.md`, and `Linear_MCP_Guideline.md`; register AI usage; validate checks; commit, push, create a PR, and update Linear according to the project agent rules.
+The user asked to implement Linear ticket `MAZ-213` in a new worktree, reading the client and backend `AGENTS.md`, `MEMORY.md`, and `Linear_MCP_Guideline.md`; register AI usage; validate checks; commit, push, create a PR, and update Linear according to the project agent rules. The user then asked to install EAS and run the registration/linking step directly.
 
 ## Agent Roles Used
 
 | Agent | Status | How it was used | Evidence |
 | --- | --- | --- | --- |
 | Spec Partner (`.agents/spec-partner.md`) | Referenced | The prior M12 planning decisions guided scope: EAS builds should support all mobile phases and avoid production deployment from non-`main` branches. | Linear issue `MAZ-213`, `README.md`, `docs/RELEASE.md` |
-| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | The Linear ticket acceptance criteria were mapped to focused configuration tests and release documentation. No `.feature` file existed for this chore ticket. | `tests/framework/config/easBuildConfig.test.ts`, Linear issue `MAZ-213` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | The Linear ticket acceptance criteria were mapped to focused configuration tests, release documentation, and the EAS project registration step. No `.feature` file existed for this chore ticket. | `tests/framework/config/easBuildConfig.test.ts`, Linear issue `MAZ-213`, EAS project `@danielross5018/arrow-maze-client` |
 | TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Added focused tests for the observable EAS configuration contract before final verification. No domain or application production behavior changed. | `tests/framework/config/easBuildConfig.test.ts` |
 | Judge (`.agents/judge.md`) | Not used | No separate judge pass was run in this session. | N/A |
 | Mutation Tester (`.agents/mutation.md`) | Not used | Mutation testing was not applicable because the ticket changes configuration and documentation, not domain/application production logic. | N/A |
@@ -4228,11 +4230,13 @@ No approved Gherkin `.feature` exists for this chore ticket. Linear acceptance c
 - Build profiles for Android and iOS development, preview, and production → `should_define_android_and_ios_build_profiles_when_eas_config_is_loaded`
 - Production builds use remote versioning and auto-incrementing store builds → `should_use_remote_versioning_when_production_builds_auto_increment`
 - EAS Update channels are not enabled while the feature is out of scope → `should_not_enable_eas_update_channels_when_profiles_are_inspected`
+- App config is linked to the registered EAS project → `should_link_to_the_registered_eas_project_when_app_config_is_loaded`
 
 ## Result Obtained
 
 - Added `eas.json` with `development`, `preview`, and `production` EAS build profiles.
 - Added native bundle/package identifiers and initial build numbers to `app.json`.
+- Registered and linked EAS project `@danielross5018/arrow-maze-client` with project ID `ede51ce4-43d7-47ff-9444-da77c2bc7f6d`.
 - Documented EAS environment setup and branch-to-build policy in `README.md` and `docs/RELEASE.md`.
 - Clarified `.env.example` so cloud builds use EAS environment variables instead of committed secrets.
 - Added focused configuration tests for the EAS build contract.
@@ -4240,13 +4244,15 @@ No approved Gherkin `.feature` exists for this chore ticket. Linear acceptance c
 ## Verification
 
 - `npm ci`
+- `eas login --browser`
+- `eas init --non-interactive --force`
+- `eas project:info`
 - `npm test -- --runInBand tests/framework/config/easBuildConfig.test.ts`
 - `npm run typecheck`
 - `npm run verify`
 
 ## Team Modifications Pending Human Review
 
-- Run `eas login` and `eas init` with the team's Expo account if the project is not already linked.
 - Create `EXPO_PUBLIC_API_BASE_URL` in the EAS `development`, `preview`, and `production` environments.
 - Confirm the production branch policy operationally: feature branches and `develop` use development/preview profiles; `main` is the only branch that should produce production store builds.
 
@@ -4255,6 +4261,7 @@ No approved Gherkin `.feature` exists for this chore ticket. Linear acceptance c
 - `eas.json` can reference EAS environments without committing API URLs or secrets.
 - EAS Update channels were intentionally left out because this ticket only configures cloud builds.
 - A real EAS cloud build was not executed in this environment because the `eas` CLI is not installed and Expo credentials are required.
+- A real EAS cloud build was not executed in this environment; project registration is complete, but building still requires EAS environment variables and signing credentials.
 
 
 ---
