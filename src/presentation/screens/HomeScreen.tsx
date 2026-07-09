@@ -10,7 +10,6 @@ interface HomeScreenProps {
   coins?: number;
   username?: string;
   onPlay: () => void;
-  onChallenges: () => void;
   onLeaderboard: () => void;
   onProgress: () => void;
   onSettings: () => void;
@@ -49,14 +48,15 @@ function InfoCard({ icon, title, subtitle, onPress, testID }: InfoCardProps) {
  * MVVM view — home hub.
  *
  * Pure navigation surface: it renders the FlechaGo brand and routes the player
- * to play, challenges, leaderboard, progress, and settings. It holds no game
- * rules and calls no use cases; every action is an injected callback.
+ * to play (level select), leaderboard, progress, and settings. Every card label
+ * names its real destination (MAZ-193 — no rewards/daily/social copy for screens
+ * that do not exist). It holds no game rules and calls no use cases; every action
+ * is an injected callback.
  */
 export function HomeScreen({
   coins = 0,
   username,
   onPlay,
-  onChallenges,
   onLeaderboard,
   onProgress,
   onSettings,
@@ -91,44 +91,31 @@ export function HomeScreen({
 
           <View className="gap-3">
             <PrimaryButton testID="home-play" label={t("home.play")} onPress={onPlay} />
-            <PrimaryButton
-              testID="home-challenges"
-              label={t("home.challenges")}
-              variant="secondary"
-              onPress={onChallenges}
-            />
           </View>
 
           <View className="gap-3">
             <InfoCard
-              testID="home-card-daily"
+              testID="home-card-leaderboard"
               icon="🏆"
-              title={t("home.cardDailyTitle")}
-              subtitle={t("home.cardDailySubtitle")}
-              onPress={onProgress}
-            />
-            <InfoCard
-              testID="home-card-rewards"
-              icon="🎁"
-              title={t("home.cardRewardsTitle")}
-              subtitle={t("home.cardRewardsSubtitle")}
+              title={t("home.cardLeaderboardTitle")}
+              subtitle={t("home.cardLeaderboardSubtitle")}
               onPress={onLeaderboard}
             />
             <InfoCard
-              testID="home-card-follow"
-              icon="➡️"
-              title={t("home.cardFollowTitle")}
-              subtitle={t("home.cardFollowSubtitle")}
-              onPress={onPlay}
+              testID="home-card-progress"
+              icon="📈"
+              title={t("home.cardProgressTitle")}
+              subtitle={t("home.cardProgressSubtitle")}
+              onPress={onProgress}
+            />
+            <InfoCard
+              testID="home-card-settings"
+              icon="⚙️"
+              title={t("home.cardSettingsTitle")}
+              subtitle={t("home.cardSettingsSubtitle")}
+              onPress={onSettings}
             />
           </View>
-
-          <PrimaryButton
-            testID="home-settings"
-            label={t("nav.settings")}
-            variant="secondary"
-            onPress={onSettings}
-          />
         </View>
       </ScrollView>
     </ScreenContainer>

@@ -1,11 +1,16 @@
-import { GameFacade } from "@/application/facades/GameFacade";
+import type { GameFacade } from "@/application/facades/GameFacade";
 import { GameUIController } from "@/presentation/controllers/GameUIController";
 import { GameViewModel } from "@/presentation/view-models/GameViewModel";
 
 // Subject to human review — presentation controller test
 
+const stubFacade = {
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+} as unknown as GameFacade;
+
 function makeController(): { controller: GameUIController; viewModel: GameViewModel } {
-  const viewModel = new GameViewModel(GameFacade.createDefault());
+  const viewModel = new GameViewModel(stubFacade);
   return { controller: new GameUIController(viewModel), viewModel };
 }
 

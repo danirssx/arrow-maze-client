@@ -1,11 +1,33 @@
 import { GameFacade } from "@/application/facades/GameFacade";
 import { TutorialLevelStrategy } from "@/application/level-build/TutorialLevelStrategy";
+import { ConcreteLevelBuilder } from "@/application/level-build/ConcreteLevelBuilder";
+import { LevelDirector } from "@/application/level-build/LevelDirector";
+import { GameSession } from "@/application/use-cases/game/GameSession";
+import { PauseGameUseCase } from "@/application/use-cases/game/PauseGameUseCase";
+import { ResolveLevelOutcomeUseCase } from "@/application/use-cases/game/ResolveLevelOutcomeUseCase";
+import { ResumeGameUseCase } from "@/application/use-cases/game/ResumeGameUseCase";
+import { StartLevelUseCase } from "@/application/use-cases/game/StartLevelUseCase";
+import { TapArrowUseCase } from "@/application/use-cases/game/TapArrowUseCase";
+import { UndoLastMoveUseCase } from "@/application/use-cases/game/UndoLastMoveUseCase";
+import { TimeScoringStrategy } from "@/domain/scoring/TimeScoringStrategy";
 import { GameplayStateError } from "@/application/use-cases/game/errors";
 import { GamePhase } from "@/domain/state/GamePhase";
 
+function makeFacade(): GameFacade {
+  return new GameFacade({
+    session: new GameSession(),
+    startLevel: new StartLevelUseCase(new LevelDirector(new ConcreteLevelBuilder())),
+    tapArrow: new TapArrowUseCase(),
+    undoLastMove: new UndoLastMoveUseCase(),
+    pauseGame: new PauseGameUseCase(),
+    resumeGame: new ResumeGameUseCase(),
+    resolveOutcome: new ResolveLevelOutcomeUseCase(new TimeScoringStrategy()),
+  });
+}
+
 describe("GameFacade", () => {
   it("should_start_the_tutorial_with_two_arrows_and_default_attempts", () => {
-    const facade = GameFacade.createDefault();
+    const facade = makeFacade();
 
     const snapshot = facade.startLevel(new TutorialLevelStrategy());
 
@@ -15,7 +37,7 @@ describe("GameFacade", () => {
   });
 
   it("should_cost_an_attempt_for_a_blocked_tap_and_win_after_clearing_the_blocker", () => {
-    const facade = GameFacade.createDefault();
+    const facade = makeFacade();
     facade.startLevel(new TutorialLevelStrategy());
 
     // "a" (Right) is blocked by "b" sitting on its ray -> failed tap costs one attempt.
@@ -31,7 +53,7 @@ describe("GameFacade", () => {
   });
 
   it("should_undo_the_last_extraction", () => {
-    const facade = GameFacade.createDefault();
+    const facade = makeFacade();
     facade.startLevel(new TutorialLevelStrategy());
 
     facade.tapArrow("b"); // extract b
@@ -42,6 +64,6 @@ describe("GameFacade", () => {
   });
 
   it("should_throw_when_tapping_before_a_level_starts", () => {
-    expect(() => GameFacade.createDefault().tapArrow("a")).toThrow(GameplayStateError);
+    expect(() => makeFacade().tapArrow("a")).toThrow(GameplayStateError);
   });
 });

@@ -1,5 +1,6 @@
 import { fireEvent } from '@testing-library/react-native';
 import { SettingsScreen } from '@/presentation/screens/SettingsScreen';
+import { i18n } from '@/framework/i18n/i18n';
 import { renderWithProviders } from '../testUtils';
 
 describe('SettingsScreen', () => {
@@ -37,11 +38,13 @@ describe('SettingsScreen', () => {
     expect(onMuteChange).toHaveBeenCalledWith(true);
   });
 
-  it('should_show_spanish_labels_when_language_is_es', () => {
+  it('should_show_spanish_labels_when_language_is_es', async () => {
+    await i18n.changeLanguage('es');
     const { getByText } = renderWithProviders(
       <SettingsScreen settings={{ language: 'es', muted: false }} onLanguageChange={jest.fn()} onMuteChange={jest.fn()} />,
     );
     expect(getByText('Ajustes')).toBeTruthy();
+    await i18n.changeLanguage('en');
   });
 
   it('should_show_username_and_logout_when_session_identity_is_provided', () => {

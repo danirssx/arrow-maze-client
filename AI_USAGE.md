@@ -4043,6 +4043,156 @@ same progress/catalog seams as MAZ-185/189/192).
   unknown-level/error guards still apply in that degraded case.
 
 
+---
+
+# AI Usage Log: MAZ-193 Align Home copy with navigation targets (client)
+
+## Task / Problem
+
+The Home screen's labels did not match their navigation: 🏆 "Daily challenges" opened
+Progress, 🎁 "Win rewards" opened Leaderboard, ➡️ "Follow the arrow" and a second
+"Challenges" button both opened Level Select. The rewards/daily/follow copy implied
+screens that do not exist, making the app feel broken. MAZ-193 makes every Home
+label/card/icon truthful to its real destination.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-193` following both repository `AGENTS.md` files, root
+`MEMORY.md`, `Linear_MCP_Guideline.md`, a fresh worktree, AI usage logging, checks,
+commit/push/PR, Linear updates, and a review of affected tickets (Home reuses the
+levels/leaderboard/progress/settings routes, related to MAZ-189/191/192).
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Wrote `specs/home-truthful-copy-MAZ-193.spec.md` capturing the label↔destination mismatches and the truthful redesign. No separate agent session was run. | `specs/home-truthful-copy-MAZ-193.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Wrote the executable Gherkin contract `@s1..@s5`. No separate planner session was run. | `specs/home-truthful-copy-MAZ-193.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Rewrote the Home tests (per-card destination callbacks + truthful-label / no-misleading-copy expectation) — Red — then rebuilt `HomeScreen` cards + i18n + `app/index.tsx` — Green. | `tests/presentation/screens/HomeScreen.test.tsx`; `src/presentation/screens/HomeScreen.tsx`; `src/framework/i18n/locales/{en,es}.json`; `app/index.tsx` |
+| Judge (`.agents/judge.md`) | Not used | No separate judge session (PR/Linear review is the human gate). | N/A |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Presentation/i18n change; `src/presentation` is outside the mutation `mutate` globs. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` Play → level select | `tests/presentation/screens/HomeScreen.test.tsx` -> `should_call_on_play_when_play_is_pressed` |
+| `@s2` Leaderboard card → leaderboard | `should_route_the_leaderboard_card_to_the_leaderboard` |
+| `@s3` Progress card → progress | `should_route_the_progress_card_to_progress` |
+| `@s4` Settings card → settings | `should_route_the_settings_card_to_settings` |
+| `@s5` no misleading copy / truthful labels | `should_show_truthful_card_labels_and_no_misleading_reward_or_daily_copy` |
+
+## Result Obtained
+
+- `HomeScreen`: brand + one primary **Play** button (→ level select) + a three-card row:
+  🏆 Leaderboard → `onLeaderboard`, 📈 Your progress → `onProgress`, ⚙️ Settings →
+  `onSettings`. Removed the duplicate "Challenges" primary button, the redundant
+  "Follow the arrow" card, and the misleading "Daily challenges" / "Win rewards" labels.
+  Dropped the `onChallenges` prop; `app/index.tsx` no longer wires it.
+- i18n `home.*` keys replaced with `cardLeaderboard*` / `cardProgress*` /
+  `cardSettings*` in `en.json` + `es.json` (consistent EN/ES).
+- No new screens (rewards/daily/social out of scope). Presentation + i18n only; no new
+  layers/patterns. AGENTS architecture rules unchanged.
+
+## Verification
+
+- `npm ci` GREEN.
+- Focused tests GREEN: `tests/presentation/screens/HomeScreen.test.tsx` (7 tests).
+- `npm run verify` GREEN: lint + typecheck + coverage (73 suites / 408 tests).
+
+## Team Modifications Pending Human Review
+
+- Confirm the truthful Home layout (one Play CTA + Leaderboard/Progress/Settings cards)
+  and the removal of the Challenges/Follow/rewards items. Presentation tests are subject
+  to mandatory human review.
+
+## Lessons / Limitations
+
+- The only real destinations are levels, leaderboard, progress and settings; the honest
+  layout maps each card to one of those instead of inventing rewards/daily/social copy.
+- `nav.settings` is still used by the Settings screen header, so it was kept; only the
+  `home.*` misleading keys were removed.
+
+
+---
+
+# AI Usage Log: MAZ-192 Resolve PR #72 level-name card conflict (client)
+
+## Task / Problem
+
+PR #72 (`feat(levels): show level name on level preview cards (MAZ-192)`) was left
+conflicting against `develop`. Later work on MAZ-191 added sequential level locking in
+`LevelCard`, while another commit partially displayed level names. The task was to
+recover MAZ-192 without damaging the locked-level flow.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked to review PR #72, inspect `AGENTS.md`, `MEMORY.md`, and
+`Linear_MCP_Guideline.md`, analyze the conflict/damage risk, then resolve it by
+repicking whatever was necessary.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Recovered the existing MAZ-192 problem statement and kept the scope presentation-only. No separate agent session was run. | `specs/level-name-cards-MAZ-192.spec.md`; Linear MAZ-192 read-only check |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Restored the executable `@s1..@s4` contract from the conflicted PR and mapped it to tests. No separate planner session was run. | `specs/level-name-cards-MAZ-192.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Added the missing MAZ-192 tests first; the long-name truncation test failed, then `LevelCard` was updated to pass while preserving MAZ-191 locking. | `tests/presentation/components/LevelCard.test.tsx`; `tests/presentation/screens/LevelSelectScreen.test.tsx`; `src/presentation/components/LevelCard.tsx` |
+| Judge (`.agents/judge.md`) | Referenced | Reviewed the conflict as risk analysis before implementation: accepting PR #72 wholesale would overwrite MAZ-191 locked-card behavior. | PR #72 conflict analysis; `git merge-tree origin/develop origin/pr/72` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Presentation-only change; `src/presentation` is outside the mutation `mutate` globs. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+| Scenario | Concrete test coverage |
+| --- | --- |
+| `@s1` card shows the level name | `tests/presentation/components/LevelCard.test.tsx` -> `should_show_the_level_name` |
+| `@s2` fixture fallback name shown on a card | `tests/presentation/screens/LevelSelectScreen.test.tsx` -> `should_show_the_readable_level_name_from_the_local_fixture_catalog`; existing `tests/presentation/view-models/LevelSelectViewModel.test.ts` -> `should_expose_a_human_readable_name_for_each_offline_level` |
+| `@s3` long name truncates to one line | `tests/presentation/components/LevelCard.test.tsx` -> `should_truncate_a_long_level_name_to_one_line` |
+| `@s4` backend catalog name carried | existing `tests/presentation/view-models/LevelSelectViewModel.test.ts` -> `should_expose_the_remote_level_name` |
+
+## Result Obtained
+
+- Created a replacement branch/worktree from current `origin/develop` instead of
+  merging or force-pushing the old PR branch.
+- `LevelCard` now renders `level.name` with `numberOfLines={1}` and
+  `testID="level-card-name-<id>"`, with the accessibility label leading with the
+  level name.
+- MAZ-191 behavior was preserved: locked cards remain disabled, expose disabled
+  accessibility state, show the lock indicator, and do not call `onPress`.
+- Restored the MAZ-192 spec/feature files that were missing from current `develop`.
+
+## Verification
+
+- Red check: focused MAZ-192 tests initially failed because `level-card-name-<id>` and
+  `numberOfLines={1}` were missing.
+- Focused tests GREEN: 3 suites / 33 tests.
+- Full gate GREEN: `npm run verify` -> lint + typecheck + coverage, 79 suites / 444
+  tests.
+
+## Team Modifications Pending Human Review
+
+- Use this resolved branch as the replacement for PR #72, or manually port the same
+  small patch into the old branch. The old PR should not be merged as-is because it can
+  overwrite MAZ-191 locked-card behavior.
+- Confirm the card typography on a narrow device; tests verify `numberOfLines`, not
+  real device visual overflow.
+
+## Lessons / Limitations
+
+- The conflict was not dangerous because of the level-name feature itself; the danger
+  was resolving the file conflict by dropping MAZ-191 locked-card logic.
+- Current `develop` already had a partial name display, so the recovered MAZ-192 value
+  is the layout guarantee, test coverage, accessibility label, and traceability files.
+
+
 <!-- AI_LOG_ENTRIES_END -->
 
 ## Critical Evaluation

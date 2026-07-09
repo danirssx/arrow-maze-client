@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from "react";
-import { GameFacade } from "@/application/facades/GameFacade";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
-import { GameUIController } from "@/presentation/controllers/GameUIController";
-import { GameViewModel } from "@/presentation/view-models/GameViewModel";
+import type { GameFacade } from "@/application/facades/GameFacade";
+import { createGameSession } from "@/framework/config/game";
+import type { GameUIController } from "@/presentation/controllers/GameUIController";
+import type { GameViewModel } from "@/presentation/view-models/GameViewModel";
 
 export type GameSession = {
   readonly facade: GameFacade;
@@ -20,11 +21,7 @@ export type GameSession = {
  * from the `facade` (not the ViewModel) when submitting a victory.
  */
 export function useGameSession(levelId: string, definition: LevelDefinition | undefined): GameSession {
-  const session = useMemo<GameSession>(() => {
-    const facade = GameFacade.createDefault();
-    const viewModel = new GameViewModel(facade);
-    return { facade, viewModel, controller: new GameUIController(viewModel) };
-  }, []);
+  const session = useMemo<GameSession>(() => createGameSession(), []);
 
   useEffect(() => {
     session.viewModel.attach();
