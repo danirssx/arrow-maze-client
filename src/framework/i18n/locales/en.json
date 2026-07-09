@@ -35,6 +35,7 @@
     "objective": "Goal",
     "arrows": "Arrows",
     "attempts": "Attempts",
+    "time": "Time",
     "undo": "Undo",
     "restart": "Restart",
     "invalidMove": "That arrow is blocked — clear its path first."

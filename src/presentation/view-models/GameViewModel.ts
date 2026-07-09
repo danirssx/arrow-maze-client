@@ -20,7 +20,9 @@ import { ObservableViewModel } from "./ObservableViewModel";
  * (flagged for shake feedback). No screen ever touches a use case, repository, or
  * domain class. Result metrics (elapsed time, moves, score) are measured and
  * computed in the application layer — the ViewModel only maps snapshots to UI
- * state and never reads a clock or scores a game.
+ * state and never reads a clock or scores a game. The HUD timer is fed the same
+ * way: `refreshElapsedTime()` copies the session-measured `elapsedMs` from the
+ * snapshot, so the displayed time freezes exactly when the session freezes it.
  */
 export class GameViewModel extends ObservableViewModel<GameUiState> implements IGameEventListener {
   private extractionStack: string[] = [];
@@ -55,10 +57,32 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       bounds: board.bounds,
       arrowsRemaining: snapshot.arrowsRemaining,
       attemptsRemaining: snapshot.attemptsRemaining,
+      elapsedMs: snapshot.elapsedMs,
       canUndo: snapshot.canUndo,
       overlay: GameViewModel.overlayFor(snapshot),
       ...(board.boardShape !== undefined ? { boardShape: board.boardShape } : {})
     });
+  }
+
+  /**
+   * Pull the session-measured elapsed time into UI state.
+   *
+   * Driven by the view's timer tick. It is a no-op before a level starts (no
+   * snapshot exists) and publishes nothing when the value is unchanged, so a
+   * finished match stops re-rendering once the session freezes its clock.
+   */
+  refreshElapsedTime(): void {
+    const previous = this.getState();
+    if (previous.levelId === null) {
+      return;
+    }
+
+    const elapsedMs = this.facade.getSnapshot().elapsedMs;
+    if (elapsedMs === previous.elapsedMs) {
+      return;
+    }
+
+    this.setState({ ...previous, elapsedMs });
   }
 
   tapArrow(arrowId: string): void {
@@ -77,6 +101,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       extractedArrowIds: extracted ? [...previous.extractedArrowIds, arrowId] : previous.extractedArrowIds,
       arrowsRemaining: snapshot.arrowsRemaining,
       attemptsRemaining: snapshot.attemptsRemaining,
+      elapsedMs: snapshot.elapsedMs,
       canUndo: snapshot.canUndo,
       shakeArrowId: extracted ? null : arrowId,
       overlay
@@ -99,6 +124,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
             : previous.extractedArrowIds.filter((id) => id !== restored),
         arrowsRemaining: snapshot.arrowsRemaining,
         attemptsRemaining: snapshot.attemptsRemaining,
+        elapsedMs: snapshot.elapsedMs,
         canUndo: snapshot.canUndo,
         shakeArrowId: null,
         overlay: GameViewModel.overlayFor(snapshot)
@@ -119,6 +145,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       extractedArrowIds: [],
       arrowsRemaining: snapshot.arrowsRemaining,
       attemptsRemaining: snapshot.attemptsRemaining,
+      elapsedMs: snapshot.elapsedMs,
       canUndo: snapshot.canUndo,
       shakeArrowId: null,
       overlay: GameOverlay.None
@@ -131,6 +158,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       const overlay = event.result.status === "WON" ? GameOverlay.Victory : GameOverlay.Defeat;
       this.playTerminalEffectOnce(overlay);
       this.setState({ ...this.getState(), overlay });
+      this.refreshElapsedTime();
     }
   }
 
