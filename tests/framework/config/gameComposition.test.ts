@@ -1,6 +1,7 @@
 import { createGameFacade, createGameSession } from '@/framework/config/game';
 import { TutorialLevelStrategy } from '@/application/level-build/TutorialLevelStrategy';
 import { GamePhase } from '@/domain/state/GamePhase';
+import type { SoundEffectKey } from '@/application/ports/IAudioPlayer';
 
 describe('createGameFacade', () => {
   it('should_produce_a_working_facade_that_can_start_a_level', () => {
@@ -24,5 +25,21 @@ describe('createGameSession', () => {
     const b = createGameSession();
     expect(a.facade).not.toBe(b.facade);
     expect(a.viewModel).not.toBe(b.viewModel);
+  });
+
+  it('should_wire_audio_effects_into_the_game_view_model', () => {
+    const audio = {
+      played: [] as SoundEffectKey[],
+      playEffect: jest.fn(async (sound: SoundEffectKey) => {
+        audio.played.push(sound);
+      }),
+    };
+    const session = createGameSession(audio);
+
+    session.viewModel.attach();
+    session.viewModel.startLevel('tutorial', new TutorialLevelStrategy().createDefinition());
+    session.controller.handleArrowTap('b');
+
+    expect(audio.played).toEqual(['move']);
   });
 });

@@ -3,9 +3,8 @@
 Date: 2026-07-09
 Ticket: `MAZ-217`
 Source: Linear issue `MAZ-217` / M12 closeout plan
-Status: Backlog contract draft. The `@s` scenarios in
-`specs/mobile-audio-MAZ-217.feature` are the executable contract for this slice
-and must be approved before production code changes.
+Status: Approved and implemented locally. The `@s` scenarios in
+`specs/mobile-audio-MAZ-217.feature` are the executable contract for this slice.
 
 ## Purpose
 

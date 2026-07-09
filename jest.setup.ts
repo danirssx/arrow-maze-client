@@ -12,6 +12,7 @@
 jest.mock("react-native-svg");
 jest.mock("react-native-reanimated");
 jest.mock("@react-native-community/netinfo");
+jest.mock("expo-av");
 
 // expo-secure-store is a native keychain module; route it to the in-memory
 // manual mock in `__mocks__/expo-secure-store.js` so storage adapters are testable.
