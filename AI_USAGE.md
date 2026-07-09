@@ -4339,6 +4339,96 @@ Implementation not started. Planned coverage:
 
 ---
 
+# AI Usage Log: MAZ-215 Home account polish implementation
+
+## Task / Problem
+
+Implement Linear ticket `MAZ-215`: remove the unused coin badge from Home,
+redesign the authenticated Home account area to show only the username plus a
+clear logout action, preserve Settings logout, and keep Home as a dumb MVVM
+View.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user approved starting implementation after the MAZ-215 contract planning
+PR, while preserving the repository workflow: read both `AGENTS.md` files,
+respect the approved `.feature` scenarios, use the existing worktree, keep AI
+usage traceability, validate checks, commit/push/PR, and update Linear without
+marking the ticket done.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | The existing MAZ-215 spec constrained the implementation scope to presentation-only Home polish and Settings logout preservation. | `specs/mobile-home-polish-MAZ-215.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | The approved `@s1..@s6` scenarios drove test selection and scope. | `specs/mobile-home-polish-MAZ-215.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Followed Red-Green cycles for Home account UI and coin removal before production edits. | `tests/presentation/screens/HomeScreen.test.tsx`, `src/presentation/screens/HomeScreen.tsx` |
+| Judge (`.agents/judge.md`) | Referenced | Ran the prescribed architecture inspection checks and kept Home free of framework/infrastructure/domain imports. | Architecture `rg` checks, `should_keep_home_as_a_dumb_mvvm_view_when_source_is_inspected` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | Production changes are presentation-only; client mutation guidance focuses on `src/domain` and `src/application` rule logic. | N/A |
+
+## Scenario Coverage (@s -> test)
+
+- @s1 -> `should_show_username_and_clear_logout_action_when_session_identity_is_provided`
+- @s2 -> `should_call_logout_once_when_home_logout_is_pressed`
+- @s3 -> `should_show_username_and_logout_when_session_identity_is_provided` in `SettingsScreen.test.tsx`
+- @s4 -> `should_not_show_fake_account_information_when_session_identity_is_missing`
+- @s5 -> `should_not_render_coin_badge_or_coin_amount`
+- @s6 -> `should_keep_home_as_a_dumb_mvvm_view_when_source_is_inspected` plus architecture `rg` checks
+
+## Red-Green-Refactor Evidence
+
+- Red: `npm test -- --runInBand tests/presentation/screens/HomeScreen.test.tsx`
+  failed because `home-account` did not exist and `home-coins` still rendered.
+- Green: removed `CoinBadge`/`coins` from Home and replaced the compact account
+  detail with a visible `home-account` row containing `home-username` and a
+  clear `home-logout` action.
+- Refactor/check: added a narrow Home source inspection test for MVVM boundaries
+  and reran focused Home/Settings tests before the full verify gate.
+
+## Result Obtained
+
+- `HomeScreen` no longer imports or renders `CoinBadge`.
+- `HomeScreenProps` no longer exposes a dormant `coins` prop.
+- Authenticated Home renders a full-width account row with username and clear
+  logout action.
+- Unauthenticated Home renders no fake account information and no logout action.
+- Settings logout behavior remains covered and unchanged.
+
+## Verification
+
+- `npm test -- --runInBand tests/presentation/screens/HomeScreen.test.tsx` GREEN (11 tests)
+- `npm test -- --runInBand tests/presentation/screens/SettingsScreen.test.tsx` GREEN (6 tests; existing i18n `act(...)` warning)
+- Architecture checks:
+  - `rg -n "from ['\"]@/(framework|infrastructure|domain)" src/presentation`
+  - `rg -n "from ['\"]@/(infrastructure|framework|presentation)" src/application src/domain`
+  - `rg -n "Date\\.now|new Date|TimeScoringStrategy|ScoreContext|submitScore|completeLevel" src/presentation`
+  - `rg -n "createDefault\\(|new .*Repository|new .*Adapter|AsyncStorageAdapter|Http.*Repository" src/presentation`
+  - `rg -n "CoinBadge|home-coins|coins\\??:|coins =|coin" src/presentation/screens/HomeScreen.tsx app/index.tsx`
+- `npm run verify` GREEN (82 suites / 463 tests). Existing React Native
+  `act(...)` console warnings remain in unrelated animated/i18n tests.
+
+## Team Modifications Pending Human Review
+
+- Review the Home account row spacing/visual hierarchy on a real device or Expo
+  preview; Jest validates behavior, not final visual feel.
+- Human reviewers should decide whether the now-unused `CoinBadge` component
+  should be deleted in a later cleanup ticket. It is no longer referenced by Home.
+
+## Lessons / Limitations
+
+- Removing the dormant `coins` prop is cleaner than hiding a zero-valued badge:
+  it prevents Home from advertising an economy feature that does not exist.
+- Source-inspection tests are useful for architecture acceptance criteria, but
+  they should remain narrow to the touched file to avoid brittle whole-repo
+  assertions.
+
+
+---
+
 # AI Usage Log: MAZ-217 Mobile audio effects and background music contract
 
 ## Task / Problem
