@@ -29,6 +29,13 @@
     "web": {
       "bundler": "metro",
       "output": "static"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ede51ce4-43d7-47ff-9444-da77c2bc7f6d"
+      }
+    },
+    "owner": "danielross5018"
   }
 }
