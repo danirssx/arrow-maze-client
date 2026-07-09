@@ -4202,14 +4202,6 @@ damage, then resolve it by repicking whatever was necessary.
 ## Task / Problem
 
 Configure the mobile client for EAS cloud builds so Android and iOS can be built through development, preview, and production profiles without committing secrets or enabling unused EAS Update channels.
-# AI Usage Log: MAZ-217 Mobile audio effects and background music contract
-
-## Task / Problem
-
-Prepare the executable contract for Linear ticket `MAZ-217`, which fixes mobile
-sound effects and adds Home/Gameplay background music in `arrow-maze-client`.
-The ticket is still in Linear Backlog, so production implementation is blocked
-until the human approves the Gherkin scenarios.
 
 ## Tool and Model
 
@@ -4218,11 +4210,6 @@ Codex / GPT-5.
 ## Prompt Used
 
 The user asked to implement Linear ticket `MAZ-213` in a new worktree, reading the client and backend `AGENTS.md`, `MEMORY.md`, and `Linear_MCP_Guideline.md`; register AI usage; validate checks; commit, push, create a PR, and update Linear according to the project agent rules.
-The user asked to work on `MAZ-217`, read both repository `AGENTS.md` files,
-read `MEMORY.md` and `Linear_MCP_Guideline.md`, use a new worktree, register AI
-usage, validate checks, update memory/Linear/GitHub as appropriate, and review
-affected tickets because this is a refactor/fix. Local rules required a
-Gherkin approval gate before TDD.
 
 ## Agent Roles Used
 
@@ -4268,6 +4255,35 @@ No approved Gherkin `.feature` exists for this chore ticket. Linear acceptance c
 - `eas.json` can reference EAS environments without committing API URLs or secrets.
 - EAS Update channels were intentionally left out because this ticket only configures cloud builds.
 - A real EAS cloud build was not executed in this environment because the `eas` CLI is not installed and Expo credentials are required.
+
+
+---
+
+# AI Usage Log: MAZ-217 Mobile audio effects and background music contract
+
+## Task / Problem
+
+Prepare the executable contract for Linear ticket `MAZ-217`, which fixes mobile
+sound effects and adds Home/Gameplay background music in `arrow-maze-client`.
+The ticket is still in Linear Backlog, so production implementation is blocked
+until the human approves the Gherkin scenarios.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user asked to work on `MAZ-217`, read both repository `AGENTS.md` files,
+read `MEMORY.md` and `Linear_MCP_Guideline.md`, use a new worktree, register AI
+usage, validate checks, update memory/Linear/GitHub as appropriate, and review
+affected tickets because this is a refactor/fix. Local rules required a
+Gherkin approval gate before TDD.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
 | Spec Partner (`.agents/spec-partner.md`) | Referenced | Read and applied the rule that behavior touching `src` needs a spec with Clean Architecture placement and open risks. | `specs/mobile-audio-MAZ-217.spec.md`, Linear issue `MAZ-217` |
 | Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Read and applied the rule to distill stable `@s1..@s7` Gherkin scenarios before TDD. | `specs/mobile-audio-MAZ-217.feature` |
 | TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Read and applied the precondition that production code must wait for approved Gherkin scenarios. | No production changes |
@@ -4381,7 +4397,8 @@ and Linear update.
 - `npm test -- --runInBand tests/infrastructure/audio/AudioFacade.test.ts tests/infrastructure/audio/ExpoAudioAdapter.test.ts tests/presentation/view-models/GameViewModel.test.ts tests/framework/audio/useScreenMusic.test.tsx tests/framework/config/gameComposition.test.ts tests/integration/gameVictorySubmit.test.tsx tests/integration/gameLevelLock.test.tsx`
 - `npm run lint`
 - `npm run typecheck`
-- `npm run verify` GREEN (81 suites / 455 tests)
+- `npm run verify` GREEN before merging current `origin/develop` (81 suites / 455 tests)
+- `npm run verify` GREEN after merging current `origin/develop` (82 suites / 458 tests)
 
 ## Team Modifications Pending Human Review
 
