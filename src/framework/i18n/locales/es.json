@@ -35,6 +35,7 @@
     "objective": "Objetivo",
     "arrows": "Flechas",
     "attempts": "Intentos",
+    "time": "Tiempo",
     "undo": "Deshacer",
     "restart": "Reiniciar",
     "invalidMove": "Esa flecha está bloqueada: libera su camino primero."

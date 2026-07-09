@@ -5,6 +5,7 @@ import type { ILevelStrategy } from "@/application/level-build/ILevelStrategy";
 import type { GameFacade } from "@/application/facades/GameFacade";
 import type { SoundEffectKey } from "@/application/ports/IAudioPlayer";
 import { GameEventTypeDto } from "@/application/dto/GameEventDto";
+import { GameplayStateError } from "@/application/use-cases/game/errors";
 import { GameViewModel } from "@/presentation/view-models/GameViewModel";
 import { GameOverlay } from "@/presentation/state/GameUiState";
 
@@ -31,16 +32,24 @@ const BOARD_SNAPSHOT: BoardSnapshotDto = {
 
 class FakeGameFacade {
   private listeners = new Set<IGameEventListener>();
+  private started = false;
   snapshot: GameSnapshotDto = { ...PLAYING_SNAPSHOT };
   board: BoardSnapshotDto = BOARD_SNAPSHOT;
 
   addEventListener(l: IGameEventListener): void { this.listeners.add(l); }
   removeEventListener(l: IGameEventListener): void { this.listeners.delete(l); }
-  startLevel(_strategy: ILevelStrategy): GameSnapshotDto { return this.snapshot; }
+  startLevel(_strategy: ILevelStrategy): GameSnapshotDto { this.started = true; return this.snapshot; }
   getBoardSnapshot(): BoardSnapshotDto { return this.board; }
+
+  // Mirrors the real facade: reading a snapshot before a level starts throws.
+  getSnapshot(): GameSnapshotDto {
+    if (!this.started) throw new GameplayStateError("no level started");
+    return this.snapshot;
+  }
+
   tapArrow(_id: string): GameSnapshotDto { return this.snapshot; }
   undo(): GameSnapshotDto { return { ...this.snapshot, canUndo: false, arrowsRemaining: this.snapshot.arrowsRemaining + 1 }; }
-  restartLevel(): GameSnapshotDto { return this.snapshot; }
+  restartLevel(): GameSnapshotDto { this.started = true; return this.snapshot; }
 
   emit(listener: IGameEventListener): void {
     for (const l of this.listeners) l.onGameEvent({ type: GameEventTypeDto.LevelFinished, result: { status: "LOST", reason: "OUT_OF_ATTEMPTS" } });
@@ -204,5 +213,96 @@ describe("GameViewModel", () => {
     fake.emitDefeat();
 
     expect(audio.played).toEqual(["victory"]);
+  });
+
+  // Covers @s1 of specs/gameplay-visible-timer-MAZ-220.feature
+  it("should_start_the_visible_timer_at_zero_when_level_starts", () => {
+    const { vm, fake } = makeViewModel();
+    fake.snapshot = { ...PLAYING_SNAPSHOT, elapsedMs: 0 };
+
+    vm.startLevel("level-1", {} as never);
+
+    expect(vm.getState().elapsedMs).toBe(0);
+  });
+
+  it("should_publish_the_application_elapsed_time_when_refresh_is_requested", () => {
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, elapsedMs: 4_200 };
+
+    vm.refreshElapsedTime();
+
+    expect(vm.getState().elapsedMs).toBe(4_200);
+  });
+
+  it("should_not_publish_state_when_the_elapsed_time_is_unchanged", () => {
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, elapsedMs: 4_200 };
+    vm.refreshElapsedTime();
+
+    const notify = jest.fn();
+    vm.subscribe(notify);
+    vm.refreshElapsedTime();
+
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("should_carry_the_elapsed_time_when_an_arrow_is_tapped", () => {
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, arrowsRemaining: 2, canUndo: true, elapsedMs: 1_500 };
+
+    vm.tapArrow("a1");
+
+    expect(vm.getState().elapsedMs).toBe(1_500);
+  });
+
+  // Covers @s2 of specs/gameplay-visible-timer-MAZ-220.feature
+  it("should_freeze_the_visible_timer_when_the_level_finishes", () => {
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, elapsedMs: 9_000 };
+
+    fake.emitVictory();
+    fake.snapshot = { ...PLAYING_SNAPSHOT, elapsedMs: 9_000 };
+    vm.refreshElapsedTime();
+
+    expect(vm.getState().overlay).toBe(GameOverlay.Victory);
+    expect(vm.getState().elapsedMs).toBe(9_000);
+  });
+
+  it("should_publish_the_frozen_elapsed_time_when_the_level_finished_event_arrives", () => {
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, elapsedMs: 12_345 };
+
+    fake.emitVictory();
+
+    expect(vm.getState().elapsedMs).toBe(12_345);
+  });
+
+  // Covers @s3 of specs/gameplay-visible-timer-MAZ-220.feature
+  it("should_reset_the_visible_timer_when_the_level_restarts", () => {
+    const { vm, fake } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, elapsedMs: 30_000 };
+    vm.refreshElapsedTime();
+
+    fake.snapshot = { ...PLAYING_SNAPSHOT, elapsedMs: 0 };
+    vm.restart();
+
+    expect(vm.getState().elapsedMs).toBe(0);
+  });
+
+  // Covers @s6 of specs/gameplay-visible-timer-MAZ-220.feature
+  it("should_not_publish_state_when_refresh_runs_before_a_level_starts", () => {
+    const { vm } = makeViewModel();
+    const notify = jest.fn();
+    vm.subscribe(notify);
+
+    expect(() => vm.refreshElapsedTime()).not.toThrow();
+    expect(notify).not.toHaveBeenCalled();
+    expect(vm.getState().elapsedMs).toBe(0);
   });
 });
