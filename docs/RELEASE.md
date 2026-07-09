@@ -11,6 +11,21 @@
 | Android Studio | latest | for Android builds |
 | Xcode | 15+ | for iOS builds (macOS only) |
 
+Authenticate before using EAS:
+
+```bash
+eas login
+```
+
+If this checkout has not been linked to an Expo cloud project yet, run the
+interactive setup once with the team-owned Expo account:
+
+```bash
+eas init
+```
+
+Do not commit Expo access tokens or local credential files.
+
 ## Environment variables
 
 Copy `.env.example` to `.env` and fill in your values:
@@ -19,7 +34,18 @@ Copy `.env.example` to `.env` and fill in your values:
 EXPO_PUBLIC_API_BASE_URL=https://your-backend-url
 ```
 
-Never commit `.env`.
+Never commit `.env`. For cloud builds, define `EXPO_PUBLIC_API_BASE_URL` in the
+matching EAS environment:
+
+| EAS profile | EAS environment | Expected backend URL |
+| --- | --- | --- |
+| `development` | `development` | Local/LAN backend used by internal debug builds |
+| `preview` | `preview` | Preview or staging backend |
+| `production` | `production` | Production backend |
+
+`eas.json` uses the `environment` field so EAS applies variables from the
+matching cloud environment. Keep secrets out of `eas.json`; only non-secret
+build flags may be committed there.
 
 ## Run quality gates before any release
 
@@ -38,6 +64,18 @@ npm run start
 
 Scan the QR code with the Expo Go app on your device.
 
+## Development build (EAS Build)
+
+Use this when you need a native internal artifact instead of Expo Go:
+
+```bash
+eas build --profile development --platform android
+eas build --profile development --platform ios
+```
+
+The Android artifact is an APK. The iOS artifact targets the simulator, so it
+does not require distribution signing credentials.
+
 ## Preview build (EAS Build — internal distribution)
 
 ```bash
@@ -45,9 +83,14 @@ eas build --profile preview --platform android
 eas build --profile preview --platform ios
 ```
 
-Requires an Expo account and `eas.json` configured. Share the resulting APK/IPA link for team testing.
+Requires an Expo account and the preview EAS environment configured. Share the
+resulting APK/IPA link for team testing. Preview builds should be created from
+`develop` or feature branches, not from `main`.
 
 ## Production build
+
+Production builds are promoted only from `main` after human release approval.
+Do not run production EAS builds from `develop` or feature branches.
 
 ### Android (APK / AAB)
 
@@ -87,6 +130,17 @@ Every pull request to `develop` or `main` automatically runs:
 4. `npm run test:coverage` — Jest with coverage report
 
 See `.github/workflows/pull-request.yml`.
+
+## Branch-to-build policy
+
+| Branch/source | EAS profile | Purpose |
+| --- | --- | --- |
+| Feature branch / PR | `development` or `preview` | Internal validation only |
+| `develop` | `preview` | Sprint integration and demo validation |
+| `main` | `production` | Production release candidate after human approval |
+
+This client policy mirrors the workspace release rule: feature PRs target
+`develop`; only human-approved release PRs promote to `main`.
 
 ## Contract tests
 
