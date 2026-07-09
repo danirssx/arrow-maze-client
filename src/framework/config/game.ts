@@ -11,6 +11,12 @@ import { TapArrowUseCase } from '@/application/use-cases/game/TapArrowUseCase';
 import { UndoLastMoveUseCase } from '@/application/use-cases/game/UndoLastMoveUseCase';
 import { GameUIController } from '@/presentation/controllers/GameUIController';
 import { GameViewModel } from '@/presentation/view-models/GameViewModel';
+import type { SoundEffectKey } from '@/application/ports/IAudioPlayer';
+import { createAudioFacade } from './audio';
+
+export type AudioEffectsPort = {
+  playEffect(sound: SoundEffectKey): Promise<void>;
+};
 
 export type ComposedGameSession = {
   readonly facade: GameFacade;
@@ -30,8 +36,8 @@ export function createGameFacade(): GameFacade {
   });
 }
 
-export function createGameSession(): ComposedGameSession {
+export function createGameSession(audio: AudioEffectsPort = createAudioFacade()): ComposedGameSession {
   const facade = createGameFacade();
-  const viewModel = new GameViewModel(facade);
+  const viewModel = new GameViewModel(facade, audio);
   return { facade, viewModel, controller: new GameUIController(viewModel) };
 }

@@ -1,4 +1,5 @@
 import type { GameFacade } from "@/application/facades/GameFacade";
+import type { SoundEffectKey } from "@/application/ports/IAudioPlayer";
 import type { GameEventDto } from "@/application/dto/GameEventDto";
 import { GameEventTypeDto } from "@/application/dto/GameEventDto";
 import type { IGameEventListener } from "@/application/dto/IGameEventListener";
@@ -23,8 +24,12 @@ import { ObservableViewModel } from "./ObservableViewModel";
  */
 export class GameViewModel extends ObservableViewModel<GameUiState> implements IGameEventListener {
   private extractionStack: string[] = [];
+  private terminalSoundPlayed = false;
 
-  constructor(private readonly facade: GameFacade) {
+  constructor(
+    private readonly facade: GameFacade,
+    private readonly audio?: { playEffect(sound: SoundEffectKey): Promise<void> },
+  ) {
     super(initialGameUiState);
   }
 
@@ -42,6 +47,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
     const snapshot = this.facade.startLevel({ createDefinition: () => definition });
     const board = this.facade.getBoardSnapshot();
     this.extractionStack = [];
+    this.terminalSoundPlayed = false;
     this.setState({
       ...initialGameUiState,
       levelId,
@@ -62,6 +68,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
 
     if (extracted) {
       this.extractionStack.push(arrowId);
+      void this.audio?.playEffect("move");
     }
 
     const overlay = GameViewModel.overlayFor(snapshot);
@@ -81,6 +88,9 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
     try {
       const snapshot = this.facade.undo();
       const restored = this.extractionStack.pop();
+      if (restored !== undefined) {
+        void this.audio?.playEffect("undo");
+      }
       this.setState({
         ...previous,
         extractedArrowIds:
@@ -102,6 +112,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
     const levelId = this.getState().levelId;
     const snapshot = this.facade.restartLevel();
     this.extractionStack = [];
+    this.terminalSoundPlayed = false;
     this.setState({
       ...this.getState(),
       levelId,
@@ -118,7 +129,21 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
   onGameEvent(event: GameEventDto): void {
     if (event.type === GameEventTypeDto.LevelFinished) {
       const overlay = event.result.status === "WON" ? GameOverlay.Victory : GameOverlay.Defeat;
+      this.playTerminalEffectOnce(overlay);
       this.setState({ ...this.getState(), overlay });
+    }
+  }
+
+  private playTerminalEffectOnce(overlay: GameOverlay): void {
+    if (this.terminalSoundPlayed) return;
+    if (overlay === GameOverlay.Victory) {
+      this.terminalSoundPlayed = true;
+      void this.audio?.playEffect("victory");
+      return;
+    }
+    if (overlay === GameOverlay.Defeat) {
+      this.terminalSoundPlayed = true;
+      void this.audio?.playEffect("defeat");
     }
   }
 

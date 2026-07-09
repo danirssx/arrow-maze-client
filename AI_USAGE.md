@@ -4201,6 +4201,7 @@ damage, then resolve it by repicking whatever was necessary.
 
 ## Task / Problem
 
+Configure the mobile client for EAS cloud builds so Android and iOS can be built through development, preview, and production profiles without committing secrets or enabling unused EAS Update channels.
 Configure the mobile client for EAS cloud builds so Android and iOS can be built through development, preview, and production profiles without committing secrets or enabling unused EAS Update channels. After the initial PR, install EAS CLI locally for the agent session and register/link the Expo EAS project.
 
 ## Tool and Model
@@ -4209,6 +4210,7 @@ Codex / GPT-5.
 
 ## Prompt Used
 
+The user asked to implement Linear ticket `MAZ-213` in a new worktree, reading the client and backend `AGENTS.md`, `MEMORY.md`, and `Linear_MCP_Guideline.md`; register AI usage; validate checks; commit, push, create a PR, and update Linear according to the project agent rules.
 The user asked to implement Linear ticket `MAZ-213` in a new worktree, reading the client and backend `AGENTS.md`, `MEMORY.md`, and `Linear_MCP_Guideline.md`; register AI usage; validate checks; commit, push, create a PR, and update Linear according to the project agent rules. The user then asked to install EAS and run the registration/linking step directly.
 
 ## Agent Roles Used
@@ -4258,6 +4260,7 @@ No approved Gherkin `.feature` exists for this chore ticket. Linear acceptance c
 
 - `eas.json` can reference EAS environments without committing API URLs or secrets.
 - EAS Update channels were intentionally left out because this ticket only configures cloud builds.
+- A real EAS cloud build was not executed in this environment because the `eas` CLI is not installed and Expo credentials are required.
 - A real EAS cloud build was not executed in this environment; project registration is complete, but building still requires EAS environment variables and signing credentials.
 
 
@@ -4335,6 +4338,88 @@ Implementation not started. Planned coverage:
   framework/presentation audio behavior.
 - Native audio output must be manually validated on device/emulator after TDD;
   Jest mocks can verify calls and cleanup but not speakers.
+
+
+---
+
+# AI Usage Log: MAZ-217 Mobile audio effects and background music implementation
+
+## Task / Problem
+
+Implement Linear ticket `MAZ-217`: fix mobile sound effects, add Home and
+Gameplay background music, respect mute, and avoid active audio leaks on screen
+unmount.
+
+## Tool and Model
+
+Codex / GPT-5.
+
+## Prompt Used
+
+The user approved the `MAZ-217` executable contract and asked to proceed with
+implementation. Repository rules required implementation in the existing
+worktree/branch, TDD against `specs/mobile-audio-MAZ-217.feature`, Clean
+Architecture/MVVM boundaries, AI usage logging, verification, commit, push, PR,
+and Linear update.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | The previously drafted spec was used as the approved behavior/architecture boundary. | `specs/mobile-audio-MAZ-217.spec.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | The `@s1..@s7` scenarios were used as the executable implementation contract. | `specs/mobile-audio-MAZ-217.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Implemented Red-Green cycles: AudioFacade lifecycle, GameViewModel effects, screen music hook, game composition, Expo adapter/assets. | Tests listed below, code commit |
+| Judge (`.agents/judge.md`) | Referenced | Applied dependency-rule checks and scenario coverage self-audit before final verification. | Manual `rg` checks, `npm run verify` |
+| Mutation Tester (`.agents/mutation.md`) | Not used | `docs/mutation-testing.md` scopes mandatory mutation to `domain`/`application` rules; this ticket changed framework/presentation/infrastructure audio behavior and only application port types. | `docs/mutation-testing.md`, `stryker.conf.json` |
+
+## Scenario Coverage (@s -> test)
+
+- @s1 -> `tests/presentation/view-models/GameViewModel.test.ts` / `should_play_move_effect_once_when_an_arrow_is_extracted`
+- @s2 -> `tests/presentation/view-models/GameViewModel.test.ts` / `should_play_undo_effect_once_when_undo_restores_an_arrow`
+- @s3 -> `tests/presentation/view-models/GameViewModel.test.ts` / `should_play_terminal_effect_once_when_level_finished_event_repeats`
+- @s4 -> `tests/infrastructure/audio/AudioFacade.test.ts` / `should_not_play_sound_when_muted`, `should_not_start_music_when_muted`, `should_stop_active_music_when_muted`
+- @s5 -> `tests/framework/audio/useScreenMusic.test.tsx` / `should_start_and_stop_home_music_with_screen_lifecycle`
+- @s6 -> `tests/framework/audio/useScreenMusic.test.tsx` / `should_start_and_stop_gameplay_music_with_screen_lifecycle`
+- @s7 -> `tests/infrastructure/audio/ExpoAudioAdapter.test.ts` / local asset load assertions plus `assets/sounds/README.md`
+
+## Result Obtained
+
+- Extended the audio port with explicit effect and music lifecycle contracts.
+- Updated `AudioFacade` to gate effects/music through mute, track active music,
+  and stop active music when muted.
+- Updated `ExpoAudioAdapter` to load local WAV assets, play one-shot effects,
+  start looped background tracks, and unload resources on completion/stop.
+- Added `useScreenMusic` and wired Home/Game routes to screen-scoped music.
+- Injected audio effects into `GameViewModel` through `createGameSession`.
+- Added synthetic local placeholder WAV files and documented their source.
+- Added `expo-av` Jest mock.
+
+## Verification
+
+- `npm test -- --runInBand tests/infrastructure/audio/AudioFacade.test.ts`
+- `npm test -- --runInBand tests/presentation/view-models/GameViewModel.test.ts`
+- `npm test -- --runInBand tests/framework/audio/useScreenMusic.test.tsx`
+- `npm test -- --runInBand tests/framework/config/gameComposition.test.ts`
+- `npm test -- --runInBand tests/infrastructure/audio/ExpoAudioAdapter.test.ts`
+- `npm test -- --runInBand tests/infrastructure/audio/AudioFacade.test.ts tests/infrastructure/audio/ExpoAudioAdapter.test.ts tests/presentation/view-models/GameViewModel.test.ts tests/framework/audio/useScreenMusic.test.tsx tests/framework/config/gameComposition.test.ts tests/integration/gameVictorySubmit.test.tsx tests/integration/gameLevelLock.test.tsx`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run verify` GREEN before merging current `origin/develop` (81 suites / 455 tests)
+- `npm run verify` GREEN after merging current `origin/develop` (82 suites / 458 tests)
+
+## Team Modifications Pending Human Review
+
+- Device/emulator validation is still required to confirm actual native speaker
+  output and placeholder volume/feel.
+- Team may replace synthetic placeholder WAVs with final authored assets later.
+
+## Lessons / Limitations
+
+- The immediate playback blocker was twofold: no committed `assets/sounds`
+  files and no Home/Game lifecycle wiring. Tests also exposed that `expo-av`
+  needed a Jest mock before composition tests could import the real adapter.
+- Mutation testing was not run because mandatory mutation scope excludes
+  framework/presentation/infrastructure audio code in this repo.
 
 
 <!-- AI_LOG_ENTRIES_END -->

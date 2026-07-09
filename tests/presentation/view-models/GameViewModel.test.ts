@@ -3,6 +3,7 @@ import type { BoardSnapshotDto } from "@/application/dto/BoardSnapshotDto";
 import type { GameSnapshotDto } from "@/application/use-cases/game/GameSnapshotDto";
 import type { ILevelStrategy } from "@/application/level-build/ILevelStrategy";
 import type { GameFacade } from "@/application/facades/GameFacade";
+import type { SoundEffectKey } from "@/application/ports/IAudioPlayer";
 import { GameEventTypeDto } from "@/application/dto/GameEventDto";
 import { GameViewModel } from "@/presentation/view-models/GameViewModel";
 import { GameOverlay } from "@/presentation/state/GameUiState";
@@ -55,11 +56,20 @@ class FakeGameFacade {
   }
 }
 
-function makeViewModel(fake?: FakeGameFacade): { vm: GameViewModel; fake: FakeGameFacade } {
+class FakeAudioEffects {
+  played: SoundEffectKey[] = [];
+
+  async playEffect(sound: SoundEffectKey): Promise<void> {
+    this.played.push(sound);
+  }
+}
+
+function makeViewModel(fake?: FakeGameFacade, audio?: FakeAudioEffects): { vm: GameViewModel; fake: FakeGameFacade; audio: FakeAudioEffects } {
   const f = fake ?? new FakeGameFacade();
-  const vm = new GameViewModel(f as unknown as GameFacade);
+  const a = audio ?? new FakeAudioEffects();
+  const vm = new GameViewModel(f as unknown as GameFacade, a);
   vm.attach();
-  return { vm, fake: f };
+  return { vm, fake: f, audio: a };
 }
 
 describe("GameViewModel", () => {
@@ -89,6 +99,16 @@ describe("GameViewModel", () => {
     expect(state.extractedArrowIds).toContain("a1");
     expect(state.canUndo).toBe(true);
     expect(state.shakeArrowId).toBeNull();
+  });
+
+  it("should_play_move_effect_once_when_an_arrow_is_extracted", () => {
+    const { vm, fake, audio } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, arrowsRemaining: 2, attemptsRemaining: 5, canUndo: true };
+
+    vm.tapArrow("a1");
+
+    expect(audio.played).toEqual(["move"]);
   });
 
   it("should_flag_a_blocked_tap_with_shake_when_arrowsRemaining_is_unchanged", () => {
@@ -134,6 +154,18 @@ describe("GameViewModel", () => {
     expect(state.canUndo).toBe(false);
   });
 
+  it("should_play_undo_effect_once_when_undo_restores_an_arrow", () => {
+    const { vm, fake, audio } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+    fake.snapshot = { ...PLAYING_SNAPSHOT, arrowsRemaining: 2, canUndo: true };
+    vm.tapArrow("a1");
+    audio.played = [];
+
+    vm.undo();
+
+    expect(audio.played).toEqual(["undo"]);
+  });
+
   it("should_carry_board_shape_into_ui_state_when_the_level_has_one", () => {
     const { vm, fake } = makeViewModel();
     fake.board = {
@@ -161,5 +193,16 @@ describe("GameViewModel", () => {
     vm.onGameEvent({ type: GameEventTypeDto.LevelFinished, result: { status: "LOST", reason: "OUT_OF_ATTEMPTS" } });
 
     expect(vm.getState().overlay).toBe(GameOverlay.Defeat);
+  });
+
+  it("should_play_terminal_effect_once_when_level_finished_event_repeats", () => {
+    const { vm, fake, audio } = makeViewModel();
+    vm.startLevel("level-1", {} as never);
+
+    fake.emitVictory();
+    fake.emitVictory();
+    fake.emitDefeat();
+
+    expect(audio.played).toEqual(["victory"]);
   });
 });
