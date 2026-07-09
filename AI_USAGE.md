@@ -4201,7 +4201,6 @@ damage, then resolve it by repicking whatever was necessary.
 
 ## Task / Problem
 
-Configure the mobile client for EAS cloud builds so Android and iOS can be built through development, preview, and production profiles without committing secrets or enabling unused EAS Update channels.
 Configure the mobile client for EAS cloud builds so Android and iOS can be built through development, preview, and production profiles without committing secrets or enabling unused EAS Update channels. After the initial PR, install EAS CLI locally for the agent session and register/link the Expo EAS project.
 
 ## Tool and Model
@@ -4210,7 +4209,6 @@ Codex / GPT-5.
 
 ## Prompt Used
 
-The user asked to implement Linear ticket `MAZ-213` in a new worktree, reading the client and backend `AGENTS.md`, `MEMORY.md`, and `Linear_MCP_Guideline.md`; register AI usage; validate checks; commit, push, create a PR, and update Linear according to the project agent rules.
 The user asked to implement Linear ticket `MAZ-213` in a new worktree, reading the client and backend `AGENTS.md`, `MEMORY.md`, and `Linear_MCP_Guideline.md`; register AI usage; validate checks; commit, push, create a PR, and update Linear according to the project agent rules. The user then asked to install EAS and run the registration/linking step directly.
 
 ## Agent Roles Used
@@ -4260,7 +4258,6 @@ No approved Gherkin `.feature` exists for this chore ticket. Linear acceptance c
 
 - `eas.json` can reference EAS environments without committing API URLs or secrets.
 - EAS Update channels were intentionally left out because this ticket only configures cloud builds.
-- A real EAS cloud build was not executed in this environment because the `eas` CLI is not installed and Expo credentials are required.
 - A real EAS cloud build was not executed in this environment; project registration is complete, but building still requires EAS environment variables and signing credentials.
 
 
@@ -4362,6 +4359,11 @@ worktree/branch, TDD against `specs/mobile-audio-MAZ-217.feature`, Clean
 Architecture/MVVM boundaries, AI usage logging, verification, commit, push, PR,
 and Linear update.
 
+After functional verification, the user reported that playback worked but the
+first generated audio assets sounded poor. A follow-up iteration replaced only
+the local synthetic WAV placeholders with more intentional arcade/menu/gameplay
+sounds while preserving the already-tested audio integration.
+
 ## Agent Roles Used
 
 | Agent | Status | How it was used | Evidence |
@@ -4393,6 +4395,9 @@ and Linear update.
 - Injected audio effects into `GameViewModel` through `createGameSession`.
 - Added synthetic local placeholder WAV files and documented their source.
 - Added `expo-av` Jest mock.
+- Replaced the first placeholder WAV tones with higher-quality synthetic local
+  assets: bright move pluck, reverse undo chime, victory arpeggio, low defeat
+  cue, ambient Home loop, and subtle Gameplay loop.
 
 ## Verification
 
@@ -4406,11 +4411,13 @@ and Linear update.
 - `npm run typecheck`
 - `npm run verify` GREEN before merging current `origin/develop` (81 suites / 455 tests)
 - `npm run verify` GREEN after merging current `origin/develop` (82 suites / 458 tests)
+- `npm test -- --runInBand tests/infrastructure/audio/ExpoAudioAdapter.test.ts tests/infrastructure/audio/AudioFacade.test.ts`
+- `npm run verify` GREEN after audio asset quality iteration (82 suites / 459 tests)
 
 ## Team Modifications Pending Human Review
 
-- Device/emulator validation is still required to confirm actual native speaker
-  output and placeholder volume/feel.
+- Device/emulator validation is still required to confirm final native speaker
+  output, mix balance, and subjective feel.
 - Team may replace synthetic placeholder WAVs with final authored assets later.
 
 ## Lessons / Limitations
