@@ -4,6 +4,15 @@ import type { MusicTrackKey } from "@/application/ports/IAudioPlayer";
 import { useScreenMusic } from "@/framework/audio/useScreenMusic";
 import { renderWithProviders } from "../../presentation/testUtils";
 
+jest.mock("expo-router", () => {
+  const React = jest.requireActual("react");
+  return {
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      React.useEffect(effect, [effect]);
+    },
+  };
+});
+
 const mockMusic = {
   started: [] as MusicTrackKey[],
   stopped: [] as MusicTrackKey[],

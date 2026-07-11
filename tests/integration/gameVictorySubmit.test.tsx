@@ -27,10 +27,16 @@ const mockLoadProgress = jest
   .fn<Promise<{ completedLevels: { levelId: string }[] }>, [string]>()
   .mockResolvedValue({ completedLevels: [] });
 
-jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: jest.fn(), replace: jest.fn(), push: jest.fn(), dismissAll: jest.fn() }),
-  useLocalSearchParams: () => ({ levelId: "550e8400-e29b-41d4-a716-446655440010" }),
-}));
+jest.mock("expo-router", () => {
+  const React = jest.requireActual("react");
+  return {
+    useRouter: () => ({ back: jest.fn(), replace: jest.fn(), push: jest.fn(), dismissAll: jest.fn() }),
+    useLocalSearchParams: () => ({ levelId: "550e8400-e29b-41d4-a716-446655440010" }),
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      React.useEffect(effect, [effect]);
+    },
+  };
+});
 
 jest.mock("@/framework/auth/AuthGate", () => ({
   useAuthSession: () => ({ loading: false, session: mockSession }),
