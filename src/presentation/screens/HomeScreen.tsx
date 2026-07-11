@@ -8,6 +8,7 @@ import { ScreenContainer } from "@/presentation/components/ScreenContainer";
 interface HomeScreenProps {
   username?: string;
   onPlay: () => void;
+  onDailyChallenge: () => void;
   onLeaderboard: () => void;
   onProgress: () => void;
   onSettings: () => void;
@@ -46,14 +47,16 @@ function InfoCard({ icon, title, subtitle, onPress, testID }: InfoCardProps) {
  * MVVM view — home hub.
  *
  * Pure navigation surface: it renders the FlechaGo brand and routes the player
- * to play (level select), leaderboard, progress, and settings. Every card label
- * names its real destination (MAZ-193 — no rewards/daily/social copy for screens
- * that do not exist). It holds no game rules and calls no use cases; every action
- * is an injected callback.
+ * to play (level select), the daily challenge, leaderboard, progress, and
+ * settings. Every card label names its real destination — the daily challenge
+ * entry is backed by a real screen since MAZ-219 (superseding the MAZ-193
+ * "no daily copy" constraint). It holds no game rules and calls no use cases;
+ * every action is an injected callback.
  */
 export function HomeScreen({
   username,
   onPlay,
+  onDailyChallenge,
   onLeaderboard,
   onProgress,
   onSettings,
@@ -99,6 +102,13 @@ export function HomeScreen({
           </View>
 
           <View className="gap-3">
+            <InfoCard
+              testID="home-card-daily"
+              icon="📅"
+              title={t("home.cardDailyTitle")}
+              subtitle={t("home.cardDailySubtitle")}
+              onPress={onDailyChallenge}
+            />
             <InfoCard
               testID="home-card-leaderboard"
               icon="🏆"

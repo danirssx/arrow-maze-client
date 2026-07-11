@@ -8,6 +8,7 @@ import { renderWithProviders } from "../testUtils";
 
 const handlers = {
   onPlay: jest.fn(),
+  onDailyChallenge: jest.fn(),
   onLeaderboard: jest.fn(),
   onProgress: jest.fn(),
   onSettings: jest.fn()
@@ -24,6 +25,15 @@ describe("HomeScreen", () => {
     const { getByTestId } = renderWithProviders(<HomeScreen {...handlers} onPlay={onPlay} />);
     fireEvent.press(getByTestId("home-play"));
     expect(onPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it("should_expose_a_daily_challenge_entrypoint_that_invokes_the_intent_once", () => {
+    const onDailyChallenge = jest.fn();
+    const { getByTestId } = renderWithProviders(
+      <HomeScreen {...handlers} onDailyChallenge={onDailyChallenge} />,
+    );
+    fireEvent.press(getByTestId("home-card-daily"));
+    expect(onDailyChallenge).toHaveBeenCalledTimes(1);
   });
 
   it("should_route_the_leaderboard_card_to_the_leaderboard", () => {

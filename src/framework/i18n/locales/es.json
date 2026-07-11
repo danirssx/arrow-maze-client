@@ -19,7 +19,22 @@
     "cardProgressTitle": "Tu progreso",
     "cardProgressSubtitle": "Niveles que completaste",
     "cardSettingsTitle": "Ajustes",
-    "cardSettingsSubtitle": "Sonido, idioma y cuenta"
+    "cardSettingsSubtitle": "Sonido, idioma y cuenta",
+    "cardDailyTitle": "Reto diario",
+    "cardDailySubtitle": "El nuevo puzzle de hoy"
+  },
+  "difficulty": {
+    "EASY": "Facil",
+    "MEDIUM": "Medio",
+    "HARD": "Dificil"
+  },
+  "dailyChallenge": {
+    "title": "Reto diario",
+    "subtitle": "Un nuevo puzzle validado cada dia",
+    "date": "Puzzle del {{date}}",
+    "difficulty": "Dificultad: {{difficulty}}",
+    "fallbackNote": "Puzzle del dia sin conexion.",
+    "play": "Jugar el reto de hoy"
   },
   "levels": {
     "title": "Niveles",
