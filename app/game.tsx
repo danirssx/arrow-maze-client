@@ -7,6 +7,8 @@ import { createLeaderboardFacade } from "@/framework/config/leaderboard";
 import { createLevelSelectViewModel } from "@/framework/config/levelCatalog";
 import { createProgressFacade } from "@/framework/config/progress";
 import { useAuthSession } from "@/framework/auth/AuthGate";
+import { useScreenMusic } from "@/framework/audio/useScreenMusic";
+import { safeBack } from "@/framework/navigation/safeBack";
 import { GameScreen } from "@/presentation/screens/GameScreen";
 import { useGameSession } from "@/presentation/hooks/useGameSession";
 import { useViewModelState } from "@/presentation/hooks/useViewModelState";
@@ -35,6 +37,7 @@ const getLeaderboardRoute = (levelId: string): Href => ({
 export default function GameRoute() {
   const router = useRouter();
   const { t } = useTranslation();
+  useScreenMusic("gameplay");
   const params = useLocalSearchParams<{ levelId?: string }>();
   const levelId = typeof params.levelId === "string" ? params.levelId : "";
 
@@ -185,7 +188,7 @@ export default function GameRoute() {
       viewModel={viewModel}
       controller={controller}
       levelOrder={order}
-      onExit={() => router.back()}
+      onExit={() => safeBack(router, getLevelsRoute())}
       onHome={() => router.dismissAll()}
       onNextLevel={
         nextLevel !== undefined

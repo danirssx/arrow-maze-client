@@ -2,9 +2,12 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { BoardView } from "@/presentation/components/BoardView";
+import { formatElapsedTime } from "@/presentation/components/hud/formatElapsedTime";
+import { useGameTimer } from "@/presentation/hooks/useGameTimer";
 import { useViewModelState } from "@/presentation/hooks/useViewModelState";
 import type { GameUIController } from "@/presentation/controllers/GameUIController";
 import type { GameViewModel } from "@/presentation/view-models/GameViewModel";
+import { GameOverlay } from "@/presentation/state/GameUiState";
 import { DefeatScreen } from "./DefeatScreen";
 import { VictoryScreen } from "./VictoryScreen";
 import type { VictoryLeaderboardStatus } from "./VictoryScreen";
@@ -82,9 +85,10 @@ function ControlButton({
  *
  * Binds to `GameViewModel` state and routes every arrow tap through
  * `GameUIController.handleArrowTap`. The HUD shows a top pill with arrows-remaining,
- * an attempts (hearts) row, and footer Undo/Restart controls; the board renders the
- * snake arrows. Victory/defeat overlays come from the ViewModel; no use case is
- * called directly.
+ * an `mm:ss` elapsed-time readout, an attempts (hearts) row, and footer Undo/Restart
+ * controls; the board renders the snake arrows. Victory/defeat overlays come from the
+ * ViewModel; no use case is called directly. The timer only displays the elapsed time
+ * the application session measures, and stops ticking once an overlay is shown.
  */
 export function GameScreen({
   viewModel,
@@ -98,6 +102,7 @@ export function GameScreen({
 }: GameScreenProps) {
   const { t } = useTranslation();
   const state = useViewModelState(viewModel);
+  useGameTimer(viewModel, state.overlay === GameOverlay.None);
 
   return (
     <SafeAreaView testID="game-screen" className="flex-1 bg-[#0B0E1F]">
@@ -120,13 +125,26 @@ export function GameScreen({
           <IconButton glyph="⟲" label={t("game.restart")} onPress={() => controller.handleRestart()} />
         </View>
 
-        <View className="mt-2 flex-row items-center justify-center gap-1">
-          <Text className="text-sm text-[#FF5D7A]">
-            {state.attemptIndicators.map((filled) => (filled ? "♥" : "♡")).join("")}
-          </Text>
-          <Text testID="game-attempts" className="ml-1 text-xs font-bold text-[#9AA3D8]">
-            {state.attemptsRemaining}
-          </Text>
+        <View className="mt-2 flex-row items-center justify-center gap-4">
+          <View className="flex-row items-center gap-1">
+            <Text className="text-sm text-[#FF5D7A]">
+              {state.attemptIndicators.map((filled) => (filled ? "♥" : "♡")).join("")}
+            </Text>
+            <Text testID="game-attempts" className="ml-1 text-xs font-bold text-[#9AA3D8]">
+              {state.attemptsRemaining}
+            </Text>
+          </View>
+
+          <View className="flex-row items-center gap-1">
+            <Text className="text-sm text-[#6F77A8]">⏱</Text>
+            <Text
+              testID="game-timer"
+              accessibilityLabel={t("game.time")}
+              className="text-xs font-bold text-[#9AA3D8]"
+            >
+              {formatElapsedTime(state.elapsedMs)}
+            </Text>
+          </View>
         </View>
 
         <View className="my-3 flex-1">

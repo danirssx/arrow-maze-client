@@ -19,7 +19,22 @@
     "cardProgressTitle": "Your progress",
     "cardProgressSubtitle": "Levels you've completed",
     "cardSettingsTitle": "Settings",
-    "cardSettingsSubtitle": "Sound, language and account"
+    "cardSettingsSubtitle": "Sound, language and account",
+    "cardDailyTitle": "Daily Challenge",
+    "cardDailySubtitle": "Today's fresh puzzle"
+  },
+  "difficulty": {
+    "EASY": "Easy",
+    "MEDIUM": "Medium",
+    "HARD": "Hard"
+  },
+  "dailyChallenge": {
+    "title": "Daily Challenge",
+    "subtitle": "A fresh validated puzzle every day",
+    "date": "Puzzle for {{date}}",
+    "difficulty": "Difficulty: {{difficulty}}",
+    "fallbackNote": "Offline puzzle of the day.",
+    "play": "Play today's challenge"
   },
   "levels": {
     "title": "Levels",
@@ -35,6 +50,7 @@
     "objective": "Goal",
     "arrows": "Arrows",
     "attempts": "Attempts",
+    "time": "Time",
     "undo": "Undo",
     "restart": "Restart",
     "invalidMove": "That arrow is blocked — clear its path first."

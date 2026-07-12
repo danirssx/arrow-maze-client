@@ -1,15 +1,14 @@
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Brand } from "@/presentation/components/Brand";
-import { CoinBadge } from "@/presentation/components/CoinBadge";
 import { Header } from "@/presentation/components/Header";
 import { PrimaryButton } from "@/presentation/components/PrimaryButton";
 import { ScreenContainer } from "@/presentation/components/ScreenContainer";
 
 interface HomeScreenProps {
-  coins?: number;
   username?: string;
   onPlay: () => void;
+  onDailyChallenge: () => void;
   onLeaderboard: () => void;
   onProgress: () => void;
   onSettings: () => void;
@@ -48,15 +47,16 @@ function InfoCard({ icon, title, subtitle, onPress, testID }: InfoCardProps) {
  * MVVM view — home hub.
  *
  * Pure navigation surface: it renders the FlechaGo brand and routes the player
- * to play (level select), leaderboard, progress, and settings. Every card label
- * names its real destination (MAZ-193 — no rewards/daily/social copy for screens
- * that do not exist). It holds no game rules and calls no use cases; every action
- * is an injected callback.
+ * to play (level select), the daily challenge, leaderboard, progress, and
+ * settings. Every card label names its real destination — the daily challenge
+ * entry is backed by a real screen since MAZ-219 (superseding the MAZ-193
+ * "no daily copy" constraint). It holds no game rules and calls no use cases;
+ * every action is an injected callback.
  */
 export function HomeScreen({
-  coins = 0,
   username,
   onPlay,
+  onDailyChallenge,
   onLeaderboard,
   onProgress,
   onSettings,
@@ -66,21 +66,29 @@ export function HomeScreen({
 
   return (
     <ScreenContainer testID="home-screen">
-      <Header right={<CoinBadge amount={coins} testID="home-coins" />} />
+      <Header />
       <ScrollView showsVerticalScrollIndicator={false}>
         <View className="gap-8 pb-8">
           <View className="items-center gap-2 pt-4">
             <Brand />
-            {username !== undefined ? (
-              <View className="items-center gap-1">
+            {username !== undefined && onLogout !== undefined ? (
+              <View
+                testID="home-account"
+                className="mt-2 w-full flex-row items-center justify-between rounded-2xl border border-border-soft bg-background-card px-4 py-3"
+              >
                 <Text testID="home-username" className="text-sm font-bold text-primary-700">
                   {username}
                 </Text>
-                {onLogout !== undefined ? (
-                  <Pressable testID="home-logout" accessibilityRole="button" onPress={onLogout}>
-                    <Text className="text-xs font-semibold text-text-secondary">{t("auth.logout")}</Text>
-                  </Pressable>
-                ) : null}
+                <Pressable
+                  testID="home-logout"
+                  accessibilityRole="button"
+                  onPress={onLogout}
+                  className="rounded-full border border-primary-300 px-3 py-1.5 active:opacity-80"
+                >
+                  <Text testID="home-logout-label" className="text-sm font-semibold text-primary-700">
+                    {t("auth.logout")}
+                  </Text>
+                </Pressable>
               </View>
             ) : null}
             <Text className="text-xs font-semibold uppercase tracking-[3px] text-text-secondary">
@@ -94,6 +102,13 @@ export function HomeScreen({
           </View>
 
           <View className="gap-3">
+            <InfoCard
+              testID="home-card-daily"
+              icon="📅"
+              title={t("home.cardDailyTitle")}
+              subtitle={t("home.cardDailySubtitle")}
+              onPress={onDailyChallenge}
+            />
             <InfoCard
               testID="home-card-leaderboard"
               icon="🏆"

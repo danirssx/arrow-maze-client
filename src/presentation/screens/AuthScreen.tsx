@@ -15,6 +15,7 @@ interface AuthScreenProps {
 }
 
 const FIELD_CLASS = "rounded-2xl bg-background-card border border-border-soft p-4 text-text-primary";
+const FIELD_PLACEHOLDER_COLOR = "#6B6F8A";
 
 /**
  * MVVM view — auth (login / register).
@@ -61,6 +62,7 @@ export function AuthScreen({ viewModel, onBack, onAuthenticated }: AuthScreenPro
           <TextInput
             testID="auth-username-input"
             placeholder={t("auth.username")}
+            placeholderTextColor={FIELD_PLACEHOLDER_COLOR}
             autoCapitalize="none"
             value={state.username}
             onChangeText={(v) => viewModel.setUsername(v)}
@@ -70,6 +72,7 @@ export function AuthScreen({ viewModel, onBack, onAuthenticated }: AuthScreenPro
         <TextInput
           testID="auth-email"
           placeholder={t("auth.email")}
+          placeholderTextColor={FIELD_PLACEHOLDER_COLOR}
           autoCapitalize="none"
           keyboardType="email-address"
           value={state.email}
@@ -79,6 +82,7 @@ export function AuthScreen({ viewModel, onBack, onAuthenticated }: AuthScreenPro
         <TextInput
           testID="auth-password"
           placeholder={t("auth.password")}
+          placeholderTextColor={FIELD_PLACEHOLDER_COLOR}
           secureTextEntry
           value={state.password}
           onChangeText={(v) => viewModel.setPassword(v)}

@@ -20,8 +20,9 @@ export type GameOverlay = (typeof GameOverlay)[keyof typeof GameOverlay];
  *
  * A plain, serializable snapshot the `GameScreen` binds to: the static arrow
  * layout, which arrows have been extracted, the camera bounds, the HUD counters
- * (arrows + attempts remaining), undo availability, the win/defeat overlay, and
- * the id of the last blocked tap (for shake feedback). It holds no domain class.
+ * (arrows + attempts remaining), the elapsed match time the HUD timer renders,
+ * undo availability, the win/defeat overlay, and the id of the last blocked tap
+ * (for shake feedback). It holds no domain class.
  *
  * Derived ready-to-render fields:
  * - `attemptIndicators` — one boolean per total attempt slot (true = remaining);
@@ -36,6 +37,8 @@ export type GameUiState = {
   readonly bounds: BoardBoundsDto | null;
   readonly arrowsRemaining: number;
   readonly attemptsRemaining: number;
+  /** Measured by the application session, mirrored here only for display. */
+  readonly elapsedMs: number;
   readonly attemptsTotal: number;
   readonly attemptIndicators: readonly boolean[];
   readonly canUndo: boolean;
@@ -54,6 +57,7 @@ export const initialGameUiState: GameUiState = {
   bounds: null,
   arrowsRemaining: 0,
   attemptsRemaining: 0,
+  elapsedMs: 0,
   attemptsTotal: 0,
   attemptIndicators: [],
   canUndo: false,

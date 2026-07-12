@@ -1,4 +1,4 @@
-﻿import { Difficulty } from "../../../domain/value-objects/Difficulty";
+import { Difficulty } from "../../../domain/value-objects/Difficulty";
 
 export type ArrowRecord = {
   readonly id: string;

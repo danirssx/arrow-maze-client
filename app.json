@@ -15,9 +15,16 @@
       "typedRoutes": true
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.arrowmaze.client",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.arrowmaze.client",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#F7F2E8"
       }
@@ -25,6 +32,13 @@
     "web": {
       "bundler": "metro",
       "output": "static"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ede51ce4-43d7-47ff-9444-da77c2bc7f6d"
+      }
+    },
+    "owner": "danielross5018"
   }
 }
