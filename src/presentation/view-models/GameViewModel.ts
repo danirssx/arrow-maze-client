@@ -4,8 +4,9 @@ import type { GameEventDto } from "@/application/dto/GameEventDto";
 import { GameEventTypeDto } from "@/application/dto/GameEventDto";
 import type { IGameEventListener } from "@/application/dto/IGameEventListener";
 import type { LevelDefinition } from "@/application/level-build/LevelDefinition";
+import { DEFAULT_ATTEMPTS } from "@/application/level-build/LevelDefinition";
 import type { GameSnapshotDto } from "@/application/use-cases/game/GameSnapshotDto";
-import { GameOverlay, initialGameUiState } from "@/presentation/state/GameUiState";
+import { GameOverlay, buildAttemptIndicators, initialGameUiState } from "@/presentation/state/GameUiState";
 import type { GameUiState } from "@/presentation/state/GameUiState";
 import { ObservableViewModel } from "./ObservableViewModel";
 
@@ -48,6 +49,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
   startLevel(levelId: string, definition: LevelDefinition): void {
     const snapshot = this.facade.startLevel({ createDefinition: () => definition });
     const board = this.facade.getBoardSnapshot();
+    const attemptsTotal = definition.attempts ?? DEFAULT_ATTEMPTS;
     this.extractionStack = [];
     this.terminalSoundPlayed = false;
     this.setState({
@@ -58,8 +60,12 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       arrowsRemaining: snapshot.arrowsRemaining,
       attemptsRemaining: snapshot.attemptsRemaining,
       elapsedMs: snapshot.elapsedMs,
+      attemptsTotal,
+      attemptIndicators: buildAttemptIndicators(snapshot.attemptsRemaining, attemptsTotal),
       canUndo: snapshot.canUndo,
       overlay: GameViewModel.overlayFor(snapshot),
+      showVictoryOverlay: false,
+      showDefeatOverlay: false,
       ...(board.boardShape !== undefined ? { boardShape: board.boardShape } : {})
     });
   }
@@ -102,9 +108,12 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       arrowsRemaining: snapshot.arrowsRemaining,
       attemptsRemaining: snapshot.attemptsRemaining,
       elapsedMs: snapshot.elapsedMs,
+      attemptIndicators: buildAttemptIndicators(snapshot.attemptsRemaining, previous.attemptsTotal),
       canUndo: snapshot.canUndo,
       shakeArrowId: extracted ? null : arrowId,
-      overlay
+      overlay,
+      showVictoryOverlay: overlay === GameOverlay.Victory,
+      showDefeatOverlay: overlay === GameOverlay.Defeat,
     });
   }
 
@@ -125,6 +134,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
         arrowsRemaining: snapshot.arrowsRemaining,
         attemptsRemaining: snapshot.attemptsRemaining,
         elapsedMs: snapshot.elapsedMs,
+        attemptIndicators: buildAttemptIndicators(snapshot.attemptsRemaining, previous.attemptsTotal),
         canUndo: snapshot.canUndo,
         shakeArrowId: null,
         overlay: GameViewModel.overlayFor(snapshot)
@@ -137,6 +147,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
   restart(): void {
     const levelId = this.getState().levelId;
     const snapshot = this.facade.restartLevel();
+    const { attemptsTotal } = this.getState();
     this.extractionStack = [];
     this.terminalSoundPlayed = false;
     this.setState({
@@ -146,9 +157,12 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       arrowsRemaining: snapshot.arrowsRemaining,
       attemptsRemaining: snapshot.attemptsRemaining,
       elapsedMs: snapshot.elapsedMs,
+      attemptIndicators: buildAttemptIndicators(snapshot.attemptsRemaining, attemptsTotal),
       canUndo: snapshot.canUndo,
       shakeArrowId: null,
-      overlay: GameOverlay.None
+      overlay: GameOverlay.None,
+      showVictoryOverlay: false,
+      showDefeatOverlay: false,
     });
   }
 
@@ -157,7 +171,12 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
     if (event.type === GameEventTypeDto.LevelFinished) {
       const overlay = event.result.status === "WON" ? GameOverlay.Victory : GameOverlay.Defeat;
       this.playTerminalEffectOnce(overlay);
-      this.setState({ ...this.getState(), overlay });
+      this.setState({
+        ...this.getState(),
+        overlay,
+        showVictoryOverlay: overlay === GameOverlay.Victory,
+        showDefeatOverlay: overlay === GameOverlay.Defeat,
+      });
       this.refreshElapsedTime();
     }
   }
