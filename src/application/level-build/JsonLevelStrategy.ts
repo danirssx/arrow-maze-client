@@ -100,7 +100,7 @@ export class JsonLevelStrategy implements ILevelStrategy {
       const cellRecord = JsonLevelStrategy.asRecord(cell, `boardShape.cells[${index}]`);
       const row = JsonLevelStrategy.asInteger(cellRecord.row, "boardShape.cells.row");
       const col = JsonLevelStrategy.asInteger(cellRecord.col, "boardShape.cells.col");
-      const key = `${row},${col}`;
+      const key = Position.of(row, col).toKey();
       if (seen.has(key)) {
         throw new InvalidLevelDefinitionError(`Field "boardShape.cells" has a duplicate cell ${key}.`);
       }
