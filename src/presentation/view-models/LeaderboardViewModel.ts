@@ -49,4 +49,22 @@ export class LeaderboardViewModel extends ObservableViewModel<AsyncUiState<Leade
       this.setState({ status: AsyncStatus.Error, data: null });
     }
   }
+
+  /**
+   * Loads the cross-level aggregate board — each player's total score across all
+   * levels. Used by the Home leaderboard, which has no single level in context.
+   */
+  async loadGlobal(levelIds: readonly string[]): Promise<void> {
+    this.setState({ status: AsyncStatus.Loading, data: null });
+    try {
+      const leaderboard = await this.facade.getGlobalScores(levelIds);
+      if (leaderboard.entries.length === 0) {
+        this.setState({ status: AsyncStatus.Empty, data: leaderboard });
+        return;
+      }
+      this.setState({ status: AsyncStatus.Loaded, data: leaderboard });
+    } catch {
+      this.setState({ status: AsyncStatus.Error, data: null });
+    }
+  }
 }

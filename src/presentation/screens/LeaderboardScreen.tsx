@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { EmptyState } from "@/presentation/components/EmptyState";
@@ -10,31 +10,47 @@ import { useViewModelState } from "@/presentation/hooks/useViewModelState";
 import { AsyncStatus } from "@/presentation/state/AsyncUiState";
 import type { LeaderboardViewModel } from "@/presentation/view-models/LeaderboardViewModel";
 
+/**
+ * What the leaderboard should show: a single level's board, or the cross-level
+ * aggregate (Home). The route decides which based on whether a levelId is in scope.
+ */
+export type LeaderboardTarget =
+  | { readonly kind: "level"; readonly levelId: string }
+  | { readonly kind: "global"; readonly levelIds: readonly string[] };
+
 interface LeaderboardScreenProps {
   viewModel: LeaderboardViewModel | null;
-  levelId: string | null;
+  target: LeaderboardTarget | null;
   onBack: () => void;
 }
 
 function LeaderboardList({
   viewModel,
-  levelId
+  target
 }: {
   viewModel: LeaderboardViewModel;
-  levelId: string;
+  target: LeaderboardTarget;
 }) {
   const { t } = useTranslation();
   const state = useViewModelState(viewModel);
 
+  const reload = useCallback(() => {
+    if (target.kind === "global") {
+      void viewModel.loadGlobal(target.levelIds);
+    } else {
+      void viewModel.load(target.levelId);
+    }
+  }, [viewModel, target]);
+
   useEffect(() => {
-    void viewModel.load(levelId);
-  }, [viewModel, levelId]);
+    reload();
+  }, [reload]);
 
   if (state.status === AsyncStatus.Idle || state.status === AsyncStatus.Loading) {
     return <LoadingState />;
   }
   if (state.status === AsyncStatus.Error) {
-    return <ErrorState onRetry={() => void viewModel.load(levelId)} />;
+    return <ErrorState onRetry={reload} />;
   }
   if (state.status === AsyncStatus.Empty || state.data === null) {
     return <EmptyState variant="leaderboard" />;
@@ -69,14 +85,14 @@ function LeaderboardList({
  * error, or list states. When no session-scoped ViewModel is provided it shows
  * the empty state. It never calls HTTP or repositories directly.
  */
-export function LeaderboardScreen({ viewModel, levelId, onBack }: LeaderboardScreenProps) {
+export function LeaderboardScreen({ viewModel, target, onBack }: LeaderboardScreenProps) {
   const { t } = useTranslation();
 
   return (
     <ScreenContainer testID="leaderboard-screen">
       <Header title={t("leaderboard.title")} onBack={onBack} />
-      {viewModel !== null && levelId !== null ? (
-        <LeaderboardList viewModel={viewModel} levelId={levelId} />
+      {viewModel !== null && target !== null ? (
+        <LeaderboardList viewModel={viewModel} target={target} />
       ) : (
         <EmptyState variant="leaderboard" />
       )}

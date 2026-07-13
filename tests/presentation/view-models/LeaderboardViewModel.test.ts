@@ -31,6 +31,14 @@ function facadeReturning(value: Leaderboard): { facade: LeaderboardFacade; getTo
   return { facade, getTopScores };
 }
 
+function globalFacade(
+  value: Leaderboard | Promise<Leaderboard>,
+): { facade: LeaderboardFacade; getGlobalScores: jest.Mock } {
+  const getGlobalScores = jest.fn(() => Promise.resolve(value));
+  const facade = { getGlobalScores, getTopScores: jest.fn(), submitScore: jest.fn() } as unknown as LeaderboardFacade;
+  return { facade, getGlobalScores };
+}
+
 function facadeRejecting(error: unknown): { facade: LeaderboardFacade; getTopScores: jest.Mock } {
   const getTopScores = jest.fn(() => Promise.reject(error));
   const facade = { getTopScores, submitScore: jest.fn() } as unknown as LeaderboardFacade;
@@ -85,5 +93,34 @@ describe("LeaderboardViewModel", () => {
 
     expect(getTopScores).not.toHaveBeenCalled();
     expect(viewModel.getState().status).toBe(AsyncStatus.Empty);
+  });
+
+  it("should_expose_loaded_global_board_from_level_ids", async () => {
+    const { facade, getGlobalScores } = globalFacade(leaderboardWith(2));
+    const viewModel = new LeaderboardViewModel(facade);
+
+    await viewModel.loadGlobal([LEVEL_UUID, "another-level"]);
+
+    expect(getGlobalScores).toHaveBeenCalledWith([LEVEL_UUID, "another-level"]);
+    expect(viewModel.getState().status).toBe(AsyncStatus.Loaded);
+    expect(viewModel.getState().data?.entries).toHaveLength(2);
+  });
+
+  it("should_expose_empty_when_global_board_has_no_entries", async () => {
+    const { facade } = globalFacade(leaderboardWith(0));
+    const viewModel = new LeaderboardViewModel(facade);
+
+    await viewModel.loadGlobal([LEVEL_UUID]);
+
+    expect(viewModel.getState().status).toBe(AsyncStatus.Empty);
+  });
+
+  it("should_expose_error_when_global_board_fails", async () => {
+    const { facade } = globalFacade(Promise.reject(new Error("network")));
+    const viewModel = new LeaderboardViewModel(facade);
+
+    await viewModel.loadGlobal([LEVEL_UUID]);
+
+    expect(viewModel.getState().status).toBe(AsyncStatus.Error);
   });
 });
