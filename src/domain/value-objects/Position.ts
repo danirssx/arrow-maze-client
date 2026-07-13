@@ -10,8 +10,8 @@ import { InvalidPositionError } from "./errors";
  * simply the `z = 0` slab and existing 2D call sites keep working unchanged.
  * Construction is validated through `Position.of`, so a non-integer coordinate
  * fails in a controlled way (`InvalidPositionError`). `translate` may cross into
- * negative space and preserves depth for planar directions (the depth-axis
- * directions are introduced with `Direction`'s `zDelta`).
+ * negative space; it moves along the depth axis for `Forward`/`Back` and
+ * preserves depth for planar directions.
  */
 export class Position {
   private constructor(
@@ -28,7 +28,11 @@ export class Position {
   }
 
   translate(direction: Direction): Position {
-    return Position.of(this.row + direction.rowDelta, this.col + direction.colDelta, this.z);
+    return Position.of(
+      this.row + direction.rowDelta,
+      this.col + direction.colDelta,
+      this.z + direction.zDelta
+    );
   }
 
   equals(other: Position): boolean {

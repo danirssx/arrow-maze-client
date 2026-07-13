@@ -57,6 +57,12 @@ describe("Position", () => {
     expect(moved.z).toBe(3);
   });
 
+  it("should_move_along_depth_when_translated_by_a_depth_direction", () => {
+    const moved = Position.of(1, 1, 0).translate(Direction.Forward);
+
+    expect(moved.equals(Position.of(1, 1, 1))).toBe(true);
+  });
+
   it("should_translate_into_negative_space_when_moving_past_the_origin", () => {
     const moved = Position.of(0, 0).translate(Direction.Up);
 
