@@ -23,7 +23,9 @@ export class AxiosHttpClientAdapter implements IHttpClient {
     onUnauthorized?: UnauthorizedHandler,
     tryRefresh?: RefreshHandler,
   ) {
-    this.client = axios.create({ baseURL });
+    // Advertise 3D-board support so the catalog gate may serve volumetric levels
+    // to this client; older clients omit it and only receive planar (2D) levels.
+    this.client = axios.create({ baseURL, headers: { 'X-Client-Caps': '3d' } });
     if (tokenProvider !== undefined) {
       this.client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
         const token = await tokenProvider();

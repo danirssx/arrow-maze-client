@@ -8,10 +8,12 @@ export const DEFAULT_ATTEMPTS = 5;
 /** Upper bound on board-shape mask cells (mirrors the backend contract). */
 export const BOARD_SHAPE_MAX_CELLS = 600;
 
-/** A single lattice cell in a board-shape mask (same row/col lattice as arrows). */
+/** A single lattice cell in a board-shape mask (same row/col/z lattice as arrows). */
 export type BoardShapeCell = {
   readonly row: number;
   readonly col: number;
+  /** Depth; optional and defaults to 0 for planar (2D) masks. */
+  readonly z?: number;
 };
 
 /**
@@ -56,4 +58,6 @@ export type LevelDefinition = {
   readonly kind: LevelKind;
   readonly timeLimitSeconds?: number;
   readonly boardShape?: BoardShapeDefinition;
+  /** Board dimensionality (2 = planar, 3 = volumetric); the renderer selects on this. Absent ≙ 2. */
+  readonly dimensions?: 2 | 3;
 };
