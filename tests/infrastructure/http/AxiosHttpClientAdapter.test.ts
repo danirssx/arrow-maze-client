@@ -23,6 +23,14 @@ describe('AxiosHttpClientAdapter', () => {
     adapter = new AxiosHttpClientAdapter('https://api.example.com');
   });
 
+  it('should_advertise_3d_capability_on_every_request', () => {
+    // Arrange + Act: adapter created in beforeEach
+    // Assert
+    expect(mockedAxios.create).toHaveBeenCalledWith(
+      expect.objectContaining({ headers: expect.objectContaining({ 'X-Client-Caps': '3d' }) })
+    );
+  });
+
   describe('get', () => {
     it('should_return_response_when_request_succeeds', async () => {
       // Arrange
