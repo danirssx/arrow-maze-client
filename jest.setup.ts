@@ -11,6 +11,7 @@
  */
 jest.mock("react-native-svg");
 jest.mock("react-native-reanimated");
+jest.mock("@react-three/fiber/native");
 jest.mock("@react-native-community/netinfo");
 jest.mock("expo-av");
 

@@ -4906,6 +4906,323 @@ update Linear without marking the ticket done.
   not the benign label.
 
 
+---
+
+# AI Usage Log: MAZ-235 — Extend client Position value object to 3D
+
+## Task / Problem
+
+Resolve `MAZ-235` (C1) of the M13 "3D Volumetric Boards" milestone: extend the client domain `Position` value object from a 2D `(row, col)` lattice coordinate to a 3D `(row, col, z)` coordinate, keeping the single-engine strategy sealed in the M13 spec — `z` is optional and defaults to `0`, so a planar (2D) level is the `z = 0` slab and every existing 2D call site keeps working unchanged. This is the foundational ticket that `MAZ-236` (Direction 6 + ArrowSpec deltas), `MAZ-237` (CollisionService/BoardGroup raycast 3D) and `MAZ-238` (mapper parse z) build on.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user approved implementing `MAZ-235` following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket/plan context, AI-usage logging + validation checks, MEMORY/AGENTS update review, commit/push/PR, and Linear updates — and, because this is a refactor, to review the whole context and every affected ticket.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | The M13 3D spec was sealed in a grill-me session (volumetric lattice, single engine, `Position` always 3D with `z` optional=0, 3-tuple `toKey`). Its constraints drove this VO shape. | `../M13_3D_Boards_Plan.md`, `MAZ-235` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | The milestone was pre-sliced into MAZ-225..244 with blocking edges; this ticket is C1. No separate `.feature` was authored for this micro VO refactor — see pending review. | `MAZ-235`, milestone `M13 - 3D Volumetric Boards` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red → Green: added failing tests for `z` default/explicit/negative, non-integer `z`, depth in `equals`, and depth preservation under planar `translate`; then implemented the 3-arg `Position`. | `tests/domain/value-objects/Position.test.ts`, `src/domain/value-objects/Position.ts` |
+| Judge (`.agents/judge.md`) | Referenced | Self-audit: clean-arch layers unchanged (domain has no RN/Expo/HTTP), full blast-radius grep for manual composite coordinate keys, and a green `npm run verify`. | scoped grep, `npm run verify` exit 0 |
+| Mutation Tester (`.agents/mutation.md`) | Used | `stryker run --mutate src/domain/value-objects/Position.ts` → 90.00% mutation score (9 killed / 1 survived), ≥ break threshold 80. | stryker clear-text report |
+
+## Result Obtained
+
+`src/domain/value-objects/Position.ts`:
+- Immutable VO now carries a third integer coordinate `z` (depth). `Position.of(row, col, z = 0)` validates all three as integers and throws `InvalidPositionError` otherwise.
+- `equals` compares `z`; `toKey()` returns the 3-tuple `"row,col,z"`; `translate(direction)` preserves depth (`this.z`) — the depth-axis movement arrives with `Direction.zDelta` in `MAZ-236`.
+- Doc comment updated to describe the unbounded 3D lattice and the `z = 0` planar default.
+
+Consumer fixed as part of the refactor (single-source-of-truth for the key format):
+- `src/application/level-build/JsonLevelStrategy.ts` — the `boardShape` mask built its dedup/containment key by hand as `` `${row},${col}` ``, which stopped matching the arrow-cell keys once `toKey()` became a 3-tuple. Replaced with `Position.of(row, col).toKey()` so the mask and arrow cells always share the canonical format.
+
+Tests: rewrote `tests/domain/value-objects/Position.test.ts` (11 cases, AAA, `should_*_when_*`).
+
+## Verification
+
+- `npx jest` → 91 suites, 521 tests passing (full client suite; confirms the `toKey` change did not regress `BoardGroup`, `ArrowSpec`, `JsonLevelStrategy`, DTO mapper, etc.).
+- `npm run verify` (lint + typecheck + coverage) → exit 0; `Position.ts` at 100% line/branch/function coverage.
+- `stryker run --mutate Position.ts` → 90.00% (≥ break 80). Lone survivor is the `StringLiteral` error message (intentionally not pinned — asserting exact error text is brittle and violates "test observable behavior").
+
+## Team Modifications Pending Human Review
+
+- Domain VO + tests require mandatory human review (AGENTS §5).
+- No formal Gherkin `.feature` contract was authored for this micro-refactor; the M13 plan doc + sealed grill-me spec acted as the contract. Confirm this is acceptable for VO-level tickets or request a `.feature` before the dependent tickets (MAZ-236/237/238).
+- `translate` intentionally does NOT move along `z` yet — that lands with `Direction.zDelta` in `MAZ-236`. Verify the incremental boundary is desired.
+
+## Lessons / Limitations
+
+Making `z` default to `0` keeps the 2D↔3D migration non-breaking: every `Position.of(row, col)` call site and all 2D level data behave identically, and the occupancy index (`Map<coordKey, Set<arrowId>>`) needs no structural change — only its string key gains a component. The only real blast-radius risk was code that reconstructed the coordinate key by hand instead of delegating to `toKey()`; a targeted grep found exactly one such site (the `boardShape` mask), now routed through `Position.toKey()`.
+
+
+---
+
+# AI Usage Log: MAZ-236 — Add 6 directions and 3D ArrowSpec deltas (client)
+
+## Task / Problem
+
+Resolve `MAZ-236` (C2) of the M13 "3D Volumetric Boards" milestone: extend the client domain `Direction` from the four planar cardinals to the six world axis directions and make `ArrowSpec` adjacency 3D. Stacked on `MAZ-236`'s parent `MAZ-235` (Position 3D). This wires the depth axis into the collision/authoring primitives so the raycast (`MAZ-237`) and mapper (`MAZ-238`) can operate in 3D.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user approved implementing `MAZ-236` following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket/plan context, AI-usage logging + validation checks, MEMORY/AGENTS update review, commit/push/PR, and Linear updates — and, because this is a refactor, to review the whole context and every affected ticket.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | M13 grill-me spec fixed the 6 world-axis directions (`UP/DOWN/LEFT/RIGHT/FORWARD/BACK`, fixed to the board, not screen-relative) and 3D orthogonal adjacency. | `../M13_3D_Boards_Plan.md`, `MAZ-236` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Milestone pre-sliced into MAZ-225..244 with blocking edges; this is C2 (stacked on C1). No separate `.feature` authored for this VO delta. | `MAZ-236`, milestone `M13 - 3D Volumetric Boards` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red → Green: failing tests for `zDelta`, `Forward`/`Back`, 6-element `all()`, `opposite` on the depth axis, `Direction.equals`, depth `translate`, and 3D `ArrowSpec` adjacency / depth head-points-back; then implemented. | `tests/domain/value-objects/{Direction,ArrowSpec,Position}.test.ts`, `src/domain/value-objects/{Direction,ArrowSpec,Position}.ts` |
+| Judge (`.agents/judge.md`) | Referenced | Blast-radius grep of all `Direction` consumers (`fromName` mappers/fixtures, `directionUnit` SVG fallback, `CollisionService`, `opposite`); confirmed 2D behaviour unchanged and no exhaustive Direction Record/switch breaks. | grep, `npm run verify` exit 0 |
+| Mutation Tester (`.agents/mutation.md`) | Used | `stryker --mutate` per changed file: `Direction.ts` 94.12%, `Position.ts` 90.91% (both ≥ break 80); confirmed the mutant on the one line changed in `ArrowSpec.ts` (`a.z - b.z`) is killed. | stryker clear-text reports |
+
+## Result Obtained
+
+- `src/domain/value-objects/Direction.ts`: added `zDelta` to the constructor; new canonical members `Forward` (`0,0,1`) and `Back` (`0,0,-1`); the four planar directions keep `zDelta = 0`; `all()` returns all six; `opposite()` is now exhaustive over the six (adds `Forward ↔ Back`); doc comment describes world-axis semantics.
+- `src/domain/value-objects/Position.ts`: `translate` now moves along depth (`this.z + direction.zDelta`) — completing the z-axis movement deferred from `MAZ-235`; doc comment updated.
+- `src/domain/value-objects/ArrowSpec.ts`: `areOrthogonallyAdjacent` is 3D Manhattan (`|Δrow| + |Δcol| + |Δz| === 1`), so an arrow may now bend along the depth axis; the head-points-back invariant works in 3D through the 3D `translate`.
+- Tests strengthened across the three VO test files (AAA, `should_*_when_*`), including a depth-adjacency accept case using non-zero z on both endpoints (z `1→2`) so the `a.z − b.z` sign mutant is killed.
+
+## Verification
+
+- `npm run verify` (lint + typecheck + coverage) → exit 0; **529 tests**; `Direction.ts` and `Position.ts` at 100% coverage, `ArrowSpec.ts` 96%.
+- `npx jest` full suite green (confirms the extra directions and 3D adjacency did not regress the 2D `CollisionService`, `Direction.fromName` mappers, `JsonLevelStrategy`, or the SVG `directionUnit` fallback).
+- Mutation (per changed file): `Direction.ts` 94.12%, `Position.ts` 90.91% (≥ break 80); the single mutant on the touched `ArrowSpec.ts` line is killed.
+
+## Team Modifications Pending Human Review
+
+- Domain VOs + tests require mandatory human review (AGENTS §5).
+- `CollisionService` still raycasts in 2D — a `Forward`/`Back` arrow is not yet correctly blocked; that is `MAZ-237` (C3) scope. This ticket deliberately stops at the VO layer.
+- Pre-existing `ArrowSpec.ts` mutation survivors (error-message string literals and guard conditionals on lines 26/29/32/41/42/47/55/56/64) are **baseline**, not introduced here; the repo mutation gate is a whole-project aggregate (`stryker.conf.json` mutates all of `src/domain` + `src/application`), not per-file. Flagged for a separate test-hardening pass if desired.
+- No formal Gherkin `.feature` was authored for this VO delta; the M13 plan + sealed grill-me spec acted as the contract.
+
+## Lessons / Limitations
+
+Keeping `Direction` a canonical-instance class (not a union) means adding two members ripples nowhere at the type level — the only runtime consumers are `fromName` (safe: 2D levels never carry the new names), the SVG `directionUnit` (safe: has a `?? RIGHT_UNIT` fallback and only renders 2D), and `opposite` (made exhaustive). The subtle mutation-testing lesson: an adjacency test whose depth cells touch `z = 0` cannot distinguish `a.z - b.z` from `a.z + b.z`; using two non-zero depths on the same segment is required to bite that operator.
+
+
+---
+
+# AI Usage Log: MAZ-237 — Make client CollisionService raycast 3D
+
+## Task / Problem
+
+Resolve `MAZ-237` (C3) of the M13 "3D Volumetric Boards" milestone: make the client `CollisionService` extraction raycast operate on the 3D board. Stacked on `MAZ-236` (Direction 6 + ArrowSpec 3D) → `MAZ-235` (Position 3D). This is the live untangle physics that runs in the client: an arrow can be extracted iff the straight ray from its head along its `direction` world axis meets no cell of another active arrow.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-237` following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket/plan context, AI-usage logging + validation checks, MEMORY/AGENTS update review, commit/push/PR, and Linear updates; and, because this is a refactor, to review the whole context and every affected ticket.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | M13 grill-me spec sealed the volumetric raycast (6 world axes, own body transparent, any other active arrow strictly ahead on the head's axis blocks). | `../M13_3D_Boards_Plan.md`, `MAZ-237` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Milestone pre-sliced into MAZ-225..244; this is C3 (stacked on C2/C1). No separate `.feature` authored. | `MAZ-237` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red → Green: failing tests for a blocked depth ray and a planar ray that must ignore a cell at a different depth; then generalised `isStrictlyAhead` to 6 axes. Then a second hardening pass (per-branch perpendicular-guard tests, strictly-ahead boundary, inactive-arrow guard) to bite mutants. | `tests/domain/board/CollisionService.test.ts`, `src/domain/board/CollisionService.ts` |
+| Judge (`.agents/judge.md`) | Referenced | Confirmed `BoardGroup` needs no change (its occupancy `Map`/`Set` already keys on the 3D `Position.toKey()`; `activeArrowsAt`/`place` are dimension-agnostic) and `BoundingBox`/`activeBounds` is camera framing (render scope, not rules). Full suite + `npm run verify` green. | grep, `npm run verify` exit 0 |
+| Mutation Tester (`.agents/mutation.md`) | Used | `stryker --mutate CollisionService.ts` → 70.97% first pass; after targeted tests **87.10%** (≥ break 80). | stryker clear-text reports |
+
+## Result Obtained
+
+`src/domain/board/CollisionService.ts`:
+- `isStrictlyAhead` generalised from 2 axes to 6. Each direction moves along exactly one world axis (exactly one non-zero delta among `rowDelta`/`colDelta`/`zDelta`); a cell is strictly ahead iff it shares the two perpendicular coordinates and is forward on the moving axis:
+  - row ray (`Up`/`Down`): `cell.col === head.col && cell.z === head.z && (cell.row - head.row) * rowDelta > 0`
+  - column ray (`Left`/`Right`): `cell.row === head.row && cell.z === head.z && (cell.col - head.col) * colDelta > 0`
+  - depth ray (`Forward`/`Back`): `cell.row === head.row && cell.col === head.col && (cell.z - head.z) * zDelta > 0`
+- `canExtract` is unchanged (own body skipped by id, overlaps respected); doc comment updated to describe the 3D world-axis ray.
+- **`BoardGroup` untouched** — it already indexes on the 3D `toKey`.
+
+Tests: `CollisionService.test.ts` grew from 7 to 17 cases (AAA, `should_*_when_*`), covering depth-ray clear/blocked, and, per branch, a blocker that is forward on the axis but off a perpendicular coordinate (different depth / different column / different row) which must NOT block — plus a strictly-ahead boundary (overlap exactly on the head) and the already-extracted guard.
+
+## Verification
+
+- `npm run verify` (lint + typecheck + coverage) → exit 0; **539 tests**; `CollisionService.ts` at 100% coverage. Full suite green — the extra branch and z-guards did not regress the 2D behaviour (planar arrows have `z = 0`, so the depth guard is a no-op for them).
+- Mutation: `CollisionService.ts` **87.10%** (≥ break 80), up from 70.97% after the hardening pass. Remaining survivors are the `ArrowNotFoundError` message string literal (intentionally not pinned) and a few equivalent arithmetic mutants on the `(Δaxis) * delta > 0` comparison.
+
+## Team Modifications Pending Human Review
+
+- Domain service + tests require mandatory human review (AGENTS §5).
+- `BoardGroup.activeBounds()` still uses the 2D `BoundingBox` (camera framing only); the 3D camera/bounds belongs to the render tickets (`MAZ-240` C5), not here.
+- No formal Gherkin `.feature` was authored for this refactor; the M13 plan + sealed grill-me spec acted as the contract.
+
+## Lessons / Limitations
+
+The 2D→6-axis generalisation is clean because each `Direction` has exactly one non-zero delta, so branch selection is unambiguous and the perpendicular guards are symmetric across axes. The mutation-testing lesson mirrors MAZ-236: a raycast test only bites the perpendicular guards if a blocker is placed forward-on-axis but off each perpendicular coordinate in turn — one such negative case per axis (different depth, different column, different row) is what lifted the score from 71% to 87%. `BoardGroup` needing zero changes validates the M13 design bet: keying the occupancy index on `Position.toKey()` makes the aggregate dimension-agnostic.
+
+
+---
+
+# AI Usage Log: MAZ-238 — Parse z + dimensions; send 3D capability header (client)
+
+## Task / Problem
+
+Resolve `MAZ-238` (C4) of the M13 "3D Volumetric Boards" milestone: teach the client to consume 3D levels over the wire. Parse the optional `z` depth on arrow paths and board-shape cells, surface the level `dimensions` (2|3) into the application `LevelDefinition`, and advertise 3D support from the HTTP client so the backend catalog gate (MAZ-233) may serve volumetric levels. Stacked on the client domain 3D chain (MAZ-235→236→237). Closes the client domain/infra lane before the render tickets.
+
+## Tool and Model
+
+Claude Code / Claude Opus 4.8.
+
+## Prompt Used
+
+The user asked to implement `MAZ-238` following both repos' `AGENTS.md`, the team `MEMORY.md`, `Linear_MCP_Guideline.md`, prior ticket/plan context, AI-usage logging + validation checks, MEMORY/AGENTS update review, commit/push/PR, and Linear updates; and, because this is a refactor, to review the whole context and every affected ticket.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | M13 grill-me spec sealed the wire contract: `z` optional (default 0, 2D levels intact), explicit `dimensions` field, and a client-capability gate so old clients never receive 3D. | `../M13_3D_Boards_Plan.md`, `MAZ-238` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Milestone pre-sliced into MAZ-225..244; this is C4 (stacked on C3). No separate `.feature` authored. | `MAZ-238` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Used | Red → Green: created the (previously missing) `LevelCatalogMapper` test — z default/explicit, depth-axis direction, `dimensions` default/explicit, board-shape z — plus a capability-header test on the axios adapter; then implemented DTOs, `LevelDefinition`, mapper, and adapter. | `tests/infrastructure/mappers/level-catalog/LevelCatalogMapper.test.ts`, `tests/infrastructure/http/AxiosHttpClientAdapter.test.ts`, source below |
+| Judge (`.agents/judge.md`) | Referenced | Confirmed the wire stays backward compatible (`z`/`dimensions` optional → 2D levels parse unchanged), the new `Direction` names route through `Direction.fromName` (no exhaustive switch), and `dimensions` is optional on `LevelDefinition` so offline/tutorial producers are unaffected. Full suite + `npm run verify` green. | grep, `npm run verify` exit 0 |
+| Mutation Tester (`.agents/mutation.md`) | Used | `stryker --mutate LevelCatalogMapper.ts` → 90.00% (≥ break 80); the file had **no tests before this ticket**. | stryker clear-text report |
+
+## Result Obtained
+
+- `src/infrastructure/mappers/level-catalog/LevelCatalogDtos.ts`: arrow `path` cells and `boardShape` cells gain optional `z`; `direction` union adds `FORWARD`/`BACK`; `LevelDetailDto` gains optional `dimensions: 2 | 3`.
+- `src/application/level-build/LevelDefinition.ts`: `BoardShapeCell` gains optional `z`; `LevelDefinition` gains optional `dimensions: 2 | 3` (the field the renderer selects on in MAZ-244).
+- `src/infrastructure/mappers/level-catalog/LevelCatalogMapper.ts`: `toDefinition` maps `Position.of(row, col, z ?? 0)`, carries `z` onto board-shape cells when present, and sets `dimensions: dto.dimensions ?? 2`.
+- `src/infrastructure/http/AxiosHttpClientAdapter.ts`: the axios instance now sends a default `X-Client-Caps: 3d` header on every request (the capability the backend gate reads).
+- Tests: new `LevelCatalogMapper.test.ts` (11 cases incl. `toSummary`, previously untested) + a capability-header assertion on the adapter test.
+
+## Verification
+
+- `npm run verify` (lint + typecheck + coverage) → exit 0; **551 tests**; `LevelCatalogMapper.ts` at 100% coverage.
+- Full suite green — `z`/`dimensions` optional means existing 2D level fixtures and offline/tutorial producers (which omit both) are unaffected.
+- Mutation: `LevelCatalogMapper.ts` **90.00%** (≥ break 80), from 0 (the mapper was untested before). Remaining survivors are near-equivalent mutants on the optional-`z` board-shape spread (present vs `z: undefined` is not observable through `.z`).
+
+## Team Modifications Pending Human Review
+
+- Application/infra + tests: `LevelDefinition` gained `dimensions`; confirm the field name/placement matches the backend contract (`MAZ-232`/B7) so the wire lines up.
+- Capability header name fixed as `X-Client-Caps: 3d` — the backend gate (`MAZ-233`/B8) must read the same header/value. Flagged so the two sides agree.
+- Offline `JsonLevelStrategy` fixtures still parse 2D only (they build `Position.of(row, col)`); 3D offline fixtures are out of C4 scope (levels arrive 3D over HTTP). Follow-up if offline 3D is wanted.
+- No formal Gherkin `.feature` authored; M13 plan + sealed grill-me spec acted as the contract.
+
+## Lessons / Limitations
+
+The wire change is purely additive because both new fields are optional with a `?? 0` / `?? 2` default at the mapping boundary — the mapper is the single choke point where the DTO becomes domain objects, so 3D support was localized there without touching any level producer or consumer. Writing the mapper's first-ever test also revealed the untested `toSummary` and timed/normal `kind` branches, which the hardening pass now covers.
+
+
+---
+
+# AI Log - MAZ-240 BoardView3D GL scene
+
+## Task / Problem
+
+Implement ticket `MAZ-240` (C5): build the client presentation `BoardView3D` GL scene for volumetric 3D boards, based on the sealed M13 plan and stacked on the client C4 branch (`origin/refactor/mobile-infra-level-catalog-3d-MAZ-238`).
+
+## Tool and Model
+
+- Tool: Codex CLI coding agent.
+- Model: GPT-5 Codex.
+
+## Prompt Used
+
+The user requested work on `MAZ-240`, explicitly requiring both repo `AGENTS.md` files, `MEMORY.md`, `Linear_MCP_Guideline.md`, AI usage logging, checks, a new worktree, commit/push/PR, Linear update, and a review of affected tickets.
+
+## Agent Roles Used
+
+| Agent | Status | How it was used | Evidence |
+| --- | --- | --- | --- |
+| Spec Partner (`.agents/spec-partner.md`) | Referenced | Used its scope discipline to derive a local spec from the sealed M13 plan without adding new architecture decisions. | `specs/mobile-board3d-render-MAZ-240.spec.md`, `M13_3D_Boards_Plan.md` |
+| Planner / Gherkin Author (`.agents/planner.md`) | Referenced | Used its executable-contract format to record `@s1..@s5` scenarios for traceability. | `specs/mobile-board3d-render-MAZ-240.feature` |
+| TDD Implementer (`.agents/tdd-implementer.md`) | Referenced | Followed red/green/refactor: wrote failing mapper/geometry/component tests, implemented the minimum DTO + presentation code, then verified. | Tests listed in `@s -> test` map below |
+| Judge (`.agents/judge.md`) | Referenced | Applied layer-boundary and Clean Architecture checks while implementing; no separate judge session was run. | `npm run lint`, `npm run typecheck`, code placement under application DTOs and presentation |
+| Mutation Tester (`.agents/mutation.md`) | Referenced | Ran scoped Stryker mutation after verify for the application mapper touched by this ticket. | `ai-log/2026-07-13-MAZ-240-mutation.md` |
+
+## Result Obtained
+
+- Added optional depth to `CoordinateDto` and `BoardBoundsDto`.
+- Updated `BoardSnapshotMapper` to preserve `z` for explicit 3D levels, inferred-depth levels, 3D zero slabs, and depth board-shape masks while keeping 2D snapshots backward-compatible.
+- Added `src/presentation/components/board3d/`:
+  - `BoardView3D.tsx`: static R3F/Three.js canvas shell with neon tube arrows and a volume lattice.
+  - `board3dGeometry.ts`: pure descriptor/coordinate/direction helpers.
+  - `index.ts`: presentation export.
+- Added Jest manual mock for `@react-three/fiber/native`.
+- Imported the R3F/Three/expo-gl dependencies validated by MAZ-225.
+- Left `GameScreen` renderer switching, orbit/zoom, picking, and exit animation untouched for `MAZ-241`..`MAZ-244`.
+
+## Affected Tickets Reviewed
+
+- `MAZ-225` / T0: device spike branch showed GO at 60fps with R3F and provided the dependency set reused here.
+- `MAZ-238` / C4: this worktree is stacked on C4 because `dimensions`/`z` catalog parsing unlocks C5.
+- `MAZ-241` / C6: orbit and zoom gestures remain deferred.
+- `MAZ-242` / C7: tap-picking remains deferred.
+- `MAZ-243` / C8: GL exit animation and shake remain deferred.
+- `MAZ-244` / C9: `GameScreen` renderer switching remains deferred.
+
+## @s -> Test Map
+
+| Scenario | Tests |
+| --- | --- |
+| `@s1` | `tests/application/dto/BoardSnapshotMapper.test.ts` - `should_map_3d_arrow_coordinates_and_depth_bounds_when_definition_is_volumetric`, `should_infer_depth_coordinates_when_any_arrow_cell_has_nonzero_z`, `should_keep_zero_depth_coordinates_when_dimensions_explicitly_mark_a_3d_slab`, `should_include_board_shape_depth_cells_and_depth_bounds` |
+| `@s2` | `tests/application/dto/BoardSnapshotMapper.test.ts` - `should_map_arrows_with_head_direction_and_bounds`, `should_include_board_shape_cells_and_union_bounds`, `should_omit_board_shape_when_definition_has_none` |
+| `@s3` | `tests/presentation/components/board3d/board3dGeometry.test.ts` - `should_center_a_board_coordinate_inside_the_volume`, `should_default_missing_z_to_the_planar_zero_slab`, `should_resolve_six_world_axis_direction_vectors`, `should_describe_neon_tube_arrows_from_active_dto_cells`, `should_measure_depth_from_optional_bounds_or_the_zero_slab` |
+| `@s4` | `tests/presentation/components/board3d/BoardView3D.test.tsx` - `should_mount_a_canvas_for_a_volumetric_board`, `should_render_an_empty_3d_board_without_canvas_when_bounds_are_null` |
+| `@s5` | Absence of `GameScreen` production changes plus scoped assertions in `BoardView3D` tests; follow-up tickets own interaction/switching. |
+
+## Validation
+
+- `npm test -- --runInBand tests/application/dto/BoardSnapshotMapper.test.ts tests/presentation/components/board3d` - GREEN.
+- `npm run lint` - GREEN.
+- `npm run typecheck` - GREEN.
+- `npm run verify` - GREEN (94 suites / 563 tests).
+- `npm run mutation -- --mutate "src/application/dto/BoardSnapshotMapper.ts"` - GREEN, 100.00%.
+
+## Team Modifications Pending Human Review
+
+- Human review should confirm the visual framing on device once `MAZ-244` wires `BoardView3D` into gameplay.
+- Human review should confirm stacking on `MAZ-238` is acceptable until C4 is merged into `develop`.
+- Linear could not be read or updated from this session because `LINEAR_API_KEY` was not set locally.
+
+## Lessons / Limitations
+
+- `BoardSnapshotDto` had to become depth-aware for the renderer to remain presentation-only; otherwise `BoardView3D` would need to reach into domain/application internals.
+- Jest validates the RN shell and pure geometry, not a real native GL context.
+- The first mutation pass exposed missing tests for inferred depth and empty boards; adding those tests raised the scoped score to 100%.
+
+
+---
+
+# Mutation - MAZ-240
+
+**Verdict:** PASS
+**Score:** 61/61 killed = 100.00% (threshold: 80%)
+
+## Scope
+
+- `src/application/dto/BoardSnapshotMapper.ts`
+
+## Command
+
+```sh
+npm run mutation -- --mutate "src/application/dto/BoardSnapshotMapper.ts"
+```
+
+## Survivors
+
+None.
+
+## Notes
+
+The initial scoped run scored 73.77% and exposed missing mapper cases for inferred depth, board-shape depth, empty snapshots, and explicit 3D zero slabs. Additional tests were added before the final PASS.
+
+
 <!-- AI_LOG_ENTRIES_END -->
 
 ## Critical Evaluation

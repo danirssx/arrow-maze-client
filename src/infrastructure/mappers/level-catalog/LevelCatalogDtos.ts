@@ -18,14 +18,15 @@ export interface LevelsResponseDto {
 export interface LevelArrowDto {
   id: string;
   color: string;
-  path: { row: number; col: number }[];
-  direction: "UP" | "DOWN" | "LEFT" | "RIGHT";
+  /** Lattice cells tail→head; `z` (depth) is optional and defaults to 0 for planar (2D) levels. */
+  path: { row: number; col: number; z?: number }[];
+  direction: "UP" | "DOWN" | "LEFT" | "RIGHT" | "FORWARD" | "BACK";
 }
 
 /** Optional abstract board mask (Option A) as returned by the backend. */
 export interface BoardShapeDto {
   type: string;
-  cells: { row: number; col: number }[];
+  cells: { row: number; col: number; z?: number }[];
 }
 
 export interface LevelDetailDto {
@@ -40,6 +41,8 @@ export interface LevelDetailDto {
     arrows: LevelArrowDto[];
     boardShape?: BoardShapeDto;
   };
+  /** Board dimensionality; absent means a planar (2D) level. */
+  dimensions?: 2 | 3;
   timeLimitSeconds?: number;
   createdAt: string;
   updatedAt: string;
