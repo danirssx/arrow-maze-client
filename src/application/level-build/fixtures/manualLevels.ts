@@ -21,7 +21,7 @@ function mapArrow(record: ArrowRecord): ArrowSpec {
   return ArrowSpec.of(
     record.id,
     record.color,
-    record.path.map((cell) => Position.of(cell.row, cell.col)),
+    record.path.map((cell) => Position.of(cell.row, cell.col, cell.z ?? 0)),
     Direction.fromName(record.direction)
   );
 }
@@ -34,7 +34,8 @@ function toDefinition(draft: LevelDraft): LevelDefinition {
     arrows: draft.arrows.map(mapArrow),
     kind: timed ? LevelKind.Timed : LevelKind.Normal,
     attempts: draft.attempts,
-    ...(timed ? { timeLimitSeconds: draft.timeLimitSeconds } : {})
+    ...(timed ? { timeLimitSeconds: draft.timeLimitSeconds } : {}),
+    ...(draft.dimensions !== undefined ? { dimensions: draft.dimensions } : {})
   };
 }
 

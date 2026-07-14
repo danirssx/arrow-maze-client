@@ -3,7 +3,7 @@ import { Difficulty } from "../../../domain/value-objects/Difficulty";
 export type ArrowRecord = {
   readonly id: string;
   readonly color: string;
-  readonly path: readonly { readonly row: number; readonly col: number }[];
+  readonly path: readonly { readonly row: number; readonly col: number; readonly z?: number }[];
   readonly direction: string;
 };
 
@@ -14,6 +14,7 @@ export type LevelDraft = {
   readonly arrowCount: number;
   readonly attempts: number;
   readonly timeLimitSeconds?: number;
+  readonly dimensions?: 2 | 3;
   readonly arrows: readonly ArrowRecord[];
 };
 export const LEVEL_DRAFTS: readonly LevelDraft[] = [
@@ -10578,6 +10579,70 @@ export const LEVEL_DRAFTS: readonly LevelDraft[] = [
           }
         ],
         "direction": "DOWN"
+      }
+    ]
+  },
+  {
+    "id": "3d000000-0000-0000-0000-000000000001",
+    "name": "Cube Test",
+    "difficulty": Difficulty.Easy,
+    "arrowCount": 6,
+    "attempts": 8,
+    "dimensions": 3,
+    "arrows": [
+      {
+        "id": "3d-front-h",
+        "color": "#00FFFF",
+        "path": [
+          { "row": 0, "col": 0, "z": 0 },
+          { "row": 0, "col": 1, "z": 0 }
+        ],
+        "direction": "RIGHT"
+      },
+      {
+        "id": "3d-front-v",
+        "color": "#FF44AA",
+        "path": [
+          { "row": 1, "col": 0, "z": 0 },
+          { "row": 0, "col": 0, "z": 0 }
+        ],
+        "direction": "UP"
+      },
+      {
+        "id": "3d-back-h",
+        "color": "#44FF88",
+        "path": [
+          { "row": 0, "col": 0, "z": 1 },
+          { "row": 0, "col": 1, "z": 1 }
+        ],
+        "direction": "RIGHT"
+      },
+      {
+        "id": "3d-back-v",
+        "color": "#FF8800",
+        "path": [
+          { "row": 1, "col": 1, "z": 1 },
+          { "row": 0, "col": 1, "z": 1 }
+        ],
+        "direction": "UP"
+      },
+      {
+        "id": "3d-depth-top",
+        "color": "#AA44FF",
+        "path": [
+          { "row": 0, "col": 1, "z": 0 },
+          { "row": 0, "col": 1, "z": 1 }
+        ],
+        "direction": "FORWARD"
+      },
+      {
+        "id": "3d-depth-bot",
+        "color": "#FFFF00",
+        "path": [
+          { "row": 1, "col": 0, "z": 1 },
+          { "row": 1, "col": 0, "z": 0 }
+        ],
+        "direction": "BACK"
       }
     ]
   }
