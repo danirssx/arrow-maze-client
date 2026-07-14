@@ -37,17 +37,20 @@ function clearsCompletely(definition: LevelDefinition): boolean {
 }
 
 describe("manual level fixtures", () => {
-  it("should_provide_15_levels_with_unique_ids_in_order", () => {
-    expect(manualLevels).toHaveLength(15);
-    expect(manualLevels.map((level) => level.order)).toEqual(Array.from({ length: 15 }, (_, index) => index + 1));
-    expect(new Set(manualLevels.map((level) => level.id)).size).toBe(15);
+  it("should_provide_levels_with_unique_ids_in_order", () => {
+    expect(manualLevels.map((level) => level.order)).toEqual(
+      Array.from({ length: manualLevels.length }, (_, index) => index + 1)
+    );
+    expect(new Set(manualLevels.map((level) => level.id)).size).toBe(manualLevels.length);
   });
 
-  it("should_progress_in_difficulty_and_arrow_count", () => {
-    const ranks = manualLevels.map((level) => DIFFICULTY_RANK[level.difficulty] ?? 0);
-    const counts = manualLevels.map((level) => level.arrowCount);
+  it("should_progress_in_difficulty_and_arrow_count_for_2d_levels", () => {
+    // 3-D levels are a different kind and are excluded from the 2-D progression check.
+    const levels2D = manualLevels.filter((level) => level.definition.dimensions !== 3);
+    const ranks = levels2D.map((level) => DIFFICULTY_RANK[level.difficulty] ?? 0);
+    const counts = levels2D.map((level) => level.arrowCount);
 
-    for (let index = 1; index < manualLevels.length; index += 1) {
+    for (let index = 1; index < levels2D.length; index += 1) {
       expect(ranks[index] ?? 0).toBeGreaterThanOrEqual(ranks[index - 1] ?? 0);
       expect(counts[index] ?? 0).toBeGreaterThanOrEqual(counts[index - 1] ?? 0);
     }

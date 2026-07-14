@@ -38,10 +38,12 @@ export interface LevelDetailDto {
   version: number;
   definition: {
     attempts: number;
+    /** Backend sends dimensions here (inside definition). */
+    dimensions?: 2 | 3;
     arrows: LevelArrowDto[];
     boardShape?: BoardShapeDto;
   };
-  /** Board dimensionality; absent means a planar (2D) level. */
+  /** Legacy: top-level dimensions field (not sent by current backend). */
   dimensions?: 2 | 3;
   timeLimitSeconds?: number;
   createdAt: string;

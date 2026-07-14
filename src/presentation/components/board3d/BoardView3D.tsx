@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property -- react-three-fiber uses Three.js intrinsic props, not RN DOM props. */
 import { Canvas, useFrame, useThree } from "@react-three/fiber/native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import * as THREE from "three";
 import type { GameUiState } from "@/presentation/state/GameUiState";
@@ -32,29 +32,24 @@ function buildTubeGroup(descriptor: ArrowTubeDescriptor): THREE.Group {
   const color = new THREE.Color(descriptor.color);
   const curve = new THREE.CatmullRomCurve3(tubePoints(descriptor));
   const segments = Math.min(MAX_TUBE_SEGMENTS, Math.max(8, descriptor.points.length * 8));
+  // MeshBasicMaterial: no lighting needed, color always visible on any WebGL impl.
   const core = new THREE.Mesh(
     new THREE.TubeGeometry(curve, segments, 0.08, 8, false),
-    new THREE.MeshStandardMaterial({
-      color: "#050507",
-      emissive: color,
-      emissiveIntensity: 2.4,
-      transparent: true,
-      opacity: 0.94
-    })
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 })
   );
   const halo = new THREE.Mesh(
     new THREE.TubeGeometry(curve, segments, 0.22, 8, false),
     new THREE.MeshBasicMaterial({
       color,
       transparent: true,
-      opacity: 0.16,
+      opacity: 0.22,
       blending: THREE.AdditiveBlending,
       depthWrite: false
     })
   );
   const head = new THREE.Mesh(
     new THREE.ConeGeometry(0.22, 0.42, 12),
-    new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.8 })
+    new THREE.MeshBasicMaterial({ color })
   );
   const headPoint = descriptor.points[descriptor.points.length - 1] ?? [0, 0, 0];
   head.position.set(...add(headPoint, descriptor.direction, 0.24));
@@ -80,8 +75,6 @@ const TAP_MAX_DRIFT_PX = 5;
 
 // Cap tube segments to avoid WebGL buffer overflow on dense 3-D boards.
 const MAX_TUBE_SEGMENTS = 64;
-const EXIT_FLY_SPEED = 4.0;
-const EXIT_DURATION = 0.65;
 const SHAKE_DURATION = 0.3;
 const SHAKE_AMPLITUDE = 0.28;
 
@@ -92,7 +85,6 @@ interface CameraRef {
   panStartTheta: number;
   panStartPhi: number;
   pinchStartZoom: number;
-  pendingTap: { x: number; y: number } | null;
   panDrift: number;
 }
 
@@ -137,63 +129,6 @@ function NeonTubeArrow({ descriptor }: { descriptor: ArrowTubeDescriptor }): Rea
   return <primitive object={group} />;
 }
 
-// Plays the exit fly+fade animation for a single arrow inside the Three.js render loop.
-// Flies the group along its descriptor.direction at EXIT_FLY_SPEED units/s while fading
-// all mesh materials to opacity 0 over EXIT_DURATION seconds, then calls onFinished once.
-function AnimatedArrow({
-  descriptor,
-  onFinished,
-}: {
-  descriptor: ArrowTubeDescriptor;
-  onFinished: () => void;
-}): React.JSX.Element {
-  const group = useMemo(() => buildTubeGroup(descriptor), [descriptor]);
-  const elapsed = useRef(0);
-  const finished = useRef(false);
-  const dir = useMemo(() => new THREE.Vector3(...descriptor.direction).normalize(), [descriptor.direction]);
-
-  // Capture initial opacities on first frame so we can lerp from them.
-  const initialOpacities = useRef<WeakMap<THREE.Material, number> | null>(null);
-
-  useFrame((_, delta) => {
-    if (finished.current) return;
-
-    if (initialOpacities.current === null) {
-      const map = new WeakMap<THREE.Material, number>();
-      group.traverse((obj) => {
-        if ((obj as THREE.Mesh).isMesh) {
-          const mat = (obj as THREE.Mesh).material as THREE.Material & { opacity?: number };
-          if (typeof mat.opacity === "number") map.set(mat, mat.opacity);
-        }
-      });
-      initialOpacities.current = map;
-    }
-
-    elapsed.current += delta;
-    const t = Math.min(elapsed.current / EXIT_DURATION, 1);
-
-    // Translate group along world direction
-    group.position.copy(dir.clone().multiplyScalar(elapsed.current * EXIT_FLY_SPEED));
-
-    // Fade all mesh materials
-    group.traverse((obj) => {
-      if ((obj as THREE.Mesh).isMesh) {
-        const mat = (obj as THREE.Mesh).material as THREE.Material & { opacity?: number };
-        if (typeof mat.opacity === "number") {
-          const initial = initialOpacities.current!.get(mat) ?? 1;
-          mat.opacity = initial * (1 - t);
-        }
-      }
-    });
-
-    if (t >= 1 && !finished.current) {
-      finished.current = true;
-      onFinished();
-    }
-  });
-
-  return <primitive object={group} />;
-}
 
 function VolumeLattice({ size }: { size: ReturnType<typeof volumeSize> }): React.JSX.Element {
   const width = Math.max(size.columns - 1, 1);
@@ -211,78 +146,15 @@ function VolumeLattice({ size }: { size: ReturnType<typeof volumeSize> }): React
   );
 }
 
-// Reads cameraRef every frame and repositions the R3F camera in spherical coords.
-function OrbitCamera({ cameraRef, baseDistance }: { cameraRef: React.RefObject<CameraRef>; baseDistance: number }): null {
-  const { camera } = useThree();
-  useFrame((_, delta) => {
-    // DEBUG: auto-rotate to confirm render loop runs
-    cameraRef.current.theta += delta * 0.5;
-    const { theta, phi, zoom } = cameraRef.current;
-    const r = baseDistance * zoom;
-    camera.position.set(
-      r * Math.sin(phi) * Math.sin(theta),
-      r * Math.cos(phi),
-      r * Math.sin(phi) * Math.cos(theta),
-    );
-    camera.lookAt(0, 0, 0);
-  });
-  return null;
-}
-
-// Large invisible plane that captures R3F pointer events for orbit + tap.
-// R3F's internal PanResponder dispatches pointer events into the scene,
-// so this is the correct way to handle gestures in a native GL canvas.
-function OrbitPlane({ cameraRef }: { cameraRef: React.RefObject<CameraRef> }): React.JSX.Element {
-  const startRef = useRef({ x: 0, y: 0 });
-  return (
-    <mesh
-      renderOrder={-1}
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        startRef.current = { x: e.clientX, y: e.clientY };
-        cameraRef.current.panStartTheta = cameraRef.current.theta;
-        cameraRef.current.panStartPhi = cameraRef.current.phi;
-        cameraRef.current.panDrift = 0;
-      }}
-      onPointerMove={(e) => {
-        if (e.buttons === 0) return;
-        const dx = e.clientX - startRef.current.x;
-        const dy = e.clientY - startRef.current.y;
-        cameraRef.current.panDrift = Math.max(Math.abs(dx), Math.abs(dy));
-        cameraRef.current.theta = cameraRef.current.panStartTheta - dx * ORBIT_SENSITIVITY;
-        cameraRef.current.phi = Math.max(
-          PHI_MIN,
-          Math.min(PHI_MAX, cameraRef.current.panStartPhi - dy * ORBIT_SENSITIVITY),
-        );
-      }}
-      onPointerUp={(e) => {
-        if (cameraRef.current.panDrift <= TAP_MAX_DRIFT_PX) {
-          cameraRef.current.pendingTap = { x: e.clientX, y: e.clientY };
-        }
-      }}
-    >
-      <planeGeometry args={[10000, 10000]} />
-      <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
-    </mesh>
-  );
-}
-
-// Polls pendingTap each frame; when set, raycasts and fires onArrowTap.
-function TapHandler({
-  cameraRef,
-  onArrowTap,
-}: {
-  cameraRef: React.RefObject<CameraRef>;
-  onArrowTap: (arrowId: string) => void;
-}): null {
-  const { camera, scene, size } = useThree();
-  useFrame(() => {
-    const tap = cameraRef.current.pendingTap;
-    if (tap === null) return;
-    cameraRef.current.pendingTap = null;
-    const arrowId = pickArrowId(camera, scene, size.width, size.height, tap.x, tap.y);
-    if (arrowId !== null) onArrowTap(arrowId);
-  });
+// R3F's internal frameloop doesn't start with expo-gl on New Architecture (Fabric).
+// This component bypasses it: drives the render loop with RN's requestAnimationFrame
+// (which does work) and calls invalidate() to force R3F to draw each frame.
+// R3F's useEffect/useFrame don't run with expo-gl on Fabric (New Architecture).
+// This component exports the R3F state synchronously in the render function so
+// the outer component can drive the render loop from its own useEffect (which works).
+type ThreeState = ReturnType<typeof useThree>;
+function StateExporter({ stateRef }: { stateRef: React.MutableRefObject<ThreeState | null> }): null {
+  stateRef.current = useThree();
   return null;
 }
 
@@ -313,46 +185,17 @@ function BoardView3DInner({
   state: GameUiState & { bounds: NonNullable<GameUiState["bounds"]> };
   onArrowTap: (arrowId: string) => void;
 }): React.JSX.Element {
+  console.log('[3DInner] render');
   const size = volumeSize(state.bounds);
   const baseDistance = Math.max(CAMERA_DISTANCE, size.rows + size.columns + size.depth);
 
-  // All descriptors — extracted arrows are NOT filtered so we can animate them out.
   const allDescriptors = useMemo(
     () => buildArrowTubeDescriptors(state.arrows, state.bounds!, []),
     [state.arrows, state.bounds],
   );
 
-  const descriptorById = useMemo(
-    () => new Map(allDescriptors.map((d) => [d.id, d])),
-    [allDescriptors],
-  );
-
-  // exitingIds: arrows currently playing the fly+fade animation (not yet unmounted).
-  const [exitingIds, setExitingIds] = useState<ReadonlySet<string>>(() => new Set());
-  const prevExtractedRef = useRef<ReadonlySet<string>>(new Set<string>(state.extractedArrowIds));
-
-  // Detect newly extracted arrows and start their exit animation.
-  useEffect(() => {
-    const prev = prevExtractedRef.current;
-    const curr = new Set(state.extractedArrowIds);
-    const newlyExtracted = [...curr].filter((id) => !prev.has(id));
-    if (newlyExtracted.length > 0) {
-      setExitingIds((s) => new Set([...s, ...newlyExtracted]));
-    }
-    prevExtractedRef.current = curr;
-  }, [state.extractedArrowIds]);
-
   const extractedSet = new Set(state.extractedArrowIds);
-
-  // Active = not extracted and not playing exit animation.
-  const activeDescriptors = allDescriptors.filter(
-    (d) => !extractedSet.has(d.id) && !exitingIds.has(d.id),
-  );
-
-  // Exiting = those whose descriptor we still know (arrow must still exist in state.arrows).
-  const exitingDescriptors = [...exitingIds]
-    .map((id) => descriptorById.get(id))
-    .filter((d): d is ArrowTubeDescriptor => d !== undefined);
+  const activeDescriptors = allDescriptors.filter((d) => !extractedSet.has(d.id));
 
   // Shake ref — mutated by ShakeHandler in useFrame, never triggers re-render.
   const shakeRef = useRef<ShakeRef>({ active: false, elapsed: 0, lastArrowId: null });
@@ -371,41 +214,117 @@ function BoardView3DInner({
     panStartTheta: Math.PI / 4,
     panStartPhi: Math.PI / 3,
     pinchStartZoom: 1,
-    pendingTap: null,
     panDrift: 0,
   });
 
+  // R3F state exported synchronously from StateExporter's render (useEffect doesn't
+  // run inside R3F Canvas on expo-gl + Fabric, but the render function does).
+  const r3fStateRef = useRef<ThreeState | null>(null);
+  // Canvas layout for raycasting tap coordinates.
+  const layoutRef = useRef({ width: 1, height: 1 });
+  // Touch tracking for orbit + tap discrimination.
+  const touchRef = useRef({ startX: 0, startY: 0 });
+
+  // Render loop. R3F's internal frameloop doesn't start on expo-gl + Fabric (New Arch),
+  // so we drive rendering from here using setInterval + direct gl.render() + endFrameEXP().
+  useEffect(() => {
+    let lastTime = Date.now();
+
+    const intervalId = setInterval(() => {
+      const now = Date.now();
+      const delta = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      const state = r3fStateRef.current;
+      if (!state) return;
+
+      const { theta, phi, zoom } = cam.current;
+      const r = baseDistance * zoom;
+      state.camera.position.set(
+        r * Math.sin(phi) * Math.sin(theta),
+        r * Math.cos(phi),
+        r * Math.sin(phi) * Math.cos(theta),
+      );
+      state.camera.lookAt(0, 0, 0);
+
+      state.gl.render(state.scene, state.camera);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ctx = (state.gl as any).getContext?.() as { endFrameEXP?: () => void } | null;
+      ctx?.endFrameEXP?.();
+    }, 16);
+
+    return () => clearInterval(intervalId);
+  }, [baseDistance]);
+
   return (
-    <View testID="board-view-3d" style={styles.container}>
+    <View
+      testID="board-view-3d"
+      style={styles.container}
+      onLayout={(e) => {
+        layoutRef.current = {
+          width: e.nativeEvent.layout.width,
+          height: e.nativeEvent.layout.height,
+        };
+      }}
+    >
       <Canvas
         testID="board-view-3d-canvas"
-        frameloop="always"
+        frameloop="never"
         style={{ ...StyleSheet.absoluteFillObject }}
         camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }}
-        gl={{ antialias: true }}
+        gl={{ antialias: true, outputColorSpace: THREE.LinearSRGBColorSpace }}
       >
         <color attach="background" args={[BG]} />
         <ambientLight intensity={0.22} />
         <pointLight position={[6, 8, 6]} intensity={1.35} />
-        <OrbitCamera cameraRef={cam} baseDistance={baseDistance} />
-        <OrbitPlane cameraRef={cam} />
+        <StateExporter stateRef={r3fStateRef} />
         <ShakeHandler shakeRef={shakeRef} />
         <VolumeLattice size={size} />
         {activeDescriptors.map((descriptor) => (
           <NeonTubeArrow key={descriptor.id} descriptor={descriptor} />
         ))}
-        {exitingDescriptors.map((descriptor) => (
-          <AnimatedArrow
-            key={descriptor.id}
-            descriptor={descriptor}
-            onFinished={() => setExitingIds((s) => {
-              const next = new Set(s);
-              next.delete(descriptor.id);
-              return next;
-            })}
-          />
-        ))}
       </Canvas>
+      {/* Gesture overlay — sits on top of Canvas, handles orbit + tap natively.
+          This avoids R3F pointer-event / endFrameEXP conflicts on expo-gl + Fabric. */}
+      <View
+        style={StyleSheet.absoluteFillObject}
+        onTouchStart={(e) => {
+          const t = e.nativeEvent.touches[0];
+          if (!t) return;
+          touchRef.current = { startX: t.locationX, startY: t.locationY };
+          cam.current.panStartTheta = cam.current.theta;
+          cam.current.panStartPhi = cam.current.phi;
+          cam.current.panDrift = 0;
+        }}
+        onTouchMove={(e) => {
+          const t = e.nativeEvent.touches[0];
+          if (!t) return;
+          const dx = t.locationX - touchRef.current.startX;
+          const dy = t.locationY - touchRef.current.startY;
+          cam.current.panDrift = Math.max(Math.abs(dx), Math.abs(dy));
+          cam.current.theta = cam.current.panStartTheta - dx * ORBIT_SENSITIVITY;
+          cam.current.phi = Math.max(
+            PHI_MIN,
+            Math.min(PHI_MAX, cam.current.panStartPhi - dy * ORBIT_SENSITIVITY),
+          );
+        }}
+        onTouchEnd={() => {
+          if (cam.current.panDrift <= TAP_MAX_DRIFT_PX) {
+            const state = r3fStateRef.current;
+            if (state) {
+              // Use start coords (from onTouchStart) — more reliable than
+              // changedTouches[0].locationX/Y which can be wrong on Android.
+              const arrowId = pickArrowId(
+                state.camera, state.scene,
+                layoutRef.current.width, layoutRef.current.height,
+                touchRef.current.startX, touchRef.current.startY,
+              );
+              console.log('[TAP] drift:', cam.current.panDrift, 'xy:', touchRef.current.startX, touchRef.current.startY, 'arrowId:', arrowId);
+              if (arrowId !== null) onArrowTap(arrowId);
+            }
+          }
+        }}
+      />
     </View>
   );
 }
@@ -417,6 +336,7 @@ export function BoardView3D({
   state: GameUiState;
   onArrowTap: (arrowId: string) => void;
 }): React.JSX.Element {
+  console.log('[BoardView3D] render, bounds:', state.bounds !== null ? 'set' : 'NULL');
   if (state.bounds === null) {
     return <View testID="board-view-3d-empty" style={styles.empty} />;
   }

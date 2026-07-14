@@ -19,6 +19,7 @@ export function BoardRenderer({
   state: GameUiState;
   onArrowTap: (arrowId: string) => void;
 }): React.JSX.Element {
+  console.log('[BoardRenderer] render, dimensions:', state.dimensions, 'bounds:', state.bounds !== null ? 'set' : 'null');
   if (state.dimensions === 3) {
     return <BoardView3D state={state} onArrowTap={onArrowTap} />;
   }
