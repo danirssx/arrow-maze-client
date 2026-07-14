@@ -341,7 +341,39 @@ function BoardView3DInner({
 
   return (
     <View testID="board-view-3d" style={styles.container}>
-      <Canvas testID="board-view-3d-canvas" style={{ ...StyleSheet.absoluteFillObject }} camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }} gl={{ antialias: true }}>
+      <Canvas
+        testID="board-view-3d-canvas"
+        style={{ ...StyleSheet.absoluteFillObject }}
+        camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }}
+        gl={{ antialias: true }}
+        onTouchStart={(e) => {
+          const t = e.nativeEvent.touches[0];
+          if (!t) return;
+          touchRef.current = { startX: t.pageX, startY: t.pageY };
+          cam.current.panStartTheta = cam.current.theta;
+          cam.current.panStartPhi = cam.current.phi;
+          cam.current.panDrift = 0;
+        }}
+        onTouchMove={(e) => {
+          const t = e.nativeEvent.touches[0];
+          if (!t) return;
+          const dx = t.pageX - touchRef.current.startX;
+          const dy = t.pageY - touchRef.current.startY;
+          cam.current.panDrift = Math.max(Math.abs(dx), Math.abs(dy));
+          cam.current.theta = cam.current.panStartTheta - dx * ORBIT_SENSITIVITY;
+          cam.current.phi = Math.max(
+            PHI_MIN,
+            Math.min(PHI_MAX, cam.current.panStartPhi - dy * ORBIT_SENSITIVITY),
+          );
+        }}
+        onTouchEnd={(e) => {
+          const t = e.nativeEvent.changedTouches[0];
+          if (!t) return;
+          if (cam.current.panDrift <= TAP_MAX_DRIFT_PX) {
+            cam.current.pendingTap = { x: t.locationX, y: t.locationY };
+          }
+        }}
+      >
         <color attach="background" args={[BG]} />
         <ambientLight intensity={0.22} />
         <pointLight position={[6, 8, 6]} intensity={1.35} />
@@ -364,37 +396,6 @@ function BoardView3DInner({
           />
         ))}
       </Canvas>
-      <View
-        style={StyleSheet.absoluteFill}
-        onStartShouldSetResponder={() => true}
-        onStartShouldSetResponderCapture={() => true}
-        onMoveShouldSetResponder={() => true}
-        onMoveShouldSetResponderCapture={() => true}
-        onResponderGrant={(e) => {
-          touchRef.current = { startX: e.nativeEvent.pageX, startY: e.nativeEvent.pageY };
-          cam.current.panStartTheta = cam.current.theta;
-          cam.current.panStartPhi = cam.current.phi;
-          cam.current.panDrift = 0;
-        }}
-        onResponderMove={(e) => {
-          const dx = e.nativeEvent.pageX - touchRef.current.startX;
-          const dy = e.nativeEvent.pageY - touchRef.current.startY;
-          cam.current.panDrift = Math.max(Math.abs(dx), Math.abs(dy));
-          cam.current.theta = cam.current.panStartTheta - dx * ORBIT_SENSITIVITY;
-          cam.current.phi = Math.max(
-            PHI_MIN,
-            Math.min(PHI_MAX, cam.current.panStartPhi - dy * ORBIT_SENSITIVITY),
-          );
-        }}
-        onResponderRelease={(e) => {
-          if (cam.current.panDrift <= TAP_MAX_DRIFT_PX) {
-            cam.current.pendingTap = {
-              x: e.nativeEvent.locationX,
-              y: e.nativeEvent.locationY,
-            };
-          }
-        }}
-      />
     </View>
   );
 }
