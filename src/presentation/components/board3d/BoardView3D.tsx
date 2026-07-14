@@ -229,6 +229,44 @@ function OrbitCamera({ cameraRef, baseDistance }: { cameraRef: React.RefObject<C
   return null;
 }
 
+// Large invisible plane that captures R3F pointer events for orbit + tap.
+// R3F's internal PanResponder dispatches pointer events into the scene,
+// so this is the correct way to handle gestures in a native GL canvas.
+function OrbitPlane({ cameraRef }: { cameraRef: React.RefObject<CameraRef> }): React.JSX.Element {
+  const startRef = useRef({ x: 0, y: 0 });
+  return (
+    <mesh
+      renderOrder={-1}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        startRef.current = { x: e.clientX, y: e.clientY };
+        cameraRef.current.panStartTheta = cameraRef.current.theta;
+        cameraRef.current.panStartPhi = cameraRef.current.phi;
+        cameraRef.current.panDrift = 0;
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons === 0) return;
+        const dx = e.clientX - startRef.current.x;
+        const dy = e.clientY - startRef.current.y;
+        cameraRef.current.panDrift = Math.max(Math.abs(dx), Math.abs(dy));
+        cameraRef.current.theta = cameraRef.current.panStartTheta - dx * ORBIT_SENSITIVITY;
+        cameraRef.current.phi = Math.max(
+          PHI_MIN,
+          Math.min(PHI_MAX, cameraRef.current.panStartPhi - dy * ORBIT_SENSITIVITY),
+        );
+      }}
+      onPointerUp={(e) => {
+        if (cameraRef.current.panDrift <= TAP_MAX_DRIFT_PX) {
+          cameraRef.current.pendingTap = { x: e.clientX, y: e.clientY };
+        }
+      }}
+    >
+      <planeGeometry args={[10000, 10000]} />
+      <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
 // Polls pendingTap each frame; when set, raycasts and fires onArrowTap.
 function TapHandler({
   cameraRef,
@@ -337,10 +375,6 @@ function BoardView3DInner({
     panDrift: 0,
   });
 
-  // Track touch start for orbit + tap detection using RN's responder system,
-  // which works reliably with native GL views unlike RNGH gesture detectors.
-  const touchRef = useRef({ startX: 0, startY: 0 });
-
   return (
     <View testID="board-view-3d" style={styles.container}>
       <Canvas
@@ -349,39 +383,12 @@ function BoardView3DInner({
         style={{ ...StyleSheet.absoluteFillObject }}
         camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }}
         gl={{ antialias: true }}
-        onTouchStart={(e) => {
-          const t = e.nativeEvent.touches[0];
-          if (!t) return;
-          touchRef.current = { startX: t.pageX, startY: t.pageY };
-          cam.current.panStartTheta = cam.current.theta;
-          cam.current.panStartPhi = cam.current.phi;
-          cam.current.panDrift = 0;
-        }}
-        onTouchMove={(e) => {
-          const t = e.nativeEvent.touches[0];
-          if (!t) return;
-          const dx = t.pageX - touchRef.current.startX;
-          const dy = t.pageY - touchRef.current.startY;
-          cam.current.panDrift = Math.max(Math.abs(dx), Math.abs(dy));
-          cam.current.theta = cam.current.panStartTheta - dx * ORBIT_SENSITIVITY;
-          cam.current.phi = Math.max(
-            PHI_MIN,
-            Math.min(PHI_MAX, cam.current.panStartPhi - dy * ORBIT_SENSITIVITY),
-          );
-        }}
-        onTouchEnd={(e) => {
-          const t = e.nativeEvent.changedTouches[0];
-          if (!t) return;
-          if (cam.current.panDrift <= TAP_MAX_DRIFT_PX) {
-            cam.current.pendingTap = { x: t.locationX, y: t.locationY };
-          }
-        }}
       >
         <color attach="background" args={[BG]} />
         <ambientLight intensity={0.22} />
         <pointLight position={[6, 8, 6]} intensity={1.35} />
         <OrbitCamera cameraRef={cam} baseDistance={baseDistance} />
-        <TapHandler cameraRef={cam} onArrowTap={onArrowTap} />
+        <OrbitPlane cameraRef={cam} />
         <ShakeHandler shakeRef={shakeRef} />
         <VolumeLattice size={size} />
         {activeDescriptors.map((descriptor) => (
