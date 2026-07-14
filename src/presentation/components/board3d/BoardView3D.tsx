@@ -1,7 +1,8 @@
 /* eslint-disable react/no-unknown-property -- react-three-fiber uses Three.js intrinsic props, not RN DOM props. */
-import { Canvas } from "@react-three/fiber/native";
-import { useMemo } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber/native";
+import { useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
+import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import * as THREE from "three";
 import type { GameUiState } from "@/presentation/state/GameUiState";
 import {
@@ -70,6 +71,22 @@ function buildTubeGroup(descriptor: ArrowTubeDescriptor): THREE.Group {
   return group;
 }
 
+const PHI_MIN = 0.15;
+const PHI_MAX = Math.PI / 2;
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 3.0;
+const ORBIT_SENSITIVITY = 0.005;
+const ZOOM_SENSITIVITY = 0.008;
+
+interface CameraRef {
+  theta: number;
+  phi: number;
+  zoom: number;
+  panStartTheta: number;
+  panStartPhi: number;
+  pinchStartZoom: number;
+}
+
 function NeonTubeArrow({ descriptor }: { descriptor: ArrowTubeDescriptor }): React.JSX.Element {
   const group = useMemo(() => buildTubeGroup(descriptor), [descriptor]);
   return <primitive object={group} />;
@@ -91,6 +108,23 @@ function VolumeLattice({ size }: { size: ReturnType<typeof volumeSize> }): React
   );
 }
 
+// Reads cameraRef every frame and repositions the R3F camera in spherical coords.
+// World axes are fixed — only the camera moves, arrow directions never change.
+function OrbitCamera({ cameraRef, baseDistance }: { cameraRef: React.RefObject<CameraRef>; baseDistance: number }): null {
+  const { camera } = useThree();
+  useFrame(() => {
+    const { theta, phi, zoom } = cameraRef.current;
+    const r = baseDistance * zoom;
+    camera.position.set(
+      r * Math.sin(phi) * Math.sin(theta),
+      r * Math.cos(phi),
+      r * Math.sin(phi) * Math.cos(theta),
+    );
+    camera.lookAt(0, 0, 0);
+  });
+  return null;
+}
+
 export function BoardView3D({ state }: { state: GameUiState }): React.JSX.Element {
   if (state.bounds === null) {
     return <View testID="board-view-3d-empty" style={styles.empty} />;
@@ -98,20 +132,63 @@ export function BoardView3D({ state }: { state: GameUiState }): React.JSX.Elemen
 
   const descriptors = buildArrowTubeDescriptors(state.arrows, state.bounds, state.extractedArrowIds);
   const size = volumeSize(state.bounds);
-  const cameraDistance = Math.max(CAMERA_DISTANCE, size.rows + size.columns + size.depth);
+  const baseDistance = Math.max(CAMERA_DISTANCE, size.rows + size.columns + size.depth);
+
+  // Mutable ref — avoids re-renders on every gesture event
+  const cam = useRef<CameraRef>({
+    theta: Math.PI / 4,
+    phi: Math.PI / 3,
+    zoom: 1,
+    panStartTheta: Math.PI / 4,
+    panStartPhi: Math.PI / 3,
+    pinchStartZoom: 1,
+  });
+
+  const pan = Gesture.Pan()
+    .runOnJS(true)
+    .onBegin(() => {
+      cam.current.panStartTheta = cam.current.theta;
+      cam.current.panStartPhi = cam.current.phi;
+    })
+    .onUpdate((e) => {
+      cam.current.theta = cam.current.panStartTheta - e.translationX * ORBIT_SENSITIVITY;
+      cam.current.phi = Math.max(
+        PHI_MIN,
+        Math.min(PHI_MAX, cam.current.panStartPhi - e.translationY * ORBIT_SENSITIVITY),
+      );
+    });
+
+  const pinch = Gesture.Pinch()
+    .runOnJS(true)
+    .onBegin(() => {
+      cam.current.pinchStartZoom = cam.current.zoom;
+    })
+    .onUpdate((e) => {
+      cam.current.zoom = Math.max(
+        ZOOM_MIN,
+        Math.min(ZOOM_MAX, cam.current.pinchStartZoom / (1 + (e.scale - 1) * ZOOM_SENSITIVITY * 100)),
+      );
+    });
+
+  const composed = Gesture.Simultaneous(pan, pinch);
 
   return (
-    <View testID="board-view-3d" style={styles.container}>
-      <Canvas testID="board-view-3d-canvas" camera={{ position: [cameraDistance, cameraDistance * 0.65, cameraDistance], fov: 50 }} gl={{ antialias: true }}>
-        <color attach="background" args={[BG]} />
-        <ambientLight intensity={0.22} />
-        <pointLight position={[6, 8, 6]} intensity={1.35} />
-        <VolumeLattice size={size} />
-        {descriptors.map((descriptor) => (
-          <NeonTubeArrow key={descriptor.id} descriptor={descriptor} />
-        ))}
-      </Canvas>
-    </View>
+    <GestureHandlerRootView testID="board-view-3d" style={styles.container}>
+      <GestureDetector gesture={composed}>
+        <View style={styles.container}>
+          <Canvas testID="board-view-3d-canvas" camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }} gl={{ antialias: true }}>
+            <color attach="background" args={[BG]} />
+            <ambientLight intensity={0.22} />
+            <pointLight position={[6, 8, 6]} intensity={1.35} />
+            <OrbitCamera cameraRef={cam} baseDistance={baseDistance} />
+            <VolumeLattice size={size} />
+            {descriptors.map((descriptor) => (
+              <NeonTubeArrow key={descriptor.id} descriptor={descriptor} />
+            ))}
+          </Canvas>
+        </View>
+      </GestureDetector>
+    </GestureHandlerRootView>
   );
 }
 
