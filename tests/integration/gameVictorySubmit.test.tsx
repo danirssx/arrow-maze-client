@@ -9,8 +9,11 @@ import GameRoute from "../../app/game";
 
 // Subject to human review — integration test of the game-victory submit effect
 
-const FIRST_LEVEL = manualLevels[0]!;
 const FIRST_LEVEL_ID = "550e8400-e29b-41d4-a716-446655440010";
+const FIRST_LEVEL = manualLevels.find((l) => l.id === FIRST_LEVEL_ID)!;
+// This level is order-2 after a 3-D cube was added as order-1. We mark the
+// preceding level as completed so sequential-locking (MAZ-191) leaves it unlocked.
+const PRECEDING_LEVEL_ID = manualLevels.find((l) => l.order === FIRST_LEVEL.order - 1)!.id;
 
 const mockSession = {
   userId: "550e8400-e29b-41d4-a716-446655440000",
@@ -21,11 +24,9 @@ const mockSession = {
 
 const mockCompleteLevel = jest.fn<Promise<void>, [string, unknown]>().mockResolvedValue(undefined);
 const mockSubmitScore = jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined);
-// Level 1 (index 0) is always unlocked regardless of progress, so an empty progress
-// keeps the sequential-locking guard (MAZ-191) satisfied for this level-1 fixture.
 const mockLoadProgress = jest
   .fn<Promise<{ completedLevels: { levelId: string }[] }>, [string]>()
-  .mockResolvedValue({ completedLevels: [] });
+  .mockResolvedValue({ completedLevels: [{ levelId: PRECEDING_LEVEL_ID }] });
 
 jest.mock("expo-router", () => {
   const React = jest.requireActual("react");
