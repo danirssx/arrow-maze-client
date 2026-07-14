@@ -27,6 +27,15 @@ const Vector3 = class {
   multiplyScalar() { return this; }
 };
 
+const Vector2 = class {
+  constructor(x = 0, y = 0) { this.x = x; this.y = y; }
+};
+
+const Raycaster = class {
+  setFromCamera() {}
+  intersectObject() { return []; }
+};
+
 const Color = makeClass({ r: 0, g: 0, b: 0, set: noop });
 const Group = class {
   constructor() { this.userData = {}; this.children = []; }
@@ -53,6 +62,8 @@ const AdditiveBlending = 2;
 module.exports = {
   __esModule: true,
   Vector3,
+  Vector2,
+  Raycaster,
   Color,
   Group,
   Mesh,

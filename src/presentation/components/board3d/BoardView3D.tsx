@@ -77,6 +77,8 @@ const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 3.0;
 const ORBIT_SENSITIVITY = 0.005;
 const ZOOM_SENSITIVITY = 0.008;
+// Tap is suppressed when pan has moved more than this many pixels (orbit drag)
+const TAP_MAX_DRIFT_PX = 5;
 
 interface CameraRef {
   theta: number;
@@ -85,6 +87,37 @@ interface CameraRef {
   panStartTheta: number;
   panStartPhi: number;
   pinchStartZoom: number;
+  pendingTap: { x: number; y: number } | null;
+  panDrift: number;
+}
+
+// Exported for unit testing — not part of the public component API.
+// Picks the arrowId of the mesh closest to the camera under the tapped pixel.
+// tapX/tapY are in the canvas-local coordinate space (pixels from top-left).
+export function pickArrowId(
+  camera: THREE.Camera,
+  scene: THREE.Object3D,
+  canvasWidth: number,
+  canvasHeight: number,
+  tapX: number,
+  tapY: number,
+): string | null {
+  const raycaster = new THREE.Raycaster();
+  const ndcX = (tapX / canvasWidth) * 2 - 1;
+  const ndcY = -(tapY / canvasHeight) * 2 + 1;
+  raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+
+  const hits = raycaster.intersectObject(scene, true);
+  for (const hit of hits) {
+    let obj: THREE.Object3D | null = hit.object;
+    while (obj !== null) {
+      if (typeof obj.userData["arrowId"] === "string") {
+        return obj.userData["arrowId"] as string;
+      }
+      obj = obj.parent;
+    }
+  }
+  return null;
 }
 
 function NeonTubeArrow({ descriptor }: { descriptor: ArrowTubeDescriptor }): React.JSX.Element {
@@ -125,7 +158,33 @@ function OrbitCamera({ cameraRef, baseDistance }: { cameraRef: React.RefObject<C
   return null;
 }
 
-export function BoardView3D({ state }: { state: GameUiState }): React.JSX.Element {
+// Polls pendingTap each frame; when set, raycasts and fires onArrowTap.
+// Lives inside Canvas so it can access camera + scene via useThree.
+function TapHandler({
+  cameraRef,
+  onArrowTap,
+}: {
+  cameraRef: React.RefObject<CameraRef>;
+  onArrowTap: (arrowId: string) => void;
+}): null {
+  const { camera, scene, size } = useThree();
+  useFrame(() => {
+    const tap = cameraRef.current.pendingTap;
+    if (tap === null) return;
+    cameraRef.current.pendingTap = null;
+    const arrowId = pickArrowId(camera, scene, size.width, size.height, tap.x, tap.y);
+    if (arrowId !== null) onArrowTap(arrowId);
+  });
+  return null;
+}
+
+export function BoardView3D({
+  state,
+  onArrowTap,
+}: {
+  state: GameUiState;
+  onArrowTap: (arrowId: string) => void;
+}): React.JSX.Element {
   if (state.bounds === null) {
     return <View testID="board-view-3d-empty" style={styles.empty} />;
   }
@@ -142,6 +201,8 @@ export function BoardView3D({ state }: { state: GameUiState }): React.JSX.Elemen
     panStartTheta: Math.PI / 4,
     panStartPhi: Math.PI / 3,
     pinchStartZoom: 1,
+    pendingTap: null,
+    panDrift: 0,
   });
 
   const pan = Gesture.Pan()
@@ -149,8 +210,10 @@ export function BoardView3D({ state }: { state: GameUiState }): React.JSX.Elemen
     .onBegin(() => {
       cam.current.panStartTheta = cam.current.theta;
       cam.current.panStartPhi = cam.current.phi;
+      cam.current.panDrift = 0;
     })
     .onUpdate((e) => {
+      cam.current.panDrift = Math.max(Math.abs(e.translationX), Math.abs(e.translationY));
       cam.current.theta = cam.current.panStartTheta - e.translationX * ORBIT_SENSITIVITY;
       cam.current.phi = Math.max(
         PHI_MIN,
@@ -170,7 +233,15 @@ export function BoardView3D({ state }: { state: GameUiState }): React.JSX.Elemen
       );
     });
 
-  const composed = Gesture.Simultaneous(pan, pinch);
+  const tap = Gesture.Tap()
+    .runOnJS(true)
+    .onEnd((e) => {
+      // Suppress tap when the finger drifted (it was an orbit drag, not a tap)
+      if (cam.current.panDrift > TAP_MAX_DRIFT_PX) return;
+      cam.current.pendingTap = { x: e.x, y: e.y };
+    });
+
+  const composed = Gesture.Simultaneous(pan, pinch, tap);
 
   return (
     <GestureHandlerRootView testID="board-view-3d" style={styles.container}>
@@ -181,6 +252,7 @@ export function BoardView3D({ state }: { state: GameUiState }): React.JSX.Elemen
             <ambientLight intensity={0.22} />
             <pointLight position={[6, 8, 6]} intensity={1.35} />
             <OrbitCamera cameraRef={cam} baseDistance={baseDistance} />
+            <TapHandler cameraRef={cam} onArrowTap={onArrowTap} />
             <VolumeLattice size={size} />
             {descriptors.map((descriptor) => (
               <NeonTubeArrow key={descriptor.id} descriptor={descriptor} />

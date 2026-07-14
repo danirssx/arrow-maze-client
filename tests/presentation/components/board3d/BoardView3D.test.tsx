@@ -30,9 +30,11 @@ function stateWith(overrides: Partial<GameUiState>): GameUiState {
   };
 }
 
+const noop = () => undefined;
+
 describe("BoardView3D", () => {
   it("should_mount_a_canvas_for_a_volumetric_board", () => {
-    const { getByTestId } = render(<BoardView3D state={stateWith({})} />);
+    const { getByTestId } = render(<BoardView3D state={stateWith({})} onArrowTap={noop} />);
 
     expect(getByTestId("board-view-3d")).toBeTruthy();
     expect(getByTestId("board-view-3d-canvas")).toBeTruthy();
@@ -40,7 +42,7 @@ describe("BoardView3D", () => {
 
   it("should_render_an_empty_3d_board_without_canvas_when_bounds_are_null", () => {
     const { getByTestId, queryByTestId } = render(
-      <BoardView3D state={stateWith({ arrows: [], bounds: null })} />
+      <BoardView3D state={stateWith({ arrows: [], bounds: null })} onArrowTap={noop} />
     );
 
     expect(getByTestId("board-view-3d-empty")).toBeTruthy();

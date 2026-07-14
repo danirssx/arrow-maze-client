@@ -19,6 +19,7 @@ const builder = {
 const Gesture = {
   Pan: () => ({ ...builder }),
   Pinch: () => ({ ...builder }),
+  Tap: () => ({ ...builder }),
   Simultaneous: () => ({ ...builder }),
   Race: () => ({ ...builder }),
   Exclusive: () => ({ ...builder }),
