@@ -11,5 +11,16 @@ module.exports = {
   __esModule: true,
   Canvas: View,
   useFrame: () => undefined,
-  useThree: () => ({ camera: {}, scene: {}, size: { width: 1, height: 1 } }),
+  useThree: () => ({
+    camera: {
+      position: { set: () => {} },
+      lookAt: () => {},
+    },
+    scene: { position: { x: 0 } },
+    gl: {
+      render: () => {},
+      getContext: () => null,
+    },
+    size: { width: 1, height: 1 },
+  }),
 };

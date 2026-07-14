@@ -12,7 +12,8 @@ import { renderWithProviders } from "../testUtils";
 
 // Subject to human review — presentation screen test
 
-const firstLevel = manualLevels[0]!;
+// GameScreen tests exercise the 2-D shell (BoardView testIDs). Pick the first 2-D fixture.
+const firstLevel = manualLevels.find((l) => (l.definition.dimensions ?? 2) === 2)!;
 const collision = new CollisionService();
 
 function solutionOrder(definition: LevelDefinition): string[] {

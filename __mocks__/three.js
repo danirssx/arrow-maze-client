@@ -7,7 +7,6 @@
  * return plain objects — they are never actually rendered.
  */
 const noop = () => undefined;
-const vec3 = (x = 0, y = 0, z = 0) => ({ x, y, z, set: noop, copy: noop });
 
 const makeClass = (proto = {}) =>
   class {
@@ -65,6 +64,7 @@ const CatmullRomCurve3 = makeClass();
 const MeshStandardMaterial = makeClass();
 const MeshBasicMaterial = makeClass();
 const LineBasicMaterial = makeClass();
+const PerspectiveCamera = makeClass({ aspect: 1, updateProjectionMatrix: noop });
 
 const AdditiveBlending = 2;
 
@@ -83,5 +83,6 @@ module.exports = {
   MeshStandardMaterial,
   MeshBasicMaterial,
   LineBasicMaterial,
+  PerspectiveCamera,
   AdditiveBlending,
 };

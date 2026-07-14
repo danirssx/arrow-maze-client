@@ -71,7 +71,7 @@ const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 3.0;
 const ORBIT_SENSITIVITY = 0.005;
 const ZOOM_SENSITIVITY = 0.008;
-const TAP_MAX_DRIFT_PX = 5;
+const TAP_MAX_DRIFT_PX = 10;
 
 // Cap tube segments to avoid WebGL buffer overflow on dense 3-D boards.
 const MAX_TUBE_SEGMENTS = 64;
@@ -146,22 +146,29 @@ function VolumeLattice({ size }: { size: ReturnType<typeof volumeSize> }): React
   );
 }
 
+// Subset of R3F state needed by the render loop and raycaster.
+// `ReturnType<typeof useThree>` resolves to `{}` when the @react-three/fiber/native
+// sub-path export lacks explicit typings, so we declare the shape explicitly.
+interface R3FState {
+  camera: THREE.Camera;
+  scene: THREE.Scene;
+  gl: THREE.WebGLRenderer;
+}
+
 // R3F's internal frameloop doesn't start with expo-gl on New Architecture (Fabric).
-// This component bypasses it: drives the render loop with RN's requestAnimationFrame
-// (which does work) and calls invalidate() to force R3F to draw each frame.
-// R3F's useEffect/useFrame don't run with expo-gl on Fabric (New Architecture).
 // This component exports the R3F state synchronously in the render function so
-// the outer component can drive the render loop from its own useEffect (which works).
-type ThreeState = ReturnType<typeof useThree>;
-function StateExporter({ stateRef }: { stateRef: React.MutableRefObject<ThreeState | null> }): null {
-  stateRef.current = useThree();
+// the outer component can drive the render loop from its own setInterval (which works).
+function StateExporter({ stateRef }: { stateRef: React.MutableRefObject<R3FState | null> }): null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  stateRef.current = useThree() as any as R3FState;
   return null;
 }
 
 // Applies a damped sinusoidal X-shake to the scene when shakeRef.active is set.
 // Runs entirely in the Three.js render loop — no RN Animated involved.
 function ShakeHandler({ shakeRef }: { shakeRef: React.RefObject<ShakeRef> }): null {
-  const { scene } = useThree();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { scene } = useThree() as any as R3FState;
   useFrame((_, delta) => {
     if (!shakeRef.current.active) return;
     shakeRef.current.elapsed += delta;
@@ -185,7 +192,6 @@ function BoardView3DInner({
   state: GameUiState & { bounds: NonNullable<GameUiState["bounds"]> };
   onArrowTap: (arrowId: string) => void;
 }): React.JSX.Element {
-  console.log('[3DInner] render');
   const size = volumeSize(state.bounds);
   const baseDistance = Math.max(CAMERA_DISTANCE, size.rows + size.columns + size.depth);
 
@@ -219,7 +225,7 @@ function BoardView3DInner({
 
   // R3F state exported synchronously from StateExporter's render (useEffect doesn't
   // run inside R3F Canvas on expo-gl + Fabric, but the render function does).
-  const r3fStateRef = useRef<ThreeState | null>(null);
+  const r3fStateRef = useRef<R3FState | null>(null);
   // Canvas layout for raycasting tap coordinates.
   const layoutRef = useRef({ width: 1, height: 1 });
   // Touch tracking for orbit + tap discrimination.
@@ -237,6 +243,19 @@ function BoardView3DInner({
 
       const state = r3fStateRef.current;
       if (!state) return;
+
+      // R3F's resize observer doesn't fire on expo-gl + Fabric (New Architecture).
+      // Keep the camera aspect in sync with the actual layout so raycasting stays accurate.
+      if (state.camera instanceof THREE.PerspectiveCamera) {
+        const { width, height } = layoutRef.current;
+        if (width > 0 && height > 0) {
+          const aspect = width / height;
+          if (Math.abs(state.camera.aspect - aspect) > 0.001) {
+            state.camera.aspect = aspect;
+            state.camera.updateProjectionMatrix();
+          }
+        }
+      }
 
       const { theta, phi, zoom } = cam.current;
       const r = baseDistance * zoom;
@@ -319,7 +338,6 @@ function BoardView3DInner({
                 layoutRef.current.width, layoutRef.current.height,
                 touchRef.current.startX, touchRef.current.startY,
               );
-              console.log('[TAP] drift:', cam.current.panDrift, 'xy:', touchRef.current.startX, touchRef.current.startY, 'arrowId:', arrowId);
               if (arrowId !== null) onArrowTap(arrowId);
             }
           }
@@ -336,7 +354,6 @@ export function BoardView3D({
   state: GameUiState;
   onArrowTap: (arrowId: string) => void;
 }): React.JSX.Element {
-  console.log('[BoardView3D] render, bounds:', state.bounds !== null ? 'set' : 'NULL');
   if (state.bounds === null) {
     return <View testID="board-view-3d-empty" style={styles.empty} />;
   }

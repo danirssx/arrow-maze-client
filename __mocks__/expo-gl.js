@@ -1,3 +1,4 @@
+/* global jest */
 /**
  * Manual Jest mock for `expo-gl`.
  *
