@@ -214,7 +214,9 @@ function VolumeLattice({ size }: { size: ReturnType<typeof volumeSize> }): React
 // Reads cameraRef every frame and repositions the R3F camera in spherical coords.
 function OrbitCamera({ cameraRef, baseDistance }: { cameraRef: React.RefObject<CameraRef>; baseDistance: number }): null {
   const { camera } = useThree();
-  useFrame(() => {
+  useFrame((_, delta) => {
+    // DEBUG: auto-rotate to confirm render loop runs
+    cameraRef.current.theta += delta * 0.5;
     const { theta, phi, zoom } = cameraRef.current;
     const r = baseDistance * zoom;
     camera.position.set(
