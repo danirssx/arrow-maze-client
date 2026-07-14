@@ -66,6 +66,7 @@ export class GameViewModel extends ObservableViewModel<GameUiState> implements I
       overlay: GameViewModel.overlayFor(snapshot),
       showVictoryOverlay: false,
       showDefeatOverlay: false,
+      dimensions: definition.dimensions === 3 ? 3 : 2,
       ...(board.boardShape !== undefined ? { boardShape: board.boardShape } : {})
     });
   }

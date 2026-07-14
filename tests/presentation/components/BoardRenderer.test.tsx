@@ -4,14 +4,14 @@ import { GameOverlay, initialGameUiState } from "@/presentation/state/GameUiStat
 import type { GameUiState } from "@/presentation/state/GameUiState";
 import type { ArrowDto } from "@/application/dto/BoardSnapshotDto";
 
-// Subject to human review — unit tests for C9: renderer selection by dimensions
+// Subject to human review — unit tests for C9: renderer selection by level dimensions
 
-const arrow: ArrowDto = {
+const arrow2D: ArrowDto = {
   id: "a",
   color: "cyan",
   direction: "FORWARD",
-  cells: [{ row: 0, column: 0, z: 0 }, { row: 0, column: 1, z: 0 }],
-  head: { row: 0, column: 1, z: 0 },
+  cells: [{ row: 0, column: 0 }, { row: 0, column: 1 }],
+  head: { row: 0, column: 1 },
 };
 
 const arrow3D: ArrowDto = {
@@ -33,28 +33,28 @@ function stateWith(overrides: Partial<GameUiState>): GameUiState {
 const noop = () => undefined;
 
 describe("BoardRenderer", () => {
-  it("should_render_2d_board_when_bounds_are_null", () => {
-    // BoardView renders a ScrollView when bounds are null (empty state)
-    const { queryByTestId } = render(
-      <BoardRenderer state={stateWith({ bounds: null })} onArrowTap={noop} />
-    );
-    // 3D canvas must NOT appear — 2D renderer is used
-    expect(queryByTestId("board-view-3d")).toBeNull();
-    expect(queryByTestId("board-view-3d-empty")).toBeNull();
-  });
-
-  it("should_render_2d_board_when_maxZ_equals_minZ", () => {
+  it("should_render_2d_board_when_dimensions_is_2", () => {
     const state = stateWith({
-      arrows: [arrow],
-      bounds: { minRow: 0, minCol: 0, maxRow: 0, maxCol: 1, minZ: 0, maxZ: 0 },
+      dimensions: 2,
+      arrows: [arrow2D],
+      bounds: { minRow: 0, minCol: 0, maxRow: 0, maxCol: 1 },
     });
     const { queryByTestId } = render(<BoardRenderer state={state} onArrowTap={noop} />);
     expect(queryByTestId("board-view-3d")).toBeNull();
     expect(queryByTestId("board-view-3d-empty")).toBeNull();
   });
 
-  it("should_render_3d_board_when_maxZ_is_greater_than_minZ", () => {
+  it("should_render_2d_board_by_default_when_dimensions_not_set", () => {
+    // initialGameUiState has dimensions: 2
+    const { queryByTestId } = render(
+      <BoardRenderer state={stateWith({})} onArrowTap={noop} />
+    );
+    expect(queryByTestId("board-view-3d")).toBeNull();
+  });
+
+  it("should_render_3d_board_when_dimensions_is_3", () => {
     const state = stateWith({
+      dimensions: 3,
       arrows: [arrow3D],
       bounds: { minRow: 0, minCol: 0, maxRow: 0, maxCol: 0, minZ: 0, maxZ: 1 },
     });
@@ -62,12 +62,12 @@ describe("BoardRenderer", () => {
     expect(getByTestId("board-view-3d")).toBeTruthy();
   });
 
-  it("should_render_3d_empty_view_when_3d_board_has_null_bounds_passed_to_3d_renderer", () => {
-    // Contrived: bounds is not null but maxZ > minZ triggers 3D, which handles null internally.
-    // This tests that 3D path is selected and 3D mounts its own empty guard.
+  it("should_render_3d_canvas_when_dimensions_is_3_regardless_of_bounds_depth", () => {
+    // A level declared as 3D keeps the 3D renderer even if all arrows share the same z.
     const state = stateWith({
+      dimensions: 3,
       arrows: [arrow3D],
-      bounds: { minRow: 0, minCol: 0, maxRow: 0, maxCol: 0, minZ: 0, maxZ: 2 },
+      bounds: { minRow: 0, minCol: 0, maxRow: 0, maxCol: 0, minZ: 0, maxZ: 1 },
     });
     const { getByTestId } = render(<BoardRenderer state={state} onArrowTap={noop} />);
     expect(getByTestId("board-view-3d-canvas")).toBeTruthy();

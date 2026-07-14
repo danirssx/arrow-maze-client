@@ -46,6 +46,8 @@ export type GameUiState = {
   readonly showVictoryOverlay: boolean;
   readonly showDefeatOverlay: boolean;
   readonly shakeArrowId: string | null;
+  /** 2 = flat SVG board, 3 = volumetric 3-D board. Drives renderer selection in BoardRenderer. */
+  readonly dimensions: 2 | 3;
   /** Option A mask cells the board renders as its dotted background (undefined = rectangular fallback). */
   readonly boardShape?: readonly CoordinateDto[];
 };
@@ -64,7 +66,8 @@ export const initialGameUiState: GameUiState = {
   overlay: GameOverlay.None,
   showVictoryOverlay: false,
   showDefeatOverlay: false,
-  shakeArrowId: null
+  shakeArrowId: null,
+  dimensions: 2
 };
 
 export function buildAttemptIndicators(remaining: number, total: number): readonly boolean[] {

@@ -32,7 +32,7 @@ function tubePoints(descriptor: ArrowTubeDescriptor): THREE.Vector3[] {
 function buildTubeGroup(descriptor: ArrowTubeDescriptor): THREE.Group {
   const color = new THREE.Color(descriptor.color);
   const curve = new THREE.CatmullRomCurve3(tubePoints(descriptor));
-  const segments = Math.max(8, descriptor.points.length * 8);
+  const segments = Math.min(MAX_TUBE_SEGMENTS, Math.max(8, descriptor.points.length * 8));
   const core = new THREE.Mesh(
     new THREE.TubeGeometry(curve, segments, 0.08, 8, false),
     new THREE.MeshStandardMaterial({
@@ -79,6 +79,8 @@ const ORBIT_SENSITIVITY = 0.005;
 const ZOOM_SENSITIVITY = 0.008;
 const TAP_MAX_DRIFT_PX = 5;
 
+// Cap tube segments to avoid WebGL buffer overflow on dense 3-D boards.
+const MAX_TUBE_SEGMENTS = 64;
 const EXIT_FLY_SPEED = 4.0;
 const EXIT_DURATION = 0.65;
 const SHAKE_DURATION = 0.3;

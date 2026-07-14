@@ -3,12 +3,14 @@ import { BoardView } from "./BoardView";
 import { BoardView3D } from "./board3d/BoardView3D";
 
 /**
- * Selects the correct board renderer based on the level's spatial dimensions.
+ * Selects the correct board renderer based on `state.dimensions`.
  *
- * A level is considered volumetric (3-D) when its bounds have depth — i.e.
- * `maxZ > minZ`. Flat levels (all cells at the same z) use the existing 2-D
- * SVG renderer. When bounds are null the 2-D renderer is used as a fallback
- * (it already handles the null case gracefully).
+ * `dimensions === 3` → volumetric `BoardView3D` (Three.js GL render loop).
+ * `dimensions === 2` → flat SVG `BoardView` (unchanged 2-D renderer).
+ *
+ * The switch is driven by the explicit `dimensions` field set by the ViewModel
+ * from `LevelDefinition.dimensions`, NOT inferred from bounds — a level declared
+ * as 3-D keeps the 3-D renderer even when all arrows happen to share the same z.
  */
 export function BoardRenderer({
   state,
@@ -17,9 +19,7 @@ export function BoardRenderer({
   state: GameUiState;
   onArrowTap: (arrowId: string) => void;
 }): React.JSX.Element {
-  const is3D = state.bounds !== null && state.bounds.maxZ > state.bounds.minZ;
-
-  if (is3D) {
+  if (state.dimensions === 3) {
     return <BoardView3D state={state} onArrowTap={onArrowTap} />;
   }
 
