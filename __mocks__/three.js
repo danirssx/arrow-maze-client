@@ -25,6 +25,7 @@ const Vector3 = class {
   normalize() { return this; }
   add() { return this; }
   multiplyScalar() { return this; }
+  clone() { return new Vector3(this.x, this.y, this.z); }
 };
 
 const Vector2 = class {
@@ -38,15 +39,23 @@ const Raycaster = class {
 
 const Color = makeClass({ r: 0, g: 0, b: 0, set: noop });
 const Group = class {
-  constructor() { this.userData = {}; this.children = []; }
+  constructor() {
+    this.userData = {};
+    this.children = [];
+    this.position = { x: 0, y: 0, z: 0, set: noop, copy: noop };
+  }
   add() {}
+  traverse(cb) { cb(this); }
 };
 const Mesh = class {
-  constructor() { this.userData = {}; this.position = vec3(); }
-  /* position.set is called with spread args */
+  constructor() {
+    this.userData = {};
+    this.isMesh = true;
+    this.material = { opacity: 1 };
+  }
 };
 Object.defineProperty(Mesh.prototype, "position", {
-  get() { return { set: noop }; },
+  get() { return { set: noop, copy: noop }; },
 });
 
 const BoxGeometry = makeClass();

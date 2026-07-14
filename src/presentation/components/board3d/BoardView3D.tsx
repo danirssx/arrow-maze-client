@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unknown-property -- react-three-fiber uses Three.js intrinsic props, not RN DOM props. */
 import { Canvas, useFrame, useThree } from "@react-three/fiber/native";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import * as THREE from "three";
@@ -77,8 +77,12 @@ const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 3.0;
 const ORBIT_SENSITIVITY = 0.005;
 const ZOOM_SENSITIVITY = 0.008;
-// Tap is suppressed when pan has moved more than this many pixels (orbit drag)
 const TAP_MAX_DRIFT_PX = 5;
+
+const EXIT_FLY_SPEED = 4.0;
+const EXIT_DURATION = 0.65;
+const SHAKE_DURATION = 0.3;
+const SHAKE_AMPLITUDE = 0.28;
 
 interface CameraRef {
   theta: number;
@@ -89,6 +93,13 @@ interface CameraRef {
   pinchStartZoom: number;
   pendingTap: { x: number; y: number } | null;
   panDrift: number;
+}
+
+interface ShakeRef {
+  active: boolean;
+  elapsed: number;
+  /** Snapshot of shakeArrowId that triggered the current shake, to detect new triggers. */
+  lastArrowId: string | null;
 }
 
 // Exported for unit testing — not part of the public component API.
@@ -125,6 +136,64 @@ function NeonTubeArrow({ descriptor }: { descriptor: ArrowTubeDescriptor }): Rea
   return <primitive object={group} />;
 }
 
+// Plays the exit fly+fade animation for a single arrow inside the Three.js render loop.
+// Flies the group along its descriptor.direction at EXIT_FLY_SPEED units/s while fading
+// all mesh materials to opacity 0 over EXIT_DURATION seconds, then calls onFinished once.
+function AnimatedArrow({
+  descriptor,
+  onFinished,
+}: {
+  descriptor: ArrowTubeDescriptor;
+  onFinished: () => void;
+}): React.JSX.Element {
+  const group = useMemo(() => buildTubeGroup(descriptor), [descriptor]);
+  const elapsed = useRef(0);
+  const finished = useRef(false);
+  const dir = useMemo(() => new THREE.Vector3(...descriptor.direction).normalize(), [descriptor.direction]);
+
+  // Capture initial opacities on first frame so we can lerp from them.
+  const initialOpacities = useRef<WeakMap<THREE.Material, number> | null>(null);
+
+  useFrame((_, delta) => {
+    if (finished.current) return;
+
+    if (initialOpacities.current === null) {
+      const map = new WeakMap<THREE.Material, number>();
+      group.traverse((obj) => {
+        if ((obj as THREE.Mesh).isMesh) {
+          const mat = (obj as THREE.Mesh).material as THREE.Material & { opacity?: number };
+          if (typeof mat.opacity === "number") map.set(mat, mat.opacity);
+        }
+      });
+      initialOpacities.current = map;
+    }
+
+    elapsed.current += delta;
+    const t = Math.min(elapsed.current / EXIT_DURATION, 1);
+
+    // Translate group along world direction
+    group.position.copy(dir.clone().multiplyScalar(elapsed.current * EXIT_FLY_SPEED));
+
+    // Fade all mesh materials
+    group.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        const mat = (obj as THREE.Mesh).material as THREE.Material & { opacity?: number };
+        if (typeof mat.opacity === "number") {
+          const initial = initialOpacities.current!.get(mat) ?? 1;
+          mat.opacity = initial * (1 - t);
+        }
+      }
+    });
+
+    if (t >= 1 && !finished.current) {
+      finished.current = true;
+      onFinished();
+    }
+  });
+
+  return <primitive object={group} />;
+}
+
 function VolumeLattice({ size }: { size: ReturnType<typeof volumeSize> }): React.JSX.Element {
   const width = Math.max(size.columns - 1, 1);
   const height = Math.max(size.rows - 1, 1);
@@ -142,7 +211,6 @@ function VolumeLattice({ size }: { size: ReturnType<typeof volumeSize> }): React
 }
 
 // Reads cameraRef every frame and repositions the R3F camera in spherical coords.
-// World axes are fixed — only the camera moves, arrow directions never change.
 function OrbitCamera({ cameraRef, baseDistance }: { cameraRef: React.RefObject<CameraRef>; baseDistance: number }): null {
   const { camera } = useThree();
   useFrame(() => {
@@ -159,7 +227,6 @@ function OrbitCamera({ cameraRef, baseDistance }: { cameraRef: React.RefObject<C
 }
 
 // Polls pendingTap each frame; when set, raycasts and fires onArrowTap.
-// Lives inside Canvas so it can access camera + scene via useThree.
 function TapHandler({
   cameraRef,
   onArrowTap,
@@ -178,22 +245,84 @@ function TapHandler({
   return null;
 }
 
-export function BoardView3D({
+// Applies a damped sinusoidal X-shake to the scene when shakeRef.active is set.
+// Runs entirely in the Three.js render loop — no RN Animated involved.
+function ShakeHandler({ shakeRef }: { shakeRef: React.RefObject<ShakeRef> }): null {
+  const { scene } = useThree();
+  useFrame((_, delta) => {
+    if (!shakeRef.current.active) return;
+    shakeRef.current.elapsed += delta;
+    const t = shakeRef.current.elapsed / SHAKE_DURATION;
+    if (t >= 1) {
+      shakeRef.current.active = false;
+      scene.position.x = 0;
+      return;
+    }
+    // 3 full oscillations with exponential decay
+    scene.position.x = SHAKE_AMPLITUDE * Math.sin(t * Math.PI * 6) * (1 - t);
+  });
+  return null;
+}
+
+// Inner component that assumes bounds !== null, so all hooks are unconditional.
+function BoardView3DInner({
   state,
   onArrowTap,
 }: {
-  state: GameUiState;
+  state: GameUiState & { bounds: NonNullable<GameUiState["bounds"]> };
   onArrowTap: (arrowId: string) => void;
 }): React.JSX.Element {
-  if (state.bounds === null) {
-    return <View testID="board-view-3d-empty" style={styles.empty} />;
-  }
-
-  const descriptors = buildArrowTubeDescriptors(state.arrows, state.bounds, state.extractedArrowIds);
   const size = volumeSize(state.bounds);
   const baseDistance = Math.max(CAMERA_DISTANCE, size.rows + size.columns + size.depth);
 
-  // Mutable ref — avoids re-renders on every gesture event
+  // All descriptors — extracted arrows are NOT filtered so we can animate them out.
+  const allDescriptors = useMemo(
+    () => buildArrowTubeDescriptors(state.arrows, state.bounds!, []),
+    [state.arrows, state.bounds],
+  );
+
+  const descriptorById = useMemo(
+    () => new Map(allDescriptors.map((d) => [d.id, d])),
+    [allDescriptors],
+  );
+
+  // exitingIds: arrows currently playing the fly+fade animation (not yet unmounted).
+  const [exitingIds, setExitingIds] = useState<ReadonlySet<string>>(() => new Set());
+  const prevExtractedRef = useRef<ReadonlySet<string>>(new Set<string>(state.extractedArrowIds));
+
+  // Detect newly extracted arrows and start their exit animation.
+  useEffect(() => {
+    const prev = prevExtractedRef.current;
+    const curr = new Set(state.extractedArrowIds);
+    const newlyExtracted = [...curr].filter((id) => !prev.has(id));
+    if (newlyExtracted.length > 0) {
+      setExitingIds((s) => new Set([...s, ...newlyExtracted]));
+    }
+    prevExtractedRef.current = curr;
+  }, [state.extractedArrowIds]);
+
+  const extractedSet = new Set(state.extractedArrowIds);
+
+  // Active = not extracted and not playing exit animation.
+  const activeDescriptors = allDescriptors.filter(
+    (d) => !extractedSet.has(d.id) && !exitingIds.has(d.id),
+  );
+
+  // Exiting = those whose descriptor we still know (arrow must still exist in state.arrows).
+  const exitingDescriptors = [...exitingIds]
+    .map((id) => descriptorById.get(id))
+    .filter((d): d is ArrowTubeDescriptor => d !== undefined);
+
+  // Shake ref — mutated by ShakeHandler in useFrame, never triggers re-render.
+  const shakeRef = useRef<ShakeRef>({ active: false, elapsed: 0, lastArrowId: null });
+
+  // Trigger shake when state.shakeArrowId changes to a new non-null value.
+  useEffect(() => {
+    if (state.shakeArrowId !== null && state.shakeArrowId !== shakeRef.current.lastArrowId) {
+      shakeRef.current = { active: true, elapsed: 0, lastArrowId: state.shakeArrowId };
+    }
+  }, [state.shakeArrowId]);
+
   const cam = useRef<CameraRef>({
     theta: Math.PI / 4,
     phi: Math.PI / 3,
@@ -236,7 +365,6 @@ export function BoardView3D({
   const tap = Gesture.Tap()
     .runOnJS(true)
     .onEnd((e) => {
-      // Suppress tap when the finger drifted (it was an orbit drag, not a tap)
       if (cam.current.panDrift > TAP_MAX_DRIFT_PX) return;
       cam.current.pendingTap = { x: e.x, y: e.y };
     });
@@ -253,14 +381,44 @@ export function BoardView3D({
             <pointLight position={[6, 8, 6]} intensity={1.35} />
             <OrbitCamera cameraRef={cam} baseDistance={baseDistance} />
             <TapHandler cameraRef={cam} onArrowTap={onArrowTap} />
+            <ShakeHandler shakeRef={shakeRef} />
             <VolumeLattice size={size} />
-            {descriptors.map((descriptor) => (
+            {activeDescriptors.map((descriptor) => (
               <NeonTubeArrow key={descriptor.id} descriptor={descriptor} />
+            ))}
+            {exitingDescriptors.map((descriptor) => (
+              <AnimatedArrow
+                key={descriptor.id}
+                descriptor={descriptor}
+                onFinished={() => setExitingIds((s) => {
+                  const next = new Set(s);
+                  next.delete(descriptor.id);
+                  return next;
+                })}
+              />
             ))}
           </Canvas>
         </View>
       </GestureDetector>
     </GestureHandlerRootView>
+  );
+}
+
+export function BoardView3D({
+  state,
+  onArrowTap,
+}: {
+  state: GameUiState;
+  onArrowTap: (arrowId: string) => void;
+}): React.JSX.Element {
+  if (state.bounds === null) {
+    return <View testID="board-view-3d-empty" style={styles.empty} />;
+  }
+  return (
+    <BoardView3DInner
+      state={state as GameUiState & { bounds: NonNullable<GameUiState["bounds"]> }}
+      onArrowTap={onArrowTap}
+    />
   );
 }
 
