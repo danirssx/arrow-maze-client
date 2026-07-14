@@ -2,7 +2,6 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber/native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as THREE from "three";
 import type { GameUiState } from "@/presentation/state/GameUiState";
 import {
@@ -336,71 +335,64 @@ function BoardView3DInner({
     panDrift: 0,
   });
 
-  const pan = Gesture.Pan()
-    .runOnJS(true)
-    .onBegin(() => {
-      cam.current.panStartTheta = cam.current.theta;
-      cam.current.panStartPhi = cam.current.phi;
-      cam.current.panDrift = 0;
-    })
-    .onUpdate((e) => {
-      cam.current.panDrift = Math.max(Math.abs(e.translationX), Math.abs(e.translationY));
-      cam.current.theta = cam.current.panStartTheta - e.translationX * ORBIT_SENSITIVITY;
-      cam.current.phi = Math.max(
-        PHI_MIN,
-        Math.min(PHI_MAX, cam.current.panStartPhi - e.translationY * ORBIT_SENSITIVITY),
-      );
-    });
-
-  const pinch = Gesture.Pinch()
-    .runOnJS(true)
-    .onBegin(() => {
-      cam.current.pinchStartZoom = cam.current.zoom;
-    })
-    .onUpdate((e) => {
-      cam.current.zoom = Math.max(
-        ZOOM_MIN,
-        Math.min(ZOOM_MAX, cam.current.pinchStartZoom / (1 + (e.scale - 1) * ZOOM_SENSITIVITY * 100)),
-      );
-    });
-
-  const tap = Gesture.Tap()
-    .runOnJS(true)
-    .onEnd((e) => {
-      if (cam.current.panDrift > TAP_MAX_DRIFT_PX) return;
-      cam.current.pendingTap = { x: e.x, y: e.y };
-    });
-
-  const composed = Gesture.Simultaneous(pan, pinch, tap);
+  // Track touch start for orbit + tap detection using RN's responder system,
+  // which works reliably with native GL views unlike RNGH gesture detectors.
+  const touchRef = useRef({ startX: 0, startY: 0 });
 
   return (
     <View testID="board-view-3d" style={styles.container}>
-      <Canvas testID="board-view-3d-canvas" style={StyleSheet.absoluteFill} camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }} gl={{ antialias: true }}>
-          <color attach="background" args={[BG]} />
-          <ambientLight intensity={0.22} />
-          <pointLight position={[6, 8, 6]} intensity={1.35} />
-          <OrbitCamera cameraRef={cam} baseDistance={baseDistance} />
-          <TapHandler cameraRef={cam} onArrowTap={onArrowTap} />
-          <ShakeHandler shakeRef={shakeRef} />
-          <VolumeLattice size={size} />
-          {activeDescriptors.map((descriptor) => (
-            <NeonTubeArrow key={descriptor.id} descriptor={descriptor} />
-          ))}
-          {exitingDescriptors.map((descriptor) => (
-            <AnimatedArrow
-              key={descriptor.id}
-              descriptor={descriptor}
-              onFinished={() => setExitingIds((s) => {
-                const next = new Set(s);
-                next.delete(descriptor.id);
-                return next;
-              })}
-            />
-          ))}
-        </Canvas>
-      <GestureDetector gesture={composed}>
-        <View style={StyleSheet.absoluteFill} />
-      </GestureDetector>
+      <Canvas testID="board-view-3d-canvas" style={{ ...StyleSheet.absoluteFillObject }} camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }} gl={{ antialias: true }}>
+        <color attach="background" args={[BG]} />
+        <ambientLight intensity={0.22} />
+        <pointLight position={[6, 8, 6]} intensity={1.35} />
+        <OrbitCamera cameraRef={cam} baseDistance={baseDistance} />
+        <TapHandler cameraRef={cam} onArrowTap={onArrowTap} />
+        <ShakeHandler shakeRef={shakeRef} />
+        <VolumeLattice size={size} />
+        {activeDescriptors.map((descriptor) => (
+          <NeonTubeArrow key={descriptor.id} descriptor={descriptor} />
+        ))}
+        {exitingDescriptors.map((descriptor) => (
+          <AnimatedArrow
+            key={descriptor.id}
+            descriptor={descriptor}
+            onFinished={() => setExitingIds((s) => {
+              const next = new Set(s);
+              next.delete(descriptor.id);
+              return next;
+            })}
+          />
+        ))}
+      </Canvas>
+      <View
+        style={StyleSheet.absoluteFill}
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderGrant={(e) => {
+          touchRef.current = { startX: e.nativeEvent.pageX, startY: e.nativeEvent.pageY };
+          cam.current.panStartTheta = cam.current.theta;
+          cam.current.panStartPhi = cam.current.phi;
+          cam.current.panDrift = 0;
+        }}
+        onResponderMove={(e) => {
+          const dx = e.nativeEvent.pageX - touchRef.current.startX;
+          const dy = e.nativeEvent.pageY - touchRef.current.startY;
+          cam.current.panDrift = Math.max(Math.abs(dx), Math.abs(dy));
+          cam.current.theta = cam.current.panStartTheta - dx * ORBIT_SENSITIVITY;
+          cam.current.phi = Math.max(
+            PHI_MIN,
+            Math.min(PHI_MAX, cam.current.panStartPhi - dy * ORBIT_SENSITIVITY),
+          );
+        }}
+        onResponderRelease={(e) => {
+          if (cam.current.panDrift <= TAP_MAX_DRIFT_PX) {
+            cam.current.pendingTap = {
+              x: e.nativeEvent.locationX,
+              y: e.nativeEvent.locationY,
+            };
+          }
+        }}
+      />
     </View>
   );
 }
