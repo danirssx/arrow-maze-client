@@ -11,6 +11,7 @@
     },
     "development": {
       "extends": "base",
+      "developmentClient": true,
       "distribution": "internal",
       "environment": "development",
       "android": {
@@ -18,6 +19,15 @@
       },
       "ios": {
         "simulator": true
+      }
+    },
+    "development-device": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development",
+      "android": {
+        "buildType": "apk"
       }
     },
     "preview": {
