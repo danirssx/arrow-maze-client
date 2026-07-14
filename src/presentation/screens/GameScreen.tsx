@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { BoardView } from "@/presentation/components/BoardView";
+import { BoardRenderer } from "@/presentation/components/BoardRenderer";
 import { formatElapsedTime } from "@/presentation/components/hud/formatElapsedTime";
 import { useGameTimer } from "@/presentation/hooks/useGameTimer";
 import { useViewModelState } from "@/presentation/hooks/useViewModelState";
@@ -148,7 +148,7 @@ export function GameScreen({
         </View>
 
         <View className="my-3 flex-1">
-          <BoardView state={state} onArrowTap={(arrowId) => controller.handleArrowTap(arrowId)} />
+          <BoardRenderer state={state} onArrowTap={(arrowId) => controller.handleArrowTap(arrowId)} />
         </View>
 
         <View className="flex-row gap-3 pb-2">
