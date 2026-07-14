@@ -374,9 +374,8 @@ function BoardView3DInner({
   const composed = Gesture.Simultaneous(pan, pinch, tap);
 
   return (
-    <GestureDetector gesture={composed}>
-      <View testID="board-view-3d" style={styles.container}>
-        <Canvas testID="board-view-3d-canvas" camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }} gl={{ antialias: true }}>
+    <View testID="board-view-3d" style={styles.container}>
+      <Canvas testID="board-view-3d-canvas" style={StyleSheet.absoluteFill} camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }} gl={{ antialias: true }}>
           <color attach="background" args={[BG]} />
           <ambientLight intensity={0.22} />
           <pointLight position={[6, 8, 6]} intensity={1.35} />
@@ -399,8 +398,10 @@ function BoardView3DInner({
             />
           ))}
         </Canvas>
-      </View>
-    </GestureDetector>
+      <GestureDetector gesture={composed}>
+        <View style={StyleSheet.absoluteFill} />
+      </GestureDetector>
+    </View>
   );
 }
 
