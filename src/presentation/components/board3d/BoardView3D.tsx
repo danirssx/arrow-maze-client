@@ -345,6 +345,7 @@ function BoardView3DInner({
     <View testID="board-view-3d" style={styles.container}>
       <Canvas
         testID="board-view-3d-canvas"
+        frameloop="always"
         style={{ ...StyleSheet.absoluteFillObject }}
         camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }}
         gl={{ antialias: true }}
