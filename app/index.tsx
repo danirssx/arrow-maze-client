@@ -1,4 +1,5 @@
 import { type Href, useRouter } from "expo-router";
+import { Pressable, Text, View } from "react-native"; // TEMP SPIKE (MAZ-225)
 
 import { useAuthSession } from "@/framework/auth/AuthGate";
 import { useScreenMusic } from "@/framework/audio/useScreenMusic";
@@ -20,14 +21,23 @@ export default function HomeRoute() {
   };
 
   return (
-    <HomeScreen
-      {...(session !== null ? { username: session.username } : {})}
-      onPlay={() => router.push(LEVELS_ROUTE)}
-      onDailyChallenge={() => router.push(DAILY_ROUTE)}
-      onLeaderboard={() => router.push(LEADERBOARD_ROUTE)}
-      onProgress={() => router.push(PROGRESS_ROUTE)}
-      onSettings={() => router.push(SETTINGS_ROUTE)}
-      onLogout={handleLogout}
-    />
+    <View style={{ flex: 1 }}>
+      <HomeScreen
+        {...(session !== null ? { username: session.username } : {})}
+        onPlay={() => router.push(LEVELS_ROUTE)}
+        onDailyChallenge={() => router.push(DAILY_ROUTE)}
+        onLeaderboard={() => router.push(LEADERBOARD_ROUTE)}
+        onProgress={() => router.push(PROGRESS_ROUTE)}
+        onSettings={() => router.push(SETTINGS_ROUTE)}
+        onLogout={handleLogout}
+      />
+      {/* TEMP SPIKE (MAZ-225) — throwaway button, remove with the spike. */}
+      <Pressable
+        onPress={() => router.push("/spike-3d" as Href)}
+        style={{ position: "absolute", bottom: 40, alignSelf: "center", backgroundColor: "#B026FF", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 999 }}
+      >
+        <Text style={{ color: "white", fontWeight: "700" }}>▶ 3D SPIKE</Text>
+      </Pressable>
+    </View>
   );
 }
