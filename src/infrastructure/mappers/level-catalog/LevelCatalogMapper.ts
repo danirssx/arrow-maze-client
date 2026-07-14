@@ -29,12 +29,13 @@ export class LevelCatalogMapper {
         ArrowSpec.of(
           arrow.id,
           arrow.color,
-          arrow.path.map((position) => Position.of(position.row, position.col)),
+          arrow.path.map((position) => Position.of(position.row, position.col, position.z ?? 0)),
           Direction.fromName(arrow.direction),
         )
       ),
       attempts: dto.definition.attempts,
       kind: dto.timeLimitSeconds === undefined ? LevelKind.Normal : LevelKind.Timed,
+      dimensions: dto.dimensions ?? 2,
       ...(dto.timeLimitSeconds !== undefined ? { timeLimitSeconds: dto.timeLimitSeconds } : {}),
       ...(dto.definition.boardShape !== undefined
         ? {
@@ -43,6 +44,7 @@ export class LevelCatalogMapper {
               cells: dto.definition.boardShape.cells.map((cell) => ({
                 row: cell.row,
                 col: cell.col,
+                ...(cell.z !== undefined ? { z: cell.z } : {}),
               })),
             },
           }
