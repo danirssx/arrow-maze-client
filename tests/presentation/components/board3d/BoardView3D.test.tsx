@@ -46,4 +46,9 @@ describe("BoardView3D", () => {
     expect(getByTestId("board-view-3d-empty")).toBeTruthy();
     expect(queryByTestId("board-view-3d-canvas")).toBeNull();
   });
+
+  it("should_not_throw_when_rendered_without_onArrowTap_prop", () => {
+    // @s5 — backward compat: static C5 callers omit the prop
+    expect(() => render(<BoardView3D state={stateWith({})} />)).not.toThrow();
+  });
 });
