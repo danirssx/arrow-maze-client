@@ -10,6 +10,7 @@ import {
   type Point3,
   volumeSize
 } from "./board3dGeometry";
+import { handleArrowTap } from "./arrowTapHandler";
 
 const BG = "#0A0C18";
 const LATTICE = "#30385D";
@@ -70,9 +71,15 @@ function buildTubeGroup(descriptor: ArrowTubeDescriptor): THREE.Group {
   return group;
 }
 
-function NeonTubeArrow({ descriptor }: { descriptor: ArrowTubeDescriptor }): React.JSX.Element {
+function NeonTubeArrow({
+  descriptor,
+  onArrowTap
+}: {
+  descriptor: ArrowTubeDescriptor;
+  onArrowTap?: (id: string) => void;
+}): React.JSX.Element {
   const group = useMemo(() => buildTubeGroup(descriptor), [descriptor]);
-  return <primitive object={group} />;
+  return <primitive object={group} onClick={(e: Parameters<typeof handleArrowTap>[0]) => handleArrowTap(e, onArrowTap)} />;
 }
 
 function VolumeLattice({ size }: { size: ReturnType<typeof volumeSize> }): React.JSX.Element {
@@ -91,7 +98,7 @@ function VolumeLattice({ size }: { size: ReturnType<typeof volumeSize> }): React
   );
 }
 
-export function BoardView3D({ state }: { state: GameUiState }): React.JSX.Element {
+export function BoardView3D({ state, onArrowTap }: { state: GameUiState; onArrowTap?: (id: string) => void }): React.JSX.Element {
   if (state.bounds === null) {
     return <View testID="board-view-3d-empty" style={styles.empty} />;
   }
@@ -108,7 +115,7 @@ export function BoardView3D({ state }: { state: GameUiState }): React.JSX.Elemen
         <pointLight position={[6, 8, 6]} intensity={1.35} />
         <VolumeLattice size={size} />
         {descriptors.map((descriptor) => (
-          <NeonTubeArrow key={descriptor.id} descriptor={descriptor} />
+          <NeonTubeArrow key={descriptor.id} descriptor={descriptor} {...(onArrowTap ? { onArrowTap } : {})} />
         ))}
       </Canvas>
     </View>
