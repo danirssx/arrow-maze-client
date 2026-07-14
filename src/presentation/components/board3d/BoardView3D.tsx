@@ -367,7 +367,9 @@ function BoardView3DInner({
       <View
         style={StyleSheet.absoluteFill}
         onStartShouldSetResponder={() => true}
+        onStartShouldSetResponderCapture={() => true}
         onMoveShouldSetResponder={() => true}
+        onMoveShouldSetResponderCapture={() => true}
         onResponderGrant={(e) => {
           touchRef.current = { startX: e.nativeEvent.pageX, startY: e.nativeEvent.pageY };
           cam.current.panStartTheta = cam.current.theta;
