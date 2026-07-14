@@ -69,7 +69,7 @@ Layer impact:
 - Domain: no change
 - Application: no change
 - Infrastructure/Adapters: no change
-- Presentation (MVVM): `BoardView3D.tsx` — add prop + onClick handler
+- Presentation (MVVM): `BoardView3D.tsx` — add prop + onClick handler; `arrowTapHandler.ts` — **New** pure handler module extracted for testability
 - Framework (composition root): no change
 
 Forbidden moves (must stay unchecked / not introduced):

@@ -115,7 +115,7 @@ export function BoardView3D({ state, onArrowTap }: { state: GameUiState; onArrow
         <pointLight position={[6, 8, 6]} intensity={1.35} />
         <VolumeLattice size={size} />
         {descriptors.map((descriptor) => (
-          <NeonTubeArrow key={descriptor.id} descriptor={descriptor} onArrowTap={onArrowTap} />
+          <NeonTubeArrow key={descriptor.id} descriptor={descriptor} {...(onArrowTap ? { onArrowTap } : {})} />
         ))}
       </Canvas>
     </View>
