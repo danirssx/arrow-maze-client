@@ -5,6 +5,7 @@
 export type CoordinateDto = {
   readonly row: number;
   readonly column: number;
+  readonly z?: number;
 };
 
 /**
@@ -26,6 +27,8 @@ export type BoardBoundsDto = {
   readonly minCol: number;
   readonly maxRow: number;
   readonly maxCol: number;
+  readonly minZ?: number;
+  readonly maxZ?: number;
 };
 
 /**
