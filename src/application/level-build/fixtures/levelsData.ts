@@ -19,6 +19,22 @@ export type LevelDraft = {
 };
 export const LEVEL_DRAFTS: readonly LevelDraft[] = [
   {
+    "id": "3d000000-0000-4000-a000-000000000001",
+    "name": "Cube Test",
+    "difficulty": Difficulty.Easy,
+    "arrowCount": 6,
+    "attempts": 8,
+    "dimensions": 3,
+    "arrows": [
+      { "id": "3d-front-h", "color": "#00FFFF", "path": [{ "row": 0, "col": 0, "z": 0 }, { "row": 0, "col": 1, "z": 0 }], "direction": "RIGHT" },
+      { "id": "3d-front-v", "color": "#FF44AA", "path": [{ "row": 1, "col": 0, "z": 0 }, { "row": 0, "col": 0, "z": 0 }], "direction": "UP" },
+      { "id": "3d-back-h", "color": "#44FF88", "path": [{ "row": 0, "col": 0, "z": 1 }, { "row": 0, "col": 1, "z": 1 }], "direction": "RIGHT" },
+      { "id": "3d-back-v", "color": "#FF8800", "path": [{ "row": 1, "col": 1, "z": 1 }, { "row": 0, "col": 1, "z": 1 }], "direction": "UP" },
+      { "id": "3d-depth-top", "color": "#AA44FF", "path": [{ "row": 0, "col": 1, "z": 0 }, { "row": 0, "col": 1, "z": 1 }], "direction": "FORWARD" },
+      { "id": "3d-depth-bot", "color": "#FFFF00", "path": [{ "row": 1, "col": 0, "z": 1 }, { "row": 1, "col": 0, "z": 0 }], "direction": "BACK" }
+    ]
+  },
+  {
     "id": "550e8400-e29b-41d4-a716-446655440010",
     "name": "Packed Start",
     "difficulty": Difficulty.Easy,
@@ -10582,70 +10598,6 @@ export const LEVEL_DRAFTS: readonly LevelDraft[] = [
       }
     ]
   },
-  {
-    "id": "3d000000-0000-0000-0000-000000000001",
-    "name": "Cube Test",
-    "difficulty": Difficulty.Easy,
-    "arrowCount": 6,
-    "attempts": 8,
-    "dimensions": 3,
-    "arrows": [
-      {
-        "id": "3d-front-h",
-        "color": "#00FFFF",
-        "path": [
-          { "row": 0, "col": 0, "z": 0 },
-          { "row": 0, "col": 1, "z": 0 }
-        ],
-        "direction": "RIGHT"
-      },
-      {
-        "id": "3d-front-v",
-        "color": "#FF44AA",
-        "path": [
-          { "row": 1, "col": 0, "z": 0 },
-          { "row": 0, "col": 0, "z": 0 }
-        ],
-        "direction": "UP"
-      },
-      {
-        "id": "3d-back-h",
-        "color": "#44FF88",
-        "path": [
-          { "row": 0, "col": 0, "z": 1 },
-          { "row": 0, "col": 1, "z": 1 }
-        ],
-        "direction": "RIGHT"
-      },
-      {
-        "id": "3d-back-v",
-        "color": "#FF8800",
-        "path": [
-          { "row": 1, "col": 1, "z": 1 },
-          { "row": 0, "col": 1, "z": 1 }
-        ],
-        "direction": "UP"
-      },
-      {
-        "id": "3d-depth-top",
-        "color": "#AA44FF",
-        "path": [
-          { "row": 0, "col": 1, "z": 0 },
-          { "row": 0, "col": 1, "z": 1 }
-        ],
-        "direction": "FORWARD"
-      },
-      {
-        "id": "3d-depth-bot",
-        "color": "#FFFF00",
-        "path": [
-          { "row": 1, "col": 0, "z": 1 },
-          { "row": 1, "col": 0, "z": 0 }
-        ],
-        "direction": "BACK"
-      }
-    ]
-  }
 ];
 
 
