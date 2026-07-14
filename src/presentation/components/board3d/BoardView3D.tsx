@@ -2,7 +2,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber/native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as THREE from "three";
 import type { GameUiState } from "@/presentation/state/GameUiState";
 import {
@@ -374,35 +374,33 @@ function BoardView3DInner({
   const composed = Gesture.Simultaneous(pan, pinch, tap);
 
   return (
-    <GestureHandlerRootView testID="board-view-3d" style={styles.container}>
-      <GestureDetector gesture={composed}>
-        <View style={styles.container}>
-          <Canvas testID="board-view-3d-canvas" camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }} gl={{ antialias: true }}>
-            <color attach="background" args={[BG]} />
-            <ambientLight intensity={0.22} />
-            <pointLight position={[6, 8, 6]} intensity={1.35} />
-            <OrbitCamera cameraRef={cam} baseDistance={baseDistance} />
-            <TapHandler cameraRef={cam} onArrowTap={onArrowTap} />
-            <ShakeHandler shakeRef={shakeRef} />
-            <VolumeLattice size={size} />
-            {activeDescriptors.map((descriptor) => (
-              <NeonTubeArrow key={descriptor.id} descriptor={descriptor} />
-            ))}
-            {exitingDescriptors.map((descriptor) => (
-              <AnimatedArrow
-                key={descriptor.id}
-                descriptor={descriptor}
-                onFinished={() => setExitingIds((s) => {
-                  const next = new Set(s);
-                  next.delete(descriptor.id);
-                  return next;
-                })}
-              />
-            ))}
-          </Canvas>
-        </View>
-      </GestureDetector>
-    </GestureHandlerRootView>
+    <GestureDetector gesture={composed}>
+      <View testID="board-view-3d" style={styles.container}>
+        <Canvas testID="board-view-3d-canvas" camera={{ position: [baseDistance, baseDistance * 0.65, baseDistance], fov: 50 }} gl={{ antialias: true }}>
+          <color attach="background" args={[BG]} />
+          <ambientLight intensity={0.22} />
+          <pointLight position={[6, 8, 6]} intensity={1.35} />
+          <OrbitCamera cameraRef={cam} baseDistance={baseDistance} />
+          <TapHandler cameraRef={cam} onArrowTap={onArrowTap} />
+          <ShakeHandler shakeRef={shakeRef} />
+          <VolumeLattice size={size} />
+          {activeDescriptors.map((descriptor) => (
+            <NeonTubeArrow key={descriptor.id} descriptor={descriptor} />
+          ))}
+          {exitingDescriptors.map((descriptor) => (
+            <AnimatedArrow
+              key={descriptor.id}
+              descriptor={descriptor}
+              onFinished={() => setExitingIds((s) => {
+                const next = new Set(s);
+                next.delete(descriptor.id);
+                return next;
+              })}
+            />
+          ))}
+        </Canvas>
+      </View>
+    </GestureDetector>
   );
 }
 

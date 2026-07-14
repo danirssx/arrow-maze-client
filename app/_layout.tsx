@@ -2,6 +2,7 @@ import "@/framework/i18n/i18n";
 import "../global.css";
 
 import { Stack } from "expo-router";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   useFonts,
@@ -34,11 +35,13 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <AuthGate>
-        <AppStack />
-      </AuthGate>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthGate>
+          <AppStack />
+        </AuthGate>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
