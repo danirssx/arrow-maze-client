@@ -4954,9 +4954,21 @@ Added an isolated, runnable spike harness (all throwaway, not wired into the gam
 - **Branch-only, do NOT merge to `develop`.** This is a throwaway; the deps and `/spike-3d` route must not land in the shipped app. If the render tickets adopt R3F, they will re-introduce the deps deliberately in production code.
 - Left the issue in **In Progress** (harness built, device verdict pending) rather than In Review, per `Linear_MCP_Guideline.md` (no production PR).
 
+## Device Results (2026-07-13) — VERDICT: **GO**
+
+Run on a physical iPhone via a dev-client build (Metro `expo start --dev-client`). Two screen captures recorded on the ticket:
+
+- **FPS: 60 (capped), stable** while orbiting with ~20 neon tube arrows — comfortably above the ≥50 target.
+- **Orbit + zoom:** fluid, no jank (the two captures are different camera angles).
+- **Tap → raycast → arrow id:** correct and reliable (`tap → arrow-7`, `tap → arrow-18` shown in the HUD).
+- **Neon look:** emissive core + additive halo reads as neon on the dark background without post-process bloom, as designed.
+- **Stack decision:** `@react-three/fiber/native` (R3F v9) + `expo-gl` + `three` **behaved on the New Architecture** — no crashes, no blank GL, gesture-handler and R3F composed cleanly. **Adopt R3F; the raw expo-gl fallback is NOT needed.**
+
+Conclusion: the volumetric renderer is viable. **MAZ-240 (C5) is unblocked and should build on the R3F stack** (three@^0.185, @react-three/fiber@^9.6, expo-gl@~16, react-native-gesture-handler@~2.28). Density (~20 arrows in a 4³ cube) rendered legibly with room to spare — the low-density cap decision from the spec holds.
+
 ## Lessons / Limitations
 
-The biggest early signal is free: the R3F v9 + three + expo-gl stack **typechecks cleanly on Expo SDK 54 / React 19 / RN 0.81**, which was the first thing likely to break. The remaining risk is entirely runtime/device (New Architecture GL stability and FPS), which no amount of static checking can settle — hence the spike exists to be run, not to be unit-tested. The scene math (orbit sphere, tube geometry, raycast NDC) is written so it transfers unchanged to a raw `expo-gl` + `three` implementation if R3F/native misbehaves on device.
+The biggest early signal is free: the R3F v9 + three + expo-gl stack **typechecks cleanly on Expo SDK 54 / React 19 / RN 0.81**, which was the first thing likely to break — and the device run confirmed it also *runs* cleanly at 60fps. The scene math (orbit sphere, tube geometry, raycast NDC) is written so it transfers unchanged to a raw `expo-gl` + `three` implementation if R3F ever misbehaves, but on this hardware R3F held 60fps so the fallback stays in reserve. Remaining unknowns for C5 (not spike-blocking): behaviour at the real per-level arrow count under the density cap, and the exit fly+fade animation cost — both cheap to measure once C5 renders real board data.
 
 
 <!-- AI_LOG_ENTRIES_END -->
